@@ -1,0 +1,1 @@
+export const PROFILE_DEFAULT_URL = "https://cdn.pixabay.com/photo/2021/12/12/20/00/play-6865967_640.jpg"
