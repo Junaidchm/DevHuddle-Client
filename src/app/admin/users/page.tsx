@@ -13,13 +13,18 @@ import dynamic from "next/dynamic";
 import { Card } from "@/src/components/admin/ui/Card";
 import { CardHeader } from "@/src/components/admin/ui/CardHeader";
 import { SearchInput } from "@/src/components/admin/ui/SearchInput";
+import usePresignedProfileImage from "@/src/customHooks/usePresignedProfileImage";
+import useDebounce from "@/src/customHooks/useDebounce";
+import { FilterSelect } from "@/src/components/admin/ui/FilterSelect";
+import { config } from "./static_config";
+import { FilterBar } from "@/src/components/admin/ui/FilterBar";
 
 const UserDetailsModal = dynamic(
   () => import("@/src/components/admin/user-management/userDetailsModal")
 );
 
 export default function UserList() {
-  useAdminRedirectIfNotAuthenticated("/admin/signIn");
+  // useAdminRedirectIfNotAuthenticated("/admin/signIn");
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(5);
@@ -31,17 +36,24 @@ export default function UserList() {
   const queryClient = useQueryClient();
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
+  const debouncedSearch = useDebounce(search, 2000);
+
   const { data, error, isLoading } = useQuery({
-    queryKey: ["users", page, limit, status, search, date],
+    queryKey: ["users", page, limit, status, debouncedSearch, date],
     queryFn: () => {
-      return getAllUsers({ page, limit, search, status, date });
+      return getAllUsers({
+        page,
+        limit,
+        search: debouncedSearch,
+        status,
+        date,
+      });
     },
-    staleTime: 10000,
+    staleTime: 30000,
     refetchOnWindowFocus: true,
   });
 
   const handleClearFilter = () => {
-    console.log("hello world clear filter is working");
     setPage(1);
     setLimit(5);
     setStatus("all");
@@ -118,58 +130,31 @@ export default function UserList() {
 
         <Card>
           <CardHeader title="Users List">
-             <SearchInput onChange={(e) => setSearch(e.target.value)} value={search} />
+            <SearchInput
+              onChange={(e) => setSearch(e.target.value)}
+              value={search}
+            />
           </CardHeader>
-         
+
           <div className="overflow-x-auto">
-            <div className="flex items-center gap-4 p-4 px-6 border-b border-gray-200 bg-gray-100 flex-wrap max-[768px]:flex-col max-[768px]:items-start">
-              <div className="flex flex-col gap-1 max-[768px]:w-full">
-                <label
-                  htmlFor="status-filter"
-                  className="text-xs text-gray-500 font-medium"
-                >
-                  Status
-                </label>
-                <select
-                  onChange={(e) => setStatus(e.target.value)}
-                  id="status-filter"
-                  className="p-1 px-2 border border-gray-200 rounded-lg font-['Inter'] text-sm text-gray-800 bg-white min-w-[140px] max-[768px]:w-full focus:outline-none focus:border-indigo-600 focus:shadow-[0_0_0_3px_rgba(79,70,229,0.2)]"
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="suspended">Suspended</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1 max-[768px]:w-full">
-                <label
-                  htmlFor="date-filter"
-                  className="text-xs text-gray-500 font-medium"
-                >
-                  Join Date
-                </label>
-                <select
-                  id="date-filter"
-                  onChange={(e) => setDate(e.target.value)}
-                  className="p-1 px-2 border border-gray-200 rounded-lg font-['Inter'] text-sm text-gray-800 bg-white min-w-[140px] max-[768px]:w-full focus:outline-none focus:border-indigo-600 focus:shadow-[0_0_0_3px_rgba(79,70,229,0.2)]"
-                >
-                  <option value="all">All Time</option>
-                  <option value="today">Today</option>
-                  <option value="last-week">Last 7 Days</option>
-                  <option value="last-month">Last 30 Days</option>
-                  <option value="last-quarter">Last 90 Days</option>
-                </select>
-              </div>
-
-              <button
-                onClick={handleClearFilter}
-                className="px-4 py-2 mt-3.5 rounded-lg font-medium text-sm text-gray-800 bg-transparent flex items-center justify-center gap-2 transition-all duration-300 hover:bg-gray-100"
-              >
-                <i className="fas fa-times"></i>
-                Clear Filters
-              </button>
-            </div>
+            <FilterBar  onClearFilters={handleClearFilter}>
+              <FilterSelect
+                label="Status"
+                id="status-filter"
+                onChange={(e) => setStatus(e.target.value)}
+                value={status}
+                options={config.statusOptions}     
+              />
+              
+              <FilterSelect
+                label="Join Date"
+                id="date-filter"
+                onChange={(e) => setDate(e.target.value)}
+                value={date}
+                options={config.dateOptions}     
+              />
+            </FilterBar>
+            
             <table className="w-full border-collapse min-w-[800px]">
               <thead>
                 <tr>
@@ -212,113 +197,132 @@ export default function UserList() {
                 </tr>
               </thead>
               <tbody>
-                {data?.data?.users.map((user: User, index: number) => (
-                  <tr
-                    key={user.id}
-                    className="border-b border-gray-200 hover:bg-gray-100 transition-all duration-300"
-                  >
-                    <td className="p-4 text-sm">
-                      <div className="relative inline-block">
-                        <input
-                          type="checkbox"
-                          id={`user-${user.id}`}
-                          className="peer sr-only"
-                        />
-                        <label
-                          htmlFor={`user-${user.id}`}
-                          className="w-[18px] h-[18px] border border-gray-300 rounded-sm flex items-center justify-center cursor-pointer transition-all duration-300 peer-checked:bg-indigo-600 peer-checked:border-indigo-600"
-                        >
-                          <i className="fas fa-check text-white text-[0.625rem] hidden peer-checked:inline-block"></i>
-                        </label>
-                      </div>
-                    </td>
+                {data?.data?.users?.length > 0 ? (
+                  data?.data?.users.map((user: User, index: number) => (
+                    <tr
+                      key={user.id}
+                      className="border-b border-gray-200 hover:bg-gray-100 transition-all duration-300"
+                    >
+                      <td className="p-4 text-sm">
+                        <div className="relative inline-block">
+                          <input
+                            type="checkbox"
+                            id={`user-${user.id}`}
+                            className="peer sr-only"
+                          />
+                          <label
+                            htmlFor={`user-${user.id}`}
+                            className="w-[18px] h-[18px] border border-gray-300 rounded-sm flex items-center justify-center cursor-pointer transition-all duration-300 peer-checked:bg-indigo-600 peer-checked:border-indigo-600"
+                          >
+                            <i className="fas fa-check text-white text-[0.625rem] hidden peer-checked:inline-block"></i>
+                          </label>
+                        </div>
+                      </td>
 
-                    <td className="p-4 text-sm">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src="https://ui-avatars.com/api/?name=David+Miller&background=10b981&color=fff"
-                          alt="David Miller"
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
-                        <div>
-                          <div className="font-medium text-gray-800">
-                            {user.name}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {user.username}
+                      <td className="p-4 text-sm">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src="https://ui-avatars.com/api/?name=David+Miller&background=10b981&color=fff"
+                            alt={user.name}
+                            className="w-8 h-8 rounded-full object-cover"
+                          />
+                          <div>
+                            <div className="font-medium text-gray-800">
+                              {user.name}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {user.username}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="p-4 text-sm">{user.email}</td>
-                    <td className="p-4 text-sm">
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[rgba(59,130,246,0.1)] text-blue-600">
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="p-4 text-sm">
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-[rgba(239,68,68,0.1)] text-red-500 before:content-[''] before:inline-block before:w-2 before:h-2 before:rounded-full before:bg-red-500">
-                        {!user.isBlocked ? "Active" : "Bloked"}
-                      </span>
-                    </td>
-                    <td className="p-4 text-sm">Apr 8, 2023</td>
-                    <td className="p-4 text-sm">21</td>
-                    <td className="p-4 text-sm">
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {/* <button
+                      </td>
+                      <td className="p-4 text-sm">{user.email}</td>
+                      <td className="p-4 text-sm">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[rgba(59,130,246,0.1)] text-blue-600">
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="p-4 text-sm">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium
+                        ${
+                          user.isBlocked
+                            ? "bg-[rgba(239,68,68,0.1)] text-red-500 before:bg-red-500"
+                            : "bg-[rgba(34,197,94,0.1)] text-green-500 before:bg-green-500"
+                        }
+                        before:content-[''] before:inline-block before:w-2 before:h-2 before:rounded-full`}
+                        >
+                          {user.isBlocked ? "Blocked" : "Active"}
+                        </span>
+                      </td>
+
+                      <td className="p-4 text-sm">
+                        {user.createdAt &&
+                          new Date(user.createdAt).toISOString().split("T")[0]}
+                      </td>
+                      <td className="p-4 text-sm">21</td>
+                      <td className="p-4 text-sm">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {/* <button
                         className="w-7 h-7 rounded-md flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-all duration-300"
                         title="Edit User"
                       >
                         <i className="fas fa-edit"></i>
                       </button> */}
-                        <button
-                          onClick={() => setSelectedUser(user.id)}
-                          className="w-7 h-7 rounded-md flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-all duration-300"
-                          title="View Profile"
-                        >
-                          <i className="fas fa-eye"></i>
-                        </button>
-                        <div className="relative">
                           <button
-                            onClick={() => handleBlockToogle(index)}
+                            onClick={() => setSelectedUser(user.id)}
                             className="w-7 h-7 rounded-md flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-all duration-300"
+                            title="View Profile"
                           >
-                            <i className="fas fa-ellipsis-v"></i>
+                            <i className="fas fa-eye"></i>
                           </button>
-                          {blockUnblock === index && (
-                            <div className="absolute top-full right-0 w-44 bg-white rounded-md shadow-lg z-10">
-                              <button
-                                onClick={() => handleBlockMutation(user.id)}
-                                disabled={blockUnblockMutation.isPending}
-                                className={`flex w-full items-center gap-2 px-4 py-2 text-sm ${
-                                  user.isBlocked
-                                    ? "text-gray-800"
-                                    : "text-red-500"
-                                } hover:bg-gray-100 transition-all duration-300`}
-                              >
-                                <i className="fas fa-user-slash text-sm w-5 h-5 flex items-center justify-center"></i>
-                                {user.isBlocked ? "UnBlock" : "Block"}
-                              </button>
-                              {/* <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 transition-all duration-300">
-                              <i className="fas fa-unlock text-sm w-5 h-5 flex items-center justify-center"></i>
-                              UnBlock
-                            </button> */}
-                            </div>
-                          )}
+                          <div className="relative">
+                            <button
+                              onClick={() => handleBlockToogle(index)}
+                              className="w-7 h-7 rounded-md flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-all duration-300"
+                            >
+                              <i className="fas fa-ellipsis-v"></i>
+                            </button>
+                            {blockUnblock === index && (
+                              <div className="absolute top-full right-0 w-44 bg-white rounded-md shadow-lg z-10">
+                                <button
+                                  onClick={() => handleBlockMutation(user.id)}
+                                  disabled={blockUnblockMutation.isPending}
+                                  className={`flex w-full items-center gap-2 px-4 py-2 text-sm ${
+                                    user.isBlocked
+                                      ? "text-gray-800"
+                                      : "text-red-500"
+                                  } hover:bg-gray-100 transition-all duration-300`}
+                                >
+                                  <i className="fas fa-user-slash text-sm w-5 h-5 flex items-center justify-center"></i>
+                                  {user.isBlocked ? "UnBlock" : "Block"}
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr className="border-b border-gray-200">
+                    <td
+                      colSpan={8}
+                      className="p-4 text-sm text-gray-500 text-center"
+                    >
+                      No users found.
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
           <div className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center border-t border-gray-200 gap-4">
-            <div className="text-sm text-gray-500">
-              Showing <span className="font-semibold text-gray-800">1-5</span>{" "}
-              of
-              <span className="font-semibold text-gray-800">1,024</span> users
-            </div>
+            {/* <div className="text-sm text-gray-500">
+              {"  "} <span className="font-semibold text-gray-800"></span>{"  "}
+              {"  "}
+              <span className="font-semibold text-gray-800">{"  "}</span> {"  "}
+            </div> */}
             {/* Page numbers */}
             <div className="flex gap-1">
               <button
@@ -342,23 +346,9 @@ export default function UserList() {
                   {i + 1}
                 </button>
               ))}
-              {/* <button className="w-8 h-8 rounded-md flex items-center justify-center text-white bg-indigo-600 font-medium">
-                1
-              </button>
-              <button className="w-8 h-8 rounded-md flex items-center justify-center text-gray-800 hover:bg-gray-100 font-medium transition-all duration-300">
-                2
-              </button>
-              <button className="w-8 h-8 rounded-md flex items-center justify-center text-gray-800 hover:bg-gray-100 font-medium transition-all duration-300">
-                3
-              </button>
-              <button className="w-8 h-8 rounded-md flex items-center justify-center text-gray-800 cursor-default">
-                ...
-              </button>
-              <button className="w-8 h-8 rounded-md flex items-center justify-center text-gray-800 hover:bg-gray-100 font-medium transition-all duration-300">
-                205
-              </button> */}
+
               <button
-                className="w-8 h-8 rounded-md flex items-center justify-center text-gray-800 hover:bg-gray-100 transition-all duration-300"
+                className="w-8 h-8 rounded-md flex items-center justify-center text-gray-800 disabled:text-gray-400 hover:bg-gray-100 transition-all duration-300"
                 disabled={page === totalPages}
                 onClick={() => setPage((pre) => Math.min(pre + 1, totalPages))}
               >

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import VerifyForm from "./_forms/VerifyForm";
 import { resetOTP } from "@/src/services/api/auth.service";
+import Link from "next/link";
+import toast from "react-hot-toast";
 
 export default function VerifyOtp() {
   const [countdown, setCountdown] = useState<number>(60);
@@ -20,6 +22,7 @@ export default function VerifyOtp() {
   const handleResend = () => {
     const email = localStorage.getItem("signupEmail") as string;
     resetOTP(email);
+    toast.success('Otp resend succ')
     setCountdown(60);
   };
 
@@ -33,9 +36,9 @@ export default function VerifyOtp() {
           We've sent a verification code to your email
         </p>
 
-        <div className="text-center font-medium mb-6 bg-gray-50 py-3 px-4 rounded-lg">
+        {/* <div className="text-center font-medium mb-6 bg-gray-50 py-3 px-4 rounded-lg">
           j***@example.com
-        </div>
+        </div> */}
 
         <VerifyForm />
 
@@ -57,12 +60,12 @@ export default function VerifyOtp() {
         </div>
 
         <div className="text-center">
-          <a
-            href="login.html"
-            className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            Back to Login
-          </a>
+              <Link
+              href="/signIn"
+              className="text-xs sm:text-sm text-primary hover:text-primary-hover hover:underline transition-colors"
+            >
+              Back to signIn
+            </Link>
         </div>
       </div>
     </main>

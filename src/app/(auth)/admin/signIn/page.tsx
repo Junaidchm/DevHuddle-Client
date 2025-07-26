@@ -58,7 +58,7 @@ export default function AdminSignIn() {
       );
 
       if (loggedInUser.role === "superAdmin") {
-        toast.success("Login successful", { position: "bottom-center" });
+        toast.success("Login successful", { position: "top-center" });
         router.push("/admin/dashboard");
       } else {
         toast.error("You don’t have admin privileges", {

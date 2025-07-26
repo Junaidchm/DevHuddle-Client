@@ -48,3 +48,15 @@ export interface UserListing {
   jobTitle?: string;
   company?: string;
 }
+
+export interface userUpdate {
+  username?: string;
+  name?: string;
+  profilePicture?: string|undefined;
+  location?: string;
+  bio?: string;
+  skills?: string[];
+  yearsOfExperience?: string;
+  jobTitle?: string;
+  company?: string;
+}

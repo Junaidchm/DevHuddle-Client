@@ -4,8 +4,9 @@ import { SettingsTab } from "../(app)/profile/update/[username]/components";
 import "../styles/admin.css";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/src/store/store";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAdminRedirectIfNotAuthenticated } from "@/src/customHooks/useAdminAuthenticated";
+import Link from "next/link";
 
 export default function AdminLayout({
   children,
@@ -14,6 +15,7 @@ export default function AdminLayout({
 }) {
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
+  const pathname = usePathname()
 
   useAdminRedirectIfNotAuthenticated("/admin/signIn");
 
@@ -76,8 +78,8 @@ export default function AdminLayout({
               </h3>
               <ul>
                 <li className="relative">
-                  <a
-                    href="admin-users.html"
+                  <Link
+                    href="/admin/users"
                     className="flex items-center gap-3 px-6 py-3 text-gray-400 transition-all duration-300 hover:text-gray-50 hover:bg-white/10"
                   >
                     <span className="text-xl w-6 flex justify-center">
@@ -86,7 +88,7 @@ export default function AdminLayout({
                     <span className="transition-opacity duration-300 whitespace-nowrap">
                       Users
                     </span>
-                  </a>
+                  </Link>
                 </li>
                 <li className="relative">
                   <a

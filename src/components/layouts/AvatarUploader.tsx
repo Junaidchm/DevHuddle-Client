@@ -1,4 +1,4 @@
-// 
+//
 "use client";
 
 import React, { useCallback, useRef, useState } from "react";
@@ -15,7 +15,11 @@ interface AvatarUploaderProps {
   PROFILE_DEFAULT_URL?: string;
 }
 
-const AvatarUploader: React.FC<AvatarUploaderProps> = ({ onImageCropped, previewUrl, PROFILE_DEFAULT_URL }) => {
+const AvatarUploader: React.FC<AvatarUploaderProps> = ({
+  onImageCropped,
+  previewUrl,
+  PROFILE_DEFAULT_URL,
+}) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -24,16 +28,32 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ onImageCropped, preview
   const [isCropping, setIsCropping] = useState(false);
 
   const onSelectFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.preventDefault(); // Added to ensure no form submission
+    e.preventDefault();
+
     const file = e.target.files?.[0];
-    if (file && file.size <= 1024 * 1024) {
-      const reader = new FileReader();
-      reader.addEventListener("load", () => setImageSrc(reader.result as string));
-      reader.readAsDataURL(file);
-      setIsCropping(true);
-    } else {
-      toast.error("Please upload image under 1MB", { position: "top-center" });
+
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "image/gif"];
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Only image files (jpg, jpeg, png, gif) are allowed", {
+        position: "top-center",
+      });
+      return;
     }
+
+    if (file.size > 1024 * 1024) {
+      toast.error("Please upload an image under 1MB", {
+        position: "top-center",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.addEventListener("load", () => setImageSrc(reader.result as string));
+    reader.readAsDataURL(file);
+    setIsCropping(true);
   };
 
   const onCropComplete = useCallback((_: any, croppedAreaPixels: any) => {
@@ -68,7 +88,7 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ onImageCropped, preview
         text="Upload New Picture"
         variant="secondary"
         icon="fas fa-upload"
-        type="button" // Added to prevent form submission
+        type="button" 
         onClick={() => inputRef.current?.click()}
       />
       <input
@@ -80,7 +100,11 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ onImageCropped, preview
       />
       <p className="text-sm text-gray-500">JPG, PNG or GIF. 1MB max size.</p>
 
-      <Dialog open={isCropping} onClose={() => setIsCropping(false)} className="relative z-50">
+      <Dialog
+        open={isCropping}
+        onClose={() => setIsCropping(false)}
+        className="relative z-50"
+      >
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center">
           <div className="bg-white rounded-xl shadow-xl p-6 w-[90vw] max-w-md">
             <h3 className="text-lg font-semibold mb-4">Crop your avatar</h3>
@@ -98,7 +122,11 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ onImageCropped, preview
               />
             </div>
             <div className="mt-4 flex justify-between">
-              <Button text="Cancel" variant="secondary" onClick={() => setIsCropping(false)} />
+              <Button
+                text="Cancel"
+                variant="secondary"
+                onClick={() => setIsCropping(false)}
+              />
               <Button text="Save" variant="primary" onClick={handleCropSave} />
             </div>
           </div>

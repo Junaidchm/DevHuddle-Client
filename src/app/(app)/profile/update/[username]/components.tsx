@@ -187,7 +187,7 @@ export const Button: React.FC<ButtonProps> = ({
   return (
     <button
       type={type}
-      className={`btn inline-flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${variantStyles[variant]}`}
+      className={`btn cursor-pointer inline-flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${variantStyles[variant]}`}
       onClick={onClick}
       disabled={disabled}
     >

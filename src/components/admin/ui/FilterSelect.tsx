@@ -44,10 +44,7 @@ export const FilterSelect: React.FC<FilterSelectProps> = ({
             {option.label}
           </option>
         ))}
-        <option value="all">All Status</option>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-        <option value="suspended">Suspended</option>
+        
       </select>
     </div>
   );

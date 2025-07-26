@@ -1,8 +1,10 @@
 "use client";
 
+import { PROFILE_DEFAULT_URL } from "@/src/constents";
+import usePresignedProfileImageForAdmin from "@/src/customHooks/useShowImageForAdmin";
 import { fetchUserFullDetails } from "@/src/services/api/admin.service";
 import { useQuery } from "@tanstack/react-query";
-import { Dispatch, SetStateAction } from "react";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 
 interface UserDetailsModalProps {
   userId: string;
@@ -13,50 +15,64 @@ export default function UserDetailsModal({
   userId,
   onClose,
 }: UserDetailsModalProps) {
-
-
-  const {data, error, isLoading} = useQuery({
-    queryKey : ['user',userId],
-    queryFn : ()=> fetchUserFullDetails(userId),
-    staleTime : 30000,
-  })
-
+  const { data, error, isLoading } = useQuery({
+    queryKey: ["user", userId],
+    queryFn: () => fetchUserFullDetails(userId),
+    staleTime: 30000,
+  });
+ 
+  const profileImageUrl = usePresignedProfileImageForAdmin(data?.data)
+ 
   return (
     <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-[0_1px_3px_0_rgba(0,0,0,0.1),0_1px_2px_0_rgba(0,0,0,0.06)] w-full max-w-3xl max-h-[80vh] overflow-y-auto font-['Inter'] text-gray-900">
         <div className="p-6 relative">
-          <button onClick={()=> onClose(null)} className="absolute top-4 right-4 w-7 h-7 rounded-md flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-all duration-300">
+          <button
+            onClick={() => onClose(null)}
+            className="absolute top-4 right-4 w-7 h-7 rounded-md flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-all duration-300"
+          >
             <i className="fas fa-times"></i>
           </button>
           <div className="mb-6 flex items-center gap-6 max-[768px]:flex-col max-[768px]:items-start max-[768px]:p-4">
             <img
-              src="https://ui-avatars.com/api/?name=Sarah+Wilson&background=4f46e5&color=fff&size=120"
+              src={profileImageUrl || PROFILE_DEFAULT_URL}
               alt="Sarah Wilson"
               className="w-[120px] h-[120px] rounded-full object-cover flex-shrink-0"
             />
             <div className="flex-1">
               <div className="mb-2">
                 <h2 className="text-lg font-semibold text-gray-800 mb-1">
-                  Sarah Wilson
+                  {data?.data?.name}
                 </h2>
                 <div className="text-gray-500 text-sm mb-2">
-                  sarah.wilson@example.com
+                  {data?.data?.username}
                 </div>
               </div>
               <div className="flex gap-4 flex-wrap max-[768px]:flex-col max-[768px]:gap-2">
                 <div className="flex items-center gap-2 text-gray-500 text-sm">
                   <i className="fas fa-calendar-alt"></i>
                   <span className="whitespace-nowrap">
-                    Joined: August 12, 2022
+                    {data?.data?.createdAt &&
+                      new Date(data?.data?.createdAt)
+                        .toISOString()
+                        .split("T")[0]}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-500 text-sm">
                   <i className="fas fa-map-marker-alt"></i>
-                  <span>San Francisco, CA</span>
+                  <span>{data?.data?.location}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-[rgba(16,185,129,0.1)] text-green-500">
-                    Active
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium
+                        ${
+                          data?.data?.isBlocked
+                            ? "bg-[rgba(239,68,68,0.1)] text-red-500 before:bg-red-500"
+                            : "bg-[rgba(34,197,94,0.1)] text-green-500 before:bg-green-500"
+                        }
+                        before:content-[''] before:inline-block before:w-2 before:h-2 before:rounded-full`}
+                  >
+                    {data?.data?.isBlocked ? "Blocked" : "Active"}
                   </span>
                 </div>
               </div>
@@ -71,12 +87,12 @@ export default function UserDetailsModal({
               >
                 Profile
               </button>
-              <button
+              {/* <button
                 className="px-6 py-4 font-medium text-gray-500 bg-transparent border-none text-sm border-b-4 border-transparent transition-all duration-300 hover:text-indigo-600 max-[768px]:border-b border-gray-200 max-[768px]:border-l-4 max-[768px]:text-left max-[768px]:px-4 max-[768px]:py-3"
                 data-tab="roles"
               >
                 Roles & Permissions
-              </button>
+              </button> */}
             </div>
 
             <div className="p-6 block max-[768px]:p-4" id="profile-tab">
@@ -91,14 +107,13 @@ export default function UserDetailsModal({
                   className="w-full p-3 border border-gray-200 rounded-lg text-sm transition-all duration-300 focus:outline-none focus:border-indigo-600 focus:shadow-[0_0_0_3px_rgba(79,70,229,0.2)] min-h-[120px]"
                   id="userBio"
                 >
-                  
+                  {data?.data?.bio}
                 </div>
               </div>
-              <div className="mb-4">
+              {/* <div className="mb-4">
                 <label className="block font-medium mb-2 text-sm">Skills</label>
                 <div className="flex flex-wrap gap-2 mb-2">
-
-                  {/* <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm">
+                  <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm">
                     <span>JavaScript</span>
                     <i className="fas fa-times text-gray-500 cursor-pointer transition-all duration-300 hover:text-red-500"></i>
                   </div>
@@ -117,9 +132,9 @@ export default function UserDetailsModal({
                   <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm">
                     <span>CSS</span>
                     <i className="fas fa-times text-gray-500 cursor-pointer transition-all duration-300 hover:text-red-500"></i>
-                  </div> */}
+                  </div>
                 </div>
-              </div>
+              </div> */}
             </div>
 
             <div className="p-6 hidden max-[768px]:p-4" id="roles-tab">
@@ -212,8 +227,6 @@ export default function UserDetailsModal({
               </div>
             </div>
           </div>
-
-    
         </div>
       </div>
     </div>

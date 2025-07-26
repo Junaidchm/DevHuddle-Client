@@ -4,6 +4,7 @@ import { InputField, PrimaryButton } from "@/src/components/layouts/auth";
 import { PsswordRestRequest } from "@/src/services/api/auth.service";
 import { AppDispatch } from "@/src/store/store";
 import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
@@ -26,7 +27,7 @@ export default function ForgotPassword() {
     formState: { errors, isSubmitting, isValid },
   } = useForm<ForgotSchema>({
     resolver: zodResolver(forgotScehma),
-    mode: "onTouched",
+    mode: "onChange",
   });
 
   const onSubmit = async (data: ForgotSchema) => {
@@ -74,12 +75,13 @@ export default function ForgotPassword() {
           <div className="text-center mb-4">
             <p className="text-sm text-gray-600">
               Remember your password?{" "}
-              <a
-                href="login.html"
-                className="text-primary font-medium hover:text-primary-hover hover:underline transition-colors"
-              >
-                Log in
-              </a>
+              <Link
+              href="/signup"
+              className="text-xs sm:text-sm text-primary hover:text-primary-hover hover:underline transition-colors"
+            >
+              {" "}
+              signup
+            </Link>
             </p>
           </div>
 

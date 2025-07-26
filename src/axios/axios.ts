@@ -25,12 +25,10 @@ const refreshInstance = axios.create({
 // Add a request interceptor
 axiosInstance.interceptors.request.use(
   function (config) {
-    // Do something before request is sent
     console.log("Request from instance:", config.url);
     return config;
   },
   function (error) {
-    // Do something with request error
     return Promise.reject(error);
   }
 );
@@ -38,7 +36,6 @@ axiosInstance.interceptors.request.use(
 // Add response interceptor
 axiosInstance.interceptors.response.use(
   (response) => {
-    // Everything is fine, just return
     return response;
   },
   async (error) => {
@@ -47,25 +44,22 @@ axiosInstance.interceptors.response.use(
     // If token is expired and not already retried
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-
+     
       try {
         // Try to refresh token
         await refreshInstance.get("/auth/refresh", { withCredentials: true });
 
-        // Retry the original request again
         return axiosInstance(originalRequest);
       } catch (refreshError) {
         toast.error("Session expired. Please log in again.");
-        // Redirect to login if refresh fails
+        
         localStorage.clear();
-        setTimeout(() => {
           window.location.href = "/signIn";
-        }, 1500);
         return Promise.reject(refreshError);
       }
     }
 
-    return Promise.reject(error); // other errors
+    return Promise.reject(error);
   }
 );
 

@@ -1,11 +1,7 @@
-
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "../globals.css";
 import { Providers } from "@/src/store/providers";
-import { Toaster } from "react-hot-toast";
-import ClientToaster from "@/src/components/hot-react-toster/ClientToaster";
-
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,48 +24,42 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // <html lang="en">
-    //   <body>
-        <div className="bg-gray-50 min-h-screen flex flex-col">
-          <div className="flex flex-col bg-gradient-to-br from-primary/10 to-accent/10 flex-1">
-            <header className="py-3 sm:py-4 md:py-6 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <span className="font-bold text-xl sm:text-2xl">DevHuddle</span>
-              </div>
-            </header>
-
-            <Providers>{children}</Providers>
-            
-            {/* TOASTER Added HERE */}
-           <ClientToaster />
-            <footer className="py-3 sm:py-4 text-center">
-              <div className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-6 mb-2">
-                <a
-                  href="#"
-                  className="text-xs sm:text-sm text-gray-500 hover:text-gray-900 transition-colors"
-                >
-                  Privacy Policy
-                </a>
-                <a
-                  href="#"
-                  className="text-xs sm:text-sm text-gray-500 hover:text-gray-900 transition-colors"
-                >
-                  Terms of Service
-                </a>
-                <a
-                  href="#"
-                  className="text-xs sm:text-sm text-gray-500 hover:text-gray-900 transition-colors"
-                >
-                  Help Center
-                </a>
-              </div>
-              <p className="text-xs sm:text-sm text-gray-500">
-                © 2023 DevHuddle. All rights reserved.
-              </p>
-            </footer>
+    <div className="bg-gray-50 min-h-screen flex flex-col">
+      <div className="flex flex-col bg-gradient-to-br from-primary/10 to-accent/10 flex-1">
+        <header className="py-3 sm:py-4 md:py-6 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="font-bold text-xl sm:text-2xl">DevHuddle</span>
           </div>
-        </div>
-    //   </body>
-    // </html>
+        </header>
+
+        <Providers>{children}</Providers>
+
+        <footer className="py-3 sm:py-4 text-center">
+          <div className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-6 mb-2">
+            <a
+              href="#"
+              className="text-xs sm:text-sm text-gray-500 hover:text-gray-900 transition-colors"
+            >
+              Privacy Policy
+            </a>
+            <a
+              href="#"
+              className="text-xs sm:text-sm text-gray-500 hover:text-gray-900 transition-colors"
+            >
+              Terms of Service
+            </a>
+            <a
+              href="#"
+              className="text-xs sm:text-sm text-gray-500 hover:text-gray-900 transition-colors"
+            >
+              Help Center
+            </a>
+          </div>
+          <p className="text-xs sm:text-sm text-gray-500">
+            © 2023 DevHuddle. All rights reserved.
+          </p>
+        </footer>
+      </div>
+    </div>
   );
 }

@@ -33,6 +33,6 @@ export const toogleUserBlock = async (userId: string) => {
 
 export const fetchUserFullDetails = async (userId: string) => {
   const response = await axiosInstance.get(`/auth/admin/user/${userId}`);
-  console.log("this is the specific user data : ", response.data);
+  console.log('this is the user data :', response)
   return response.data;
 };

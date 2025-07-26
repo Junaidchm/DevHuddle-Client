@@ -123,6 +123,7 @@ export default function SignUpForm() {
       });
       router.push("/verify-user");
     } catch (error: any) {
+      console.log('the error is happening .................')
       // Handle error returned from createAsyncThunk rejectWithValue
       const errorMessage =
         error?.message || error || "Something went wrong during registration";
@@ -286,44 +287,6 @@ export default function SignUpForm() {
                     />
                   )}
                 </div>
-              </FormControl>
-              <FormMessage className="text-xs sm:text-sm text-red-500 mt-2" />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="acceptTerms"
-          render={({ field }) => (
-            <FormItem className="mb-3 sm:mb-4">
-              <FormControl>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-                    required
-                    checked={field.value}
-                    onChange={field.onChange}
-                    ref={field.ref}
-                  />
-                  <span className="text-xs sm:text-sm text-gray-600">
-                    I agree to the{" "}
-                    <a
-                      href="#"
-                      className="text-primary hover:text-primary-hover hover:underline"
-                    >
-                      Terms of Service
-                    </a>{" "}
-                    and{" "}
-                    <a
-                      href="#"
-                      className="text-primary hover:text-primary-hover hover:underline"
-                    >
-                      Privacy Policy
-                    </a>
-                  </span>
-                </label>
               </FormControl>
               <FormMessage className="text-xs sm:text-sm text-red-500 mt-2" />
             </FormItem>
