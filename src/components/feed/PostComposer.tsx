@@ -1,13 +1,14 @@
+"use client";
 
-'use client';
+import React, { useState } from "react";
+import { Image, FileText, CheckCircle, Calendar, Video } from "lucide-react";
 
-import React, { useState } from 'react';
-import { Image, FileText, CheckCircle, Calendar } from 'lucide-react';
+import { ImageData, User } from "@/src/app/types/feed";
+import PollModal from "./PollModal";
+import CreatePostModal from "./CreatePostModal";
+import VideoEditorModal from "./VideoEdit";
+import PhotoEditorModal from "./PhotoEditorModal";
 
-import { User } from '@/src/app/types/feed';
-import PollModal from './PollModal';
-import PhotoEditorModal from './PhotoEditorModal';
-import CreatePostModal from './CreatePostModal';
 
 interface PostComposerProps {
   userId: string;
@@ -17,7 +18,61 @@ interface PostComposerProps {
 export default function PostComposer({ userId, user }: PostComposerProps) {
   const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [isVideoModalOpen, setVideoModalOpen] = useState(false);
   const [isPollModalOpen, setIsPollModalOpen] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<ImageData[]>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const handleImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    const validFiles = files.filter((file) => {
+      const isValidType = ["image/jpeg", "image/png", "image/gif"].includes(
+        file.type
+      );
+      const isValidSize = file.size <= 10 * 1024 * 1024;
+      if (!isValidType)
+        console.warn(`File ${file.name} is not a supported image type.`);
+      if (!isValidSize)
+        console.warn(`File ${file.name} exceeds 10MB size limit.`);
+      return isValidType && isValidSize;
+    });
+
+    const newImages = validFiles.map(
+      (file, index) =>
+        new Promise<ImageData>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            if (e.target?.result) {
+              resolve({
+                id:crypto.randomUUID(),
+                file,
+                preview: e.target.result as string,
+                name: file.name,
+              });
+            } else {
+              reject(new Error(`Failed to read file: ${file.name}`));
+            }
+          };
+          reader.onerror = () =>
+            reject(new Error(`Error reading file: ${file.name}`));
+          reader.readAsDataURL(file);
+        })
+    );
+
+    try {
+      const images = await Promise.all(newImages);
+      setSelectedImages((prev) => [...prev, ...images]);
+      if (selectedImages.length === 0 && images.length > 0) {
+        setCurrentImageIndex(0);
+      }
+    } catch (error) {
+      console.error("Error processing images:", error);
+    }
+  };
 
   return (
     <div className="bg-white rounded-xl p-4 mb-6 border border-slate-200 shadow-sm">
@@ -39,12 +94,26 @@ export default function PostComposer({ userId, user }: PostComposerProps) {
       <div className="flex items-center justify-between pt-2 border-t border-slate-100">
         <div className="flex gap-1 sm:gap-4 flex-wrap">
           <button
-            onClick={() => setIsPhotoModalOpen(true)}
+            onClick={() => {
+              setIsPhotoModalOpen(true);
+              setIsCreatePostModalOpen(true);
+            }}
             className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-gray-50 rounded-lg transition-colors duration-200 ease-in-out cursor-pointer"
             aria-label="Add photo"
           >
             <Image size={20} className="text-violet-500 flex-shrink-0" />
             <span className="hidden sm:inline">Photo</span>
+          </button>
+          <button
+            onClick={() => {
+              setVideoModalOpen(true);
+              setIsCreatePostModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-gray-50 rounded-lg transition-colors duration-200 ease-in-out cursor-pointer"
+            aria-label="Add event"
+          >
+            <Video size={20} className="text-red-500 flex-shrink-0" />
+            <span className="hidden sm:inline">Video</span>
           </button>
           <button
             className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-gray-50 rounded-lg transition-colors duration-200 ease-in-out cursor-pointer"
@@ -61,13 +130,6 @@ export default function PostComposer({ userId, user }: PostComposerProps) {
             <CheckCircle size={20} className="text-amber-500 flex-shrink-0" />
             <span className="hidden sm:inline">Poll</span>
           </button>
-          <button
-            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-gray-50 rounded-lg transition-colors duration-200 ease-in-out cursor-pointer"
-            aria-label="Add event"
-          >
-            <Calendar size={20} className="text-red-500 flex-shrink-0" />
-            <span className="hidden sm:inline">Event</span>
-          </button>
         </div>
         <button
           onClick={() => setIsCreatePostModalOpen(true)}
@@ -81,7 +143,10 @@ export default function PostComposer({ userId, user }: PostComposerProps) {
         <CreatePostModal
           isOpen={isCreatePostModalOpen}
           onClose={() => setIsCreatePostModalOpen(false)}
+          openImageVideoModal={() => setIsPhotoModalOpen(true)}
           user={user}
+          selectedImages={selectedImages}
+          setSelectedImages={setSelectedImages}
         />
       )}
       {isPhotoModalOpen && (
@@ -89,6 +154,15 @@ export default function PostComposer({ userId, user }: PostComposerProps) {
           isOpen={isPhotoModalOpen}
           onClose={() => setIsPhotoModalOpen(false)}
           user={user}
+          handleImageUpload={handleImageUpload}
+          selectedImages={selectedImages}
+          setSelectedImages={setSelectedImages}
+        />
+      )}
+      {isVideoModalOpen && (
+        <VideoEditorModal
+          isOpen={isVideoModalOpen}
+          onClose={() => setVideoModalOpen(false)}
         />
       )}
       {isPollModalOpen && (

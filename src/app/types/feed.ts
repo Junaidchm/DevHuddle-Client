@@ -81,3 +81,78 @@ export interface FeedResponse {
   contributors: User[];
   nextCursor?: string;
 }
+
+
+export interface ImageData {
+  id: string;
+  file: File;
+  preview: string;
+  name: string;
+}
+
+
+export interface ImageTransform {
+  rotation: number;
+  flipH: boolean;
+  flipV: boolean;
+  zoom: number;
+  straighten: number;
+  aspectRatio: string;
+  filter: string;
+  brightness: number;
+  contrast: number;
+  saturation: number;
+  temperature: number;
+  highlights: number;
+  shadows: number;
+  altText: string;
+}
+
+export interface ActionBarProps {
+  onEdit: () => void;
+  onTag: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+  onAddMore: () => void;
+  disableActions?: boolean;
+  imageCount: number;
+  onDone: () => void;
+  className?: string;
+}
+
+export interface GradientButtonProps {
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  className?: string;
+  ariaLabel: string;
+}
+
+export interface ThumbnailProps {
+  image: ImageData;
+  index: number;
+  isSelected: boolean;
+  onSelect: (index: number) => void;
+  onRemove: (imageId: string) => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  className?: string;
+}
+
+export interface ThumbnailGalleryProps {
+  images: ImageData[];
+  currentIndex: number;
+  onSelect: (index: number) => void;
+  onRemove: (imageId: string) => void;
+  onMove: (fromIndex: number, toIndex: number) => void;
+  className?: string;
+}
+
+
+export interface TaggedUsersListProps {
+  taggedUsers: User[];
+  onRemoveTag: (userId: number) => void;
+  className?: string;
+}
+
+export type EditingTab = "crop" | "filter" | "adjust" ; 

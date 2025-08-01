@@ -10,8 +10,6 @@ interface PostSettingsModalProps {
   setAudienceType: (value: string) => void;
   commentControl: string;
   setCommentControl: (value: string) => void;
-  brandPartnership: boolean;
-  setBrandPartnership: (value: boolean) => void;
 }
 
 export default function PostSettingsModal({
@@ -21,8 +19,6 @@ export default function PostSettingsModal({
   setAudienceType,
   commentControl,
   setCommentControl,
-  brandPartnership,
-  setBrandPartnership,
 }: PostSettingsModalProps) {
   if (!isOpen) return null;
 
@@ -110,18 +106,7 @@ export default function PostSettingsModal({
               </label>
             </div>
           </div>
-          <div className="mb-6">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={brandPartnership}
-                onChange={(e) => setBrandPartnership(e.target.checked)}
-                className="text-violet-500 focus:ring-violet-500"
-                aria-label="Brand partnership"
-              />
-              <span className="text-sm text-slate-600">Add brand partnership label</span>
-            </label>
-          </div>
+
         </div>
         <div className="flex justify-end p-6 border-t border-slate-200">
           <button

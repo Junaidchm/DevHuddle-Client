@@ -1,0 +1,40 @@
+import { Image } from "lucide-react";
+
+interface ImageUploaderProps {
+  disabled?: boolean;
+  className?: string;
+  handleImageUpload:(event: React.ChangeEvent<HTMLInputElement>) => Promise<void>
+  fileInputRef:React.RefObject<HTMLInputElement | null>
+}
+
+// ImageUploader component
+export const ImageUploader: React.FC<ImageUploaderProps> = ({
+  disabled = false,
+  className = '',
+  fileInputRef,
+  handleImageUpload
+}) => {
+
+  return (
+    <div
+      onClick={() => !disabled && fileInputRef.current?.click()}
+      className={`flex-1 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-violet-400 hover:bg-violet-50 transition-all duration-200 ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
+    >
+      <div className="text-center">
+        <Image size={64} className="text-slate-400 mx-auto mb-4" />
+        <p className="text-slate-600 font-medium text-lg">Click to upload images</p>
+        <p className="text-slate-400 text-sm mt-2">JPG, PNG, GIF up to 10MB each</p>
+        <p className="text-slate-400 text-xs mt-1">Drag and drop multiple files</p>
+      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={handleImageUpload}
+        className="hidden"
+        disabled={disabled}
+      />
+    </div>
+  );
+};
