@@ -38,7 +38,7 @@ export default function UserList() {
 
   const debouncedSearch = useDebounce(search, 2000);
 
-  const { data, error, isLoading } = useQuery({
+  const { data, error, isLoading, } = useQuery({
     queryKey: ["users", page, limit, status, debouncedSearch, date],
     queryFn: () => {
       return getAllUsers({
@@ -49,8 +49,7 @@ export default function UserList() {
         date,
       });
     },
-    staleTime: 30000,
-    refetchOnWindowFocus: true,
+    staleTime: 30000, 
   });
 
   const handleClearFilter = () => {

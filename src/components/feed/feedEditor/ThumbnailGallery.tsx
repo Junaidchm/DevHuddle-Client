@@ -1,5 +1,6 @@
-import { ThumbnailGalleryProps } from "@/src/app/types/feed";
+import { ImageTransform, ThumbnailGalleryProps } from "@/src/app/types/feed";
 import { Thumbnail } from "./Thumbnail";
+import { getImageStyle } from "@/lib/feed/getImageStyle";
 
 // ThumbnailGallery component
 export const ThumbnailGallery: React.FC<ThumbnailGalleryProps> = ({

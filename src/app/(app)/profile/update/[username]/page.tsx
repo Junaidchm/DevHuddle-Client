@@ -28,7 +28,6 @@ import toast from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { AppDispatch, RootState } from "@/src/store/store";
 import { setProfilePicture } from "@/src/store/slices/userSlice";
-import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 import { useProtected } from "@/src/customHooks/useProtected";
 import showLogoutConfirmation from "@/src/utils/showLogoutConfirmation";
@@ -59,7 +58,6 @@ export default function ProfilePage() {
     },
     queryKey: ["profile"],
     staleTime: 10000,
-    refetchOnWindowFocus: true,
   });
 
   type ProfileFormData = z.infer<typeof profileSchema>;

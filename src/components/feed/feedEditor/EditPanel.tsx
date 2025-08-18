@@ -15,8 +15,8 @@ import { update } from "lodash";
 import { FLIP_VERTICAL } from "@/src/constents/svg";
 import { SliderControl } from "./SliderControl";
 import { filters } from "@/src/constents/feed";
-import { TextButton } from "../ui/TextButton";
-import { GradientButton } from "../ui/GradientButton";
+import { TextButton } from "../../ui/TextButton";
+import { GradientButton } from "../../ui/GradientButton";
 
 interface EditPanelProps {
   transform: ImageTransform;
@@ -48,6 +48,7 @@ export const EditPanel: React.FC<EditPanelProps> = ({
     <div className="w-96 border-l border-slate-200 pl-6">
       <div className="flex items-center gap-3 mb-6">
         <IconButton
+          onClick={onClose}     
           icon={<X size={20} className="text-slate-600" />}
           ariaLabel="Close edit panel"
         />
@@ -66,7 +67,7 @@ export const EditPanel: React.FC<EditPanelProps> = ({
           icon={<Palette size={16} className="inline mr-2" />}
           isActive={editTab === "filter"}
           onClick={() => setEditTab("filter")}
-          ariaLabel="Filter tab"
+          ariaLabel="Filter tab"  
         />
         <TabButton
           label="adjust"

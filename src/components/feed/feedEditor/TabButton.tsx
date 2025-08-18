@@ -1,4 +1,4 @@
-import { EditingTab } from "../../app/types/feed";
+import { EditingTab } from "../../../app/types/feed";
 interface TabButtonProps {
   label: string;
   icon: React.ReactNode;

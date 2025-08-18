@@ -2,15 +2,18 @@
 
 import React from 'react';
 import { X } from 'lucide-react';
+import { StateDispatch } from '../../types';
+import { AudienceType, CommendsType } from '@/src/app/types/feed';
 
 interface PostSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   audienceType: string;
-  setAudienceType: (value: string) => void;
+  setAudienceType: StateDispatch<AudienceType>;
   commentControl: string;
-  setCommentControl: (value: string) => void;
+  setCommentControl: StateDispatch<CommendsType>;
 }
+
 
 export default function PostSettingsModal({
   isOpen,

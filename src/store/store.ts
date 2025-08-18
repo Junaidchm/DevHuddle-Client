@@ -20,6 +20,7 @@
 // src/store/store.ts
 import { configureStore } from "@reduxjs/toolkit";
 import userReducer from "./slices/userSlice";
+import feedMediaReducer from "./slices/feedMediaSclice"
 
 import {
   persistStore,
@@ -38,6 +39,7 @@ import { combineReducers } from "redux";
 // Combine all reducers
 const rootReducer = combineReducers({
   user: userReducer,
+  feedMedia: feedMediaReducer
 });
 
 // Config for redux-persist

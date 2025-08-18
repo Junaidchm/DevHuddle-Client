@@ -7,7 +7,6 @@ import {
   userUpdate,
   VerifyOTPPayload,
 } from "@/src/types/auth";
-import axios from "axios";
 
 export const userSingup = async (data: RegisterPayload) => {
   const response = await axiosInstance.post("/auth/signup", data);
@@ -71,7 +70,7 @@ export const getPresignedUrlForImage = async (key: string) => {
       console.log('image get url going :................')
       const response = await axiosInstance.post("/auth/generate-presigned-url", {
         operation: 'GET',
-        key,
+        key,  
       }, {
         withCredentials: true,
       });

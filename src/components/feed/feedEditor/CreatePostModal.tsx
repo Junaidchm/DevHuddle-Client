@@ -1,75 +1,73 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { X, Image, Video, Calendar, Smile, MoreHorizontal } from "lucide-react";
+import {
+  X,
+  Image,
+  Video,
+  Smile,
+  MoreHorizontal,
+  BarChart2,
+} from "lucide-react";
 import PostSettingsModal from "./PostSettingsModal";
-import { ImageData, User } from "@/src/app/types/feed";
+import { ImageData, User, Media, Poll } from "@/src/app/types/feed";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import dynamic from "next/dynamic";
+import PhotoEditorModal from "./PhotoEditorModal";
+import { useMedia } from "@/src/contexts/MediaContext";
+import PollModal from "./PollModal";
+import { useSubmitPostMutation } from "../mutations/useSubmitPostMutation";
+import { useSelector } from "react-redux";
+import { RootState } from "@/src/store/store";
+
+const LazyPostSettingsModal = dynamic(() => import("./PostSettingsModal"));
+const LazyPhotoEditorModal = dynamic(() => import("./PhotoEditorModal"));
+const LazyPollModal = dynamic(() => import("./PollModal"));
+const LazyVideoEditorModal = dynamic(() => import("./VideoEdit"));
 
 interface CreatePostModalProps {
   isOpen: boolean;
   onClose: () => void;
   user: User;
-  openImageVideoModal: () => void;
-  selectedImages: ImageData[];
-  setSelectedImages: React.Dispatch<React.SetStateAction<ImageData[]>>;
 }
-
-const textSchema = z.object({
-  postContent: z
-    .string()
-    .min(1, "Post content cannot be empty")
-    .max(5000, "Post content is too long"),
-});
-
-type TextData = z.infer<typeof textSchema>;
 
 export default function CreatePostModal({
   isOpen,
   onClose,
   user,
-  openImageVideoModal,
-  selectedImages,
-  setSelectedImages,
 }: CreatePostModalProps) {
   const [postContent, setPostContent] = useState("");
+  const [poll, setPoll] = useState<Poll | null>(null);
   const [isPosting, setIsPosting] = useState(false);
   const [showPostSettings, setShowPostSettings] = useState(false);
-  const [audienceType, setAudienceType] = useState("anyone");
-  const [commentControl, setCommentControl] = useState("anyone");
+  const [showPhotoEditor, setShowPhotoEditor] = useState(false);
+  const [showPollModal, setShowPollModal] = useState(false);
+  const [showVideoEditor, setShowVideoEditor] = useState(false);
+  const [audienceType, setAudienceType] = useState<
+   "PUBLIC" | "VISIBILITY_CONNECTIONS" 
+  >("PUBLIC");
+  const [commentControl, setCommentControl] = useState<
+   "ANYONE" | "CONNECTIONS" | "NOBODY"
+  >("ANYONE");
   const [showSuccess, setShowSuccess] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const videoInputRef = useRef<HTMLInputElement>(null);
+  const { media } = useMedia();
+  const [error, setError] = useState("");
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<TextData>({
-    resolver: zodResolver(textSchema),
-  });
+  const userId = useSelector(
+    (state: RootState) => state?.user?.user?.id
+  ) as string;
+  const mutation = useSubmitPostMutation({ userId });
+
+  function onSubmit() {
+    mutation.mutate({
+      visibility : audienceType,
+      commentControl : commentControl,
+      content: "",
+      media:media
+    });
+  }
 
   if (!isOpen) return null;
-
-  const removeMedia = (id: string) => {
-    setSelectedImages((prev) => prev.filter((media) => media.id !== id));
-  };
-
-  const handlePost = async () => {
-    if (!postContent.trim() && selectedImages.length === 0) return;
-    setIsPosting(true);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setIsPosting(false);
-    setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-      onClose();
-      setPostContent("");
-      // setSelectedMedia([]);
-    }, 2000);
-  };
 
   const rewriteWithAI = () => {
     const aiSuggestions = [
@@ -103,7 +101,7 @@ export default function CreatePostModal({
                 >
                   <span>
                     Post to{" "}
-                    {audienceType === "anyone" ? "Anyone" : "Connections only"}
+                    {audienceType === "PUBLIC" ? "Anyone" : "Connections only"}
                   </span>
                   <svg
                     viewBox="0 0 24 24"
@@ -136,19 +134,26 @@ export default function CreatePostModal({
               }}
               aria-label="Post content input"
             />
-            {selectedImages.length > 0 && (
+            {media.length > 0 && (
               <div className="mt-4 space-y-2 max-h-48 overflow-y-auto">
-                {selectedImages.map((media) => (
+                {media.map((media) => (
                   <div
                     key={media.id}
                     className="relative bg-gray-50 rounded-lg p-3 flex items-center justify-between"
                   >
                     <div className="flex items-center space-x-3">
-                      <img
-                        src={media.preview}
-                        alt={media.name}
-                        className="w-12 h-12 object-cover rounded"
-                      />
+                      {media.type === "image" ? (
+                        <img
+                          src={media.url}
+                          alt={media.name}
+                          className="w-12 h-12 object-cover rounded"
+                        />
+                      ) : (
+                        <video
+                          src={media.url}
+                          className="w-12 h-12 object-cover rounded"
+                        />
+                      )}
                       <div>
                         <div className="font-medium text-sm">{media.name}</div>
                         {/* <div className="text-xs text-gray-600">
@@ -157,7 +162,6 @@ export default function CreatePostModal({
                       </div>
                     </div>
                     <button
-                      onClick={() => removeMedia(media.id)}
                       className="p-1 hover:bg-gray-200 rounded-full"
                       aria-label={`Remove ${media.name}`}
                     >
@@ -167,32 +171,44 @@ export default function CreatePostModal({
                 ))}
               </div>
             )}
+            {poll && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                <p className="font-medium text-slate-700">{poll.question}</p>
+                <div className="mt-2 space-y-2">
+                  {poll.options.map((option) => (
+                    <div key={option.id} className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        disabled
+                        className="text-violet-500"
+                        aria-label={`Poll option: ${option.text}`}
+                      />
+                      <span className="text-sm text-slate-600">
+                        {option.text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500 mt-2">
+                  Poll ends in {poll.durationDays} days
+                </p>
+              </div>
+            )}
           </div>
           <div className="px-6 pb-4">
             <div className="flex items-center space-x-4">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-              />
-              <input
-                ref={videoInputRef}
-                type="file"
-                accept="image/*"
-                // onChange={(e) => handleFileUpload(e, 'video')}
-                className="hidden"
-              />
               <button
-                onClick={openImageVideoModal}
+                onClick={() => {
+                  // fileInputRef.current?.click()
+                  setShowPhotoEditor(true);
+                }}
                 className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 aria-label="Add photos"
               >
                 <Image size={20} className="text-gray-600" />
               </button>
               <button
-                onClick={() => videoInputRef.current?.click()}
+                // onClick={() => videoInputRef.current?.click()}
                 className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 aria-label="Add videos"
               >
@@ -203,6 +219,13 @@ export default function CreatePostModal({
                 aria-label="Add emoji"
               >
                 <Smile size={20} className="text-gray-600" />
+              </button>
+              <button
+                onClick={() => setShowPhotoEditor(true)}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-gray-50 rounded-lg transition-colors duration-200 ease-in-out cursor-pointer"
+                aria-label="Add poll"
+              >
+                <BarChart2 size={20} className="text-gray-600" />
               </button>
               <button
                 className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -227,13 +250,9 @@ export default function CreatePostModal({
               <span className="text-sm text-gray-500">⏰</span>
             </div>
             <button
-              onClick={handlePost}
-              disabled={
-                (!postContent.trim() && selectedImages.length === 0) ||
-                isPosting
-              }
+              onClick={onSubmit}
               className={`px-6 py-2 font-semibold rounded-full transition-all duration-200 ${
-                (postContent.trim() || selectedImages.length > 0) && !isPosting
+                true
                   ? "bg-blue-600 text-white hover:bg-blue-700"
                   : "bg-gray-200 text-gray-400 cursor-not-allowed"
               }`}
@@ -245,13 +264,19 @@ export default function CreatePostModal({
         </div>
       </div>
       {showPostSettings && (
-        <PostSettingsModal
+        <LazyPostSettingsModal
           isOpen={showPostSettings}
           onClose={() => setShowPostSettings(false)}
           audienceType={audienceType}
           setAudienceType={setAudienceType}
           commentControl={commentControl}
           setCommentControl={setCommentControl}
+        />
+      )}
+      {showPhotoEditor && (
+        <LazyPhotoEditorModal
+          isOpen={showPhotoEditor}
+          onClose={() => setShowPhotoEditor(false)}
         />
       )}
       {showSuccess && (
