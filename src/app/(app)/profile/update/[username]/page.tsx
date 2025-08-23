@@ -114,7 +114,7 @@ export default function ProfilePage() {
   }, [watchFields, originalData]);
 
   const onSubmit = async (data: ProfileFormData) => {
-    console.log("this is working");
+
     try {
       const payload: userUpdate = {
         name: data.fullName || "",
@@ -125,13 +125,10 @@ export default function ProfilePage() {
       let profilePictureKey: string | undefined;
       if (data.profileImage instanceof File) {
         profilePictureKey = await uploadToS3(data.profileImage);
-        console.log(
-          "this is the pro .............................",
-          profilePictureKey
-        );
         payload.profilePicture = profilePictureKey;
       }
-
+     
+      console.log('this is the profile picuture key')
       await updateProfile(payload);
       if (profilePictureKey) {
         dispatch(setProfilePicture(profilePictureKey));

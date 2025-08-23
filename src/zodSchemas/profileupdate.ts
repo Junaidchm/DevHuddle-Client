@@ -25,18 +25,30 @@ const profileSchema = z.object({
       message: "Full name cannot start or end with whitespace",
     })
     .optional(),
-    location: z
-      .string()
-      .min(2, "Location must be at least 2 characters")
-      .max(100, "Location must be at most 100 characters")
-      .regex(/^[a-zA-Z\s,.-]+$/, {
+  location: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val || val.trim() === "") return true; // allow empty
+        return /^[a-zA-Z\s,.-]+$/.test(val); // check regex only if not empty
+      },
+      {
         message:
           "Location can only contain letters, spaces, commas, periods, and hyphens",
-      })
-      .regex(/^\S.*\S$/, {
+      }
+    )
+    .refine(
+      (val) => {
+        if (!val || val.trim() === "") return true; // allow empty
+        return /^\S.*\S$/.test(val); // check no leading/trailing spaces
+      },
+      {
         message: "Location cannot start or end with whitespace",
-      })
-      .optional(),
+      }
+    )
+    // .max(100, "Location must be at most 100 characters"),
+    ,
   email: z
     .string()
     .email("Please enter a valid email address")

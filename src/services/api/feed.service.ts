@@ -2,7 +2,7 @@ import { Post } from "@/src/app/types/feed";
 import axiosInstance from "@/src/axios/axios";
 
 export const submitPost = async (newPost: Post) => {
-
+ 
   let PostData = structuredClone(newPost);
   PostData.media = PostData.media?.map((f) => {
     if (f.file) {

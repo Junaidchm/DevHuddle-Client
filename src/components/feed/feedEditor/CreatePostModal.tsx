@@ -19,11 +19,12 @@ import PollModal from "./PollModal";
 import { useSubmitPostMutation } from "../mutations/useSubmitPostMutation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/src/store/store";
+import toast from "react-hot-toast";
 
-const LazyPostSettingsModal = dynamic(() => import("./PostSettingsModal"));
-const LazyPhotoEditorModal = dynamic(() => import("./PhotoEditorModal"));
-const LazyPollModal = dynamic(() => import("./PollModal"));
-const LazyVideoEditorModal = dynamic(() => import("./VideoEdit"));
+const LazyPostSettingsModal = dynamic(() => import('./PostSettingsModal'), { ssr: false });
+const LazyPhotoEditorModal = dynamic(() => import('./PhotoEditorModal'), { ssr: false });
+const LazyPollModal = dynamic(() => import('./PollModal'), { ssr: false });
+const LazyVideoEditorModal = dynamic(() => import('./VideoEdit'), { ssr: false });
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ export default function CreatePostModal({
   onClose,
   user,
 }: CreatePostModalProps) {
+
   const [postContent, setPostContent] = useState("");
   const [poll, setPoll] = useState<Poll | null>(null);
   const [isPosting, setIsPosting] = useState(false);
@@ -58,31 +60,36 @@ export default function CreatePostModal({
   ) as string;
   const mutation = useSubmitPostMutation({ userId });
 
+
   function onSubmit() {
-    mutation.mutate({
-      visibility : audienceType,
-      commentControl : commentControl,
-      content: "",
-      media:media
-    });
+
+    if(!postContent.trim() &&  media.length == 0 && !poll ) {
+      toast.error('Please add content, media, or a poll.')
+    }
+
+    
+
+    setIsPosting(true);
+    
   }
 
   if (!isOpen) return null;
 
-  const rewriteWithAI = () => {
-    const aiSuggestions = [
-      "🚀 Excited to share my latest project! Building scalable web applications with React and Next.js has been an incredible journey. Always learning, always growing! #WebDev #React #NextJS",
-      "💡 Just discovered an amazing new approach to state management in React. The developer community never fails to inspire me with innovative solutions! #ReactJS #StateManagement #Innovation",
-      "🎯 Another day, another challenge conquered! Love how every coding problem teaches us something new. What's the most interesting bug you've solved recently? #CodingLife #ProblemSolving",
-    ];
-    const randomSuggestion =
-      aiSuggestions[Math.floor(Math.random() * aiSuggestions.length)];
-    setPostContent(randomSuggestion);
-  };
+  // const rewriteWithAI = () => {
+  //   const aiSuggestions = [
+  //     "🚀 Excited to share my latest project! Building scalable web applications with React and Next.js has been an incredible journey. Always learning, always growing! #WebDev #React #NextJS",
+  //     "💡 Just discovered an amazing new approach to state management in React. The developer community never fails to inspire me with innovative solutions! #ReactJS #StateManagement #Innovation",
+  //     "🎯 Another day, another challenge conquered! Love how every coding problem teaches us something new. What's the most interesting bug you've solved recently? #CodingLife #ProblemSolving",
+  //   ];
+  //   const randomSuggestion =
+  //     aiSuggestions[Math.floor(Math.random() * aiSuggestions.length)];
+  //   setPostContent(randomSuggestion);
+  // };
 
   return (
     <>
       <div className="fixed inset-0 bg-[#000000aa] flex items-center justify-center z-50 p-4">
+
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
@@ -94,6 +101,7 @@ export default function CreatePostModal({
               />
               <div>
                 <h3 className="font-semibold text-slate-800">{user.name}</h3>
+                <h1>{postContent}</h1>
                 <button
                   onClick={() => setShowPostSettings(true)}
                   className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
@@ -124,6 +132,7 @@ export default function CreatePostModal({
           </div>
           <div className="p-6 flex-1 overflow-y-auto">
             <textarea
+              name="content"
               value={postContent}
               onChange={(e) => setPostContent(e.target.value)}
               placeholder="What do you want to talk about?"
@@ -237,7 +246,7 @@ export default function CreatePostModal({
           </div>
           <div className="px-6 pb-4">
             <button
-              onClick={rewriteWithAI}
+              // onClick={rewriteWithAI}
               className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
               aria-label="Rewrite with AI"
             >

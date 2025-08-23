@@ -20,11 +20,10 @@ export default async function CommunityFeed({ params }: CommunityFeedProps) {
   userId = "123455"
   // Mock data for now (replace with gRPC calls later)
   const user: User = {
-    id: 1,
+    id: "1",
     name: 'Junaid Chm',
     avatar: 'https://i.pravatar.cc/150?img=3',
     title: 'Full Stack Developer',
-    points: 6500,
   };
 
   const initialFeed: FeedResponse = {
@@ -73,3 +72,5 @@ export default async function CommunityFeed({ params }: CommunityFeedProps) {
   );
 
 } 
+
+

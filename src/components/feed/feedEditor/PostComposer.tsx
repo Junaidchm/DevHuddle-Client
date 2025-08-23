@@ -30,6 +30,8 @@ export default function PostComposer({ userId, user }: PostComposerProps) {
   const [isPollModalOpen, setIsPollModalOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<ImageData[]>([]);
 
+  console.log('post PostComposer is rerunning everytime ')
+
   return (
     <MediaProvider>
       <div className="bg-white rounded-xl p-4 mb-6 border border-slate-200 shadow-sm">

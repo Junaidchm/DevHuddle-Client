@@ -21,7 +21,7 @@ export const MediaContext = createContext<MediaContextType | undefined>(
 
 export const MediaProvider = ({ children }: { children: ReactNode }) => {
   const [media, setMediaState] = useState<Media[]>([]);
-  const [currentMediaId, setMediaId] = useState<string>('');
+  const [currentMediaId, setMediaId] = useState<string>("");
 
   const addMedia = (media: Media[]) => {
     setMediaState((pre) => {
@@ -56,14 +56,17 @@ export const MediaProvider = ({ children }: { children: ReactNode }) => {
       return pre.map((file) => {
         if (file.id !== fileId) return file;
 
-        if (file.taggedUsers.some((u) => u.id === taggedUser.id)) {
-          return file;
+        if (file.taggedUsers && file.taggedUsers.length > 0) {
+          if (file.taggedUsers.some((u) => u.id === taggedUser.id)) {
+            return file;
+          }
+          return {
+            ...file,
+            taggedUsers: [...file.taggedUsers, taggedUser],
+          };
         }
 
-        return {
-          ...file,
-          taggedUsers: [...file.taggedUsers, taggedUser],
-        };
+        return file;
       });
     });
   };
@@ -73,14 +76,17 @@ export const MediaProvider = ({ children }: { children: ReactNode }) => {
       pre.map((file) => {
         if (file.id !== filedId) return file;
 
-        const updateTaggedUsers = file.taggedUsers.filter(
-          (user) => user.id !== userId
-        );
+        if (file.taggedUsers && file.taggedUsers.length > 0) {
+          const updateTaggedUsers = file.taggedUsers.filter(
+            (user) => user.id !== userId
+          );
 
-        return {
-          ...file,
-          taggedUsers: updateTaggedUsers,
-        };
+          return {
+            ...file,
+            taggedUsers: updateTaggedUsers,
+          };
+        }
+        return file;
       })
     );
   };
