@@ -49,7 +49,7 @@ export const handleImageUpload = async (
                 name: file.name,
                 taggedUsers: [],
                 transform: default_ImageTransform,
-                type: "image",
+                type: file.type,
               });
             } else {
               reject(new Error(`Failed to read file: ${file.name}`));

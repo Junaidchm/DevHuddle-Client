@@ -2,6 +2,7 @@ import axiosInstance from "@/src/axios/axios";
 import toast from "react-hot-toast";
 
 export const getPresignedUrl = async (
+  folderPath:string,
   operation: "PUT" | "GET",
   fileName?: string,
   fileType?: string,
@@ -10,15 +11,17 @@ export const getPresignedUrl = async (
   try {
     let payload =
       operation === "PUT"
-        ? { operation, fileName, fileType }
+        ? { folderPath,operation, fileName, fileType }
         : { operation, key };
     const response = await axiosInstance.post(
-      "/generate-presigned-url",
-      payload
+      "general/generate-presigned-url",
+      payload,
+      {
+        withCredentials: true,
+      }
     );
     return response.data;
   } catch (err: any) {
-    toast.error("Failed to get presigned URL");
     console.error("Failed to get presigned URL:", err);
     throw new Error("Failed to get presigned URL");
   }

@@ -1,3 +1,5 @@
+import { PostType } from "@/src/contexts/MediaContext";
+
 export interface PhotoEditorModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -106,7 +108,7 @@ export interface videoTransform {}
 export interface Media {
   id: string;
   file?: File;
-  type: "image" | "video";
+  type:string;
   url?: string;
   name: string;
   taggedUsers?: User[];
@@ -114,6 +116,8 @@ export interface Media {
 }
 
 export interface Post {
+  id?:string;
+  type?:PostType;
   content: string;
   media?: Media[];
   poll?: Poll | null;
@@ -121,8 +125,30 @@ export interface Post {
   commentControl: CommentControl;
 }
 
+
+ 
+interface FeedResponsePost {
+  id: string;
+  userId: string;
+  type: "TEXT" | "ARTICLE" | "POLL" | null;
+  content: string | null;
+  tags: string[];
+  imageMedia: Media[];
+  videoMedia: Media[];
+  visibility: "PUBLIC" | "VISIBILITY_CONNECTIONS";
+  commentControl: "ANYONE" | "CONNECTIONS" | "NONE";
+  createdAt: string;
+  updatedAt: string;
+  user:{
+    name:string;
+    username:string;
+    avatar:string
+  } 
+}
+
+
 export interface FeedResponse {
-  posts: Post[];
+  posts: FeedResponsePost[];
   nextCursor: string | null;
 }
 

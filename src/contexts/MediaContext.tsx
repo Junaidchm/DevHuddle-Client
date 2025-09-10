@@ -3,7 +3,34 @@
 import { createContext, ReactNode, useContext, useState } from "react";
 import { ImageTransform, Media, User } from "../app/types/feed";
 
+export enum PostType {
+  TEXT = "TEXT",
+  ARTICLE = "ARTICLE",
+  POLL = "POLL",
+}
+
+export enum AudienceType {
+  PUBLIC = "PUBLIC",
+  CONNECTIONS = "VISIBILITY_CONNECTIONS",
+}
+
+export enum CommentControl {
+ ANYONE =  "ANYONE" ,
+ CONNECTIONS= "CONNECTIONS" ,
+ NOBODY = "NOBODY"
+}
+
 interface MediaContextType {
+  type: PostType;
+  settingPostType: (
+    postType: PostType
+  ) => void;
+  audienceType: AudienceType;
+  settingAudienceType: (
+    value: AudienceType
+  ) => void;
+  commentControl:CommentControl;
+  settingCommentControl:(value:CommentControl)=> void;
   media: Media[];
   addMedia: (media: Media[]) => void;
   setMedia: (media: Media[]) => void;
@@ -22,6 +49,23 @@ export const MediaContext = createContext<MediaContextType | undefined>(
 export const MediaProvider = ({ children }: { children: ReactNode }) => {
   const [media, setMediaState] = useState<Media[]>([]);
   const [currentMediaId, setMediaId] = useState<string>("");
+  const [type, setPostType] = useState<PostType>(PostType.TEXT);
+  const [audienceType, setAudienceType] = useState<AudienceType>(
+    AudienceType.PUBLIC
+  );
+  const [commentControl, setCommentControl] = useState<CommentControl>(CommentControl.ANYONE);
+
+  const settingAudienceType=(value:AudienceType)=> {
+     setAudienceType(value)
+  }
+
+  const settingCommentControl = (value:CommentControl)=> {
+    setCommentControl(value)
+  }
+
+  const settingPostType = (postType: PostType) => {
+    setPostType(postType);
+  };
 
   const addMedia = (media: Media[]) => {
     setMediaState((pre) => {
@@ -94,6 +138,12 @@ export const MediaProvider = ({ children }: { children: ReactNode }) => {
   return (
     <MediaContext.Provider
       value={{
+        type,
+        settingPostType,
+        audienceType,
+        settingAudienceType,
+        commentControl,
+        settingCommentControl,
         media,
         addMedia,
         clearMedia,

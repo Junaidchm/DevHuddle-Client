@@ -9,7 +9,7 @@ import { useSelector } from "react-redux";
 export default function NavBar() {
 
     const user = useSelector((state: RootState) => state.user.user);
-    const profileImageUrl = usePresignedProfileImage()
+    const profileImageUrl = undefined
 
     return (
         <nav className="bg-white/95 backdrop-blur-md shadow sticky top-0 z-[100] px-6 py-3 flex justify-between items-center">

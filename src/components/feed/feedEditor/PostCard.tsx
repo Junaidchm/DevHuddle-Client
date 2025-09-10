@@ -1,10 +1,22 @@
-
-import { Post } from '@/src/app/types/feed';
-import React from 'react';
-import { PostIntract } from './PostIntract';
+import { Media, Post } from "@/src/app/types/feed";
+import React from "react";
+import { PostIntract } from "./PostIntract";
 
 interface PostCardProps {
-  post: Post;
+  post: {
+    id: string;
+    userId: string;
+    type: "TEXT" | "ARTICLE" | "POLL" | null;
+    content: string | null;
+    tags: string[];
+    imageMedia: Media[];
+    videoMedia: Media[];
+    visibility: "PUBLIC" | "VISIBILITY_CONNECTIONS";
+    commentControl: "ANYONE" | "CONNECTIONS" | "NONE";
+    createdAt: string;
+    updatedAt: string;
+    user: { name: string; username: string; avatar: string } | null;
+  }
 }
 
 export default function PostCard({ post }: PostCardProps) {
@@ -14,34 +26,34 @@ export default function PostCard({ post }: PostCardProps) {
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <img
-              src={post.author.avatar}
-              alt={`${post.author.name}'s Avatar`}
+              src={`https://devhuddle-bucket-junaid.s3.ap-south-1.amazonaws.com/${post.user?.avatar}`}
+              alt={``}
               className="w-8 h-8 rounded-full object-cover"
               aria-label="Author avatar"
             />
-            <span className="font-bold text-base text-gray-900">{post.author.name}</span>
-            <span className="text-xs text-gray-custom">@{post.author.name.toLowerCase().replace(' ', '')}</span>
-          </div>
-          <div className="text-xs text-gray-custom mt-1">
-            Posted on {post.platform} • {new Date(post.timestamp).toLocaleDateString()}
+            <span className="font-bold text-base text-gray-900">
+              {post.user?.name}
+            </span>
+            <span className="text-xs text-gray-custom">
+              @{post.user?.username}
+            </span>
           </div>
         </div>
       </div>
       <div className="p-4">
-        <p className="mb-0 text-sm text-slate-700 leading-relaxed">{post.content}</p>
-        {post.mediaUrl && (
-          <img
-            src={post.mediaUrl}
+        <p className="mb-0 text-sm text-slate-700 leading-relaxed">
+          {post.content}
+        </p>
+         <img
+            src={post.imageMedia[1]?.url}
             alt="Post media"
             className="w-full rounded-md mt-4"
             aria-label="Post media content"
           />
-        )}
-        {/* <div className="bg-gray-100 rounded-md p-4 mb-1 border border-slate-200 overflow-x-auto">
-          hello
-          hello
-        </div> */}
-        <a
+        {/* {post.mediaUrl && (
+         
+        )} */}
+        {/* <a
           href="#"
           className="block no-underline border border-slate-200 rounded-md mb-4"
           aria-label="Link to React Awesome UI Components"
@@ -71,9 +83,9 @@ export default function PostCard({ post }: PostCardProps) {
               </div>
             </div>
           </div>
-        </a>
+        </a> */}
         <div className="flex items-center gap-2 flex-wrap mb-2">
-          {post.tags.map((tag) => (
+          {post.tags.map((tag: string) => (
             <span
               key={tag}
               className="px-3 py-1 bg-indigo-opacity text-gradient-start rounded-full text-xs font-medium"
@@ -84,7 +96,7 @@ export default function PostCard({ post }: PostCardProps) {
           ))}
         </div>
 
-        <PostIntract/>
+        <PostIntract />
       </div>
     </article>
   );

@@ -28,3 +28,11 @@ export interface User {
   createdAt: Date;
   updatedAt: Date;
 }
+
+
+export interface JwtPayload {
+  email: string;
+  jti: string;
+  exp?: number; 
+  [key: string]: any;
+}

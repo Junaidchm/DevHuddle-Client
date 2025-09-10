@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useContext } from "react";
 import {
   X,
   Image,
@@ -14,17 +14,26 @@ import { ImageData, User, Media, Poll } from "@/src/app/types/feed";
 import { z } from "zod";
 import dynamic from "next/dynamic";
 import PhotoEditorModal from "./PhotoEditorModal";
-import { useMedia } from "@/src/contexts/MediaContext";
+import { AudienceType, CommentControl, MediaContext, useMedia } from "@/src/contexts/MediaContext";
 import PollModal from "./PollModal";
 import { useSubmitPostMutation } from "../mutations/useSubmitPostMutation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/src/store/store";
 import toast from "react-hot-toast";
+import { getPresignedUrl } from "@/src/app/lib/general/getPresignedUrl";
+import { uploadToS3 } from "@/src/app/lib/general/uploadToS3WithProgressTracking";
+import { QueryClient } from "@tanstack/react-query";
 
-const LazyPostSettingsModal = dynamic(() => import('./PostSettingsModal'), { ssr: false });
-const LazyPhotoEditorModal = dynamic(() => import('./PhotoEditorModal'), { ssr: false });
-const LazyPollModal = dynamic(() => import('./PollModal'), { ssr: false });
-const LazyVideoEditorModal = dynamic(() => import('./VideoEdit'), { ssr: false });
+const LazyPostSettingsModal = dynamic(() => import("./PostSettingsModal"), {
+  ssr: false,
+});
+const LazyPhotoEditorModal = dynamic(() => import("./PhotoEditorModal"), {
+  ssr: false,
+});
+const LazyPollModal = dynamic(() => import("./PollModal"), { ssr: false });
+const LazyVideoEditorModal = dynamic(() => import("./VideoEdit"), {
+  ssr: false,
+});
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -37,7 +46,6 @@ export default function CreatePostModal({
   onClose,
   user,
 }: CreatePostModalProps) {
-
   const [postContent, setPostContent] = useState("");
   const [poll, setPoll] = useState<Poll | null>(null);
   const [isPosting, setIsPosting] = useState(false);
@@ -45,32 +53,98 @@ export default function CreatePostModal({
   const [showPhotoEditor, setShowPhotoEditor] = useState(false);
   const [showPollModal, setShowPollModal] = useState(false);
   const [showVideoEditor, setShowVideoEditor] = useState(false);
-  const [audienceType, setAudienceType] = useState<
-   "PUBLIC" | "VISIBILITY_CONNECTIONS" 
-  >("PUBLIC");
-  const [commentControl, setCommentControl] = useState<
-   "ANYONE" | "CONNECTIONS" | "NOBODY"
-  >("ANYONE");
   const [showSuccess, setShowSuccess] = useState(false);
-  const { media } = useMedia();
+  const { media, clearMedia } = useMedia();
   const [error, setError] = useState("");
+  const [uploadProgress, setUploadProgress] = useState<Record<number, number>>(
+    {}
+  );
+
+  const {type,audienceType,settingAudienceType,commentControl,settingCommentControl,setMedia} = useMedia()
 
   const userId = useSelector(
     (state: RootState) => state?.user?.user?.id
   ) as string;
-  const mutation = useSubmitPostMutation({ userId });
+  const mutation = useSubmitPostMutation({ userId,
+  setShowSuccess,
+  setError,
+  setIsPosting,
+  setPostContent,
+  setSelectedMedia : setMedia,
+  setPoll,
+  setAudienceType: settingAudienceType,
+  setCommentControl : settingCommentControl,
+  onClose,});
 
-
-  function onSubmit() {
-
-    if(!postContent.trim() &&  media.length == 0 && !poll ) {
-      toast.error('Please add content, media, or a poll.')
+  async function onSubmit() {
+    if (!postContent.trim() && media.length == 0 && !poll) {
+      toast.error("Please add content, media, or a poll.");
     }
 
-    
+    // setIsPosting(true);
+    // setError("");
 
-    setIsPosting(true);
-    
+    try {
+      const uploadedMedia: Media[] = await Promise.all(
+        media.map(async (item:Media) => {
+          console.log("this is the items", item);
+          if (item.url && !item.url.startsWith("http")) {
+            const { url: presignedUrl, key } = await getPresignedUrl(
+              "feed",
+              "PUT",
+              item.name,
+              item.type
+            );
+            const uploadedUrl = await uploadToS3(
+              item.file!,
+              presignedUrl,
+              (progress) => {
+                setUploadProgress((prev) => ({ ...prev, [item.id]: progress }));
+              }
+            );
+
+            return { ...item, url: uploadedUrl };
+          }
+          return item;
+        })
+      );
+
+      const postPayload = {
+        type,
+        visibility: audienceType,
+        commentControl,
+        content: postContent,
+        media: uploadedMedia.map(({ file, ...rest }) => rest),
+        poll: poll || undefined,
+      };
+
+      mutation.mutate(postPayload, {
+        // onSuccess: () => {
+        //   setShowSuccess(true);
+        //   setTimeout(() => {
+        //     setShowSuccess(false);
+        //     setPostContent("");
+        //     clearMedia();
+        //     setPoll(null);
+        //     settingAudienceType(AudienceType.PUBLIC);
+        //     settingCommentControl(CommentControl.ANYONE)
+        //     setUploadProgress({});
+        //     onClose();
+        //     queryClient.invalidateQueries({ queryKey: ["feed", userId] });
+        //   }, 2000);
+        // },
+        // onError: (err) => {
+        //   // setError("Failed to post. Please try again.");
+        //   setTimeout(() => setError(""), 3000);
+        // },
+        // onSettled: () => {
+        //   setIsPosting(false);
+        // },
+      });
+    } catch (err: any) {
+
+
+    }
   }
 
   if (!isOpen) return null;
@@ -89,7 +163,6 @@ export default function CreatePostModal({
   return (
     <>
       <div className="fixed inset-0 bg-[#000000aa] flex items-center justify-center z-50 p-4">
-
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
@@ -101,7 +174,6 @@ export default function CreatePostModal({
               />
               <div>
                 <h3 className="font-semibold text-slate-800">{user.name}</h3>
-                <h1>{postContent}</h1>
                 <button
                   onClick={() => setShowPostSettings(true)}
                   className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
@@ -145,7 +217,7 @@ export default function CreatePostModal({
             />
             {media.length > 0 && (
               <div className="mt-4 space-y-2 max-h-48 overflow-y-auto">
-                {media.map((media) => (
+                {media.map((media:Media) => (
                   <div
                     key={media.id}
                     className="relative bg-gray-50 rounded-lg p-3 flex items-center justify-between"
@@ -277,9 +349,9 @@ export default function CreatePostModal({
           isOpen={showPostSettings}
           onClose={() => setShowPostSettings(false)}
           audienceType={audienceType}
-          setAudienceType={setAudienceType}
+          setAudienceType={settingAudienceType}
           commentControl={commentControl}
-          setCommentControl={setCommentControl}
+          setCommentControl={settingCommentControl}
         />
       )}
       {showPhotoEditor && (

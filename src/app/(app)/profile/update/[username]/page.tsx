@@ -35,8 +35,8 @@ import { userUpdate } from "@/src/types/auth";
 import usePresignedProfileImage from "@/src/customHooks/usePresignedProfileImage";
 
 export default function ProfilePage() {
-  useRedirectIfNotAuthenticated();
-  useProtected();
+  // useRedirectIfNotAuthenticated();
+  // useProtected();
   const profileImageUrl = usePresignedProfileImage();
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const queryClient = useQueryClient();

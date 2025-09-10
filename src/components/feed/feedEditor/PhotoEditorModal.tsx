@@ -40,7 +40,7 @@ export default function PhotoEditorModal({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
-    const updatedImages = (media ?? []).filter((file) => file.type === "image");
+    const updatedImages = (media ?? []).filter((file) => file.type.includes('image'));
     setSelectedImages(updatedImages);
   }, [media]);
 
@@ -191,7 +191,7 @@ export default function PhotoEditorModal({
       <div className="flex-1 flex flex-col">
         {selectedImages.length > 0 ? (
           <ImagePreview
-            image={selectedImages[currentImageIndex]?.url}
+            image={selectedImages[currentImageIndex]?.url as string}
             taggedUsers={selectedImages[currentImageIndex]?.taggedUsers}
             transform={getCurrentImageTransform()}
             getImageStyle={() =>
