@@ -1,57 +1,64 @@
+"use client";
+
 import React, { useRef, useCallback } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import PostCard from "./PostCard";
-import { FeedResponse } from "@/src/app/types/feed";
 import { fetchFeed } from "@/src/services/api/feed.service";
-import {
-  getSession,
-  serverFetch,
-} from "@/src/app/lib/auth";
-import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+import InfiniteScorllContainer from "../../layouts/InfiniteScrollContainer";
+import { Loader2 } from "lucide-react";
+import DeletePostDialog from "./DeletePostModal";
+import PostsLoadingSkeleton from "./PostsLoadingSkeleton ";
+import { NewPost } from "@/src/app/types/feed";
 
 export const dynamic = "force-dynamic";
 
-export default async function FeedContainer() {
-  const headersList = await headers();
-  const pathname = headersList.get("x-invoke-path") || "/"; 
-  console.log("FeedContainer pathname:", pathname);
-  console.log("this is the pathName:", pathname);
-  const { session, needsRefresh, needsLogout } = await getSession();
+export default function FeedContainer() {
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    status,
+  } = useInfiniteQuery({
+    queryKey: ["post-feed", "for-you"],
+    queryFn: ({ pageParam }) => fetchFeed(pageParam),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+  });
 
-  if (!session) {
-    if (needsRefresh) {
-      redirect(`/api/auth/refresh?returnTo=${encodeURIComponent(pathname)}`);
-    }
-    if (needsLogout) {
-      redirect("/api/auth/logout");
-    }
+  const posts : NewPost[] = data?.pages.flatMap((page) => page.posts) as NewPost[];
+
+  if (status === "pending") {
+    return <PostsLoadingSkeleton/>;
   }
 
-  let data;
-  try {
+  if (status === "success" && !posts?.length && !hasNextPage) {
+    return (
+      <p className="text-center text-muted-foreground">
+        No one has posted anything yet.
+      </p>
+    );
+  }
 
-    const response = await serverFetch("/feed/list");
-    data = await response.json();
-
-    console.log('this is the data          ' , data)
-  } catch (error) {
-    console.error('Fetch error:', error);
-    redirect('/api/auth/logout');
+  if (status === "error") {
+    return (
+      <p className="text-center text-destructive">
+        An error occurred while loading posts.
+      </p>
+    );
   }
 
   return (
-    <div className="flex flex-col gap-4 max-w-2xl mx-auto p-4">
-      {/* <PostCard key={123421} post={{}} /> */}
-
-      <h1> this is the post data </h1>
-      {/*       
-      <button
-        className="text-blue-600 hover:underline"
-        aria-label="Load more posts"
-      >
-        Load more
-      </button> */}
-    </div>
+    <InfiniteScorllContainer
+      className="flex flex-col gap-4 max-w-2xl mx-auto p-4"
+      onBottomReached={() => !isLoading && hasNextPage && fetchNextPage()}
+    >
+      {posts?.map((post) => (
+        <PostCard key={post.id} post={post} />
+      ))}
+      {isFetchingNextPage && <Loader2 className="mx-auto my-3 animate-spin" />}
+     
+    </InfiniteScorllContainer>
   );
 }

@@ -6,7 +6,8 @@ import Cropper from "react-easy-crop";
 import { Dialog } from "@headlessui/react";
 import getCroppedImg from "@/src/utils/cropImage";
 import toast from "react-hot-toast";
-import { Button } from "@/src/app/(app)/profile/update/[username]/components";
+import { Button } from "@/src/app/(main)/profile/update/[username]/components";
+// import { Button } from "@/src/app/(app)/profile/update/[username]/components";
 
 interface AvatarUploaderProps {
   onImageCropped: (file: File, previewUrl: string) => void;

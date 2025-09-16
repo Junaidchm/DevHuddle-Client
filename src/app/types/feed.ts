@@ -108,7 +108,7 @@ export interface videoTransform {}
 export interface Media {
   id: string;
   file?: File;
-  type:string;
+  type: string;
   url?: string;
   name: string;
   taggedUsers?: User[];
@@ -116,8 +116,8 @@ export interface Media {
 }
 
 export interface Post {
-  id?:string;
-  type?:PostType;
+  id?: string;
+  type?: PostType;
   content: string;
   media?: Media[];
   poll?: Poll | null;
@@ -125,8 +125,6 @@ export interface Post {
   commentControl: CommentControl;
 }
 
-
- 
 interface FeedResponsePost {
   id: string;
   userId: string;
@@ -139,13 +137,29 @@ interface FeedResponsePost {
   commentControl: "ANYONE" | "CONNECTIONS" | "NONE";
   createdAt: string;
   updatedAt: string;
-  user:{
-    name:string;
-    username:string;
-    avatar:string
-  } 
+  user: {
+    name: string;
+    username?: string;
+    avatar: string;
+  };
 }
 
+export interface submitPostProp {
+  content:string; 
+}
+
+export interface NewPost {
+  id: string;
+  content: string;
+  userId: string;
+  createdAt: string;
+  user: { name: string; username?: string; avatar: string } | null;
+}
+
+export interface PostsPage {
+  posts: NewPost[];
+  nextCursor: string | null;
+}
 
 export interface FeedResponse {
   posts: FeedResponsePost[];

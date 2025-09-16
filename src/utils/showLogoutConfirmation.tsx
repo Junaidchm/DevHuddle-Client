@@ -7,8 +7,12 @@ import {  logoutUser } from "@/src/services/api/auth.service"; // your API call
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { logoutUserAction } from "../store/slices/userSlice";
+import { QueryClient } from "@tanstack/react-query";
 
 export default function showLogoutConfirmation(dispatch: AppDispatch, router: ReturnType<typeof useRouter>,url:string) {
+
+  const queryClient = new QueryClient()
+
   toast(
     (t) => (
       <div className="flex flex-col items-start text-sm">
@@ -18,6 +22,7 @@ export default function showLogoutConfirmation(dispatch: AppDispatch, router: Re
             onClick={async () => {
               toast.dismiss(t.id);
               try {
+                queryClient.clear()
                 await logoutUser();
                 dispatch(logoutUserAction());
                 localStorage.clear()

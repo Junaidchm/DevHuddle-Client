@@ -1,16 +1,22 @@
-
-import { FeedResponse, Post } from "@/src/app/types/feed";
-import { AudienceType, CommentControl} from "@/src/contexts/MediaContext";
-import { submitPost } from "@/src/services/api/feed.service";
+import {
+  FeedResponse,
+  NewPost,
+  Post,
+  PostsPage,
+  submitPostProp,
+} from "@/src/app/types/feed";
+import { AudienceType, CommentControl } from "@/src/contexts/MediaContext";
+import { submitPost } from "../feedEditor/actions/submitPost";
 import {
   InfiniteData,
+  QueryFilters,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
-export function useSubmitPostMutation({
-  userId,
+
+export function anotheruseSubmitPostMutation({
   setShowSuccess,
   setError,
   setIsPosting,
@@ -21,92 +27,80 @@ export function useSubmitPostMutation({
   setCommentControl,
   onClose,
 }: {
-  userId:string;
   setShowSuccess: (value: boolean) => void;
-  setError:  React.Dispatch<React.SetStateAction<string>>
+  setError: React.Dispatch<React.SetStateAction<string>>;
   setIsPosting: (value: boolean) => void;
   setPostContent: (value: string) => void;
   setSelectedMedia: (value: any[]) => void;
   setPoll: (value: any | null) => void;
-  setAudienceType: (
-      value: AudienceType
-    ) => void;
-  setCommentControl: (value:CommentControl)=> void;
+  setAudienceType: (value: AudienceType) => void;
+  setCommentControl: (value: CommentControl) => void;
   onClose: () => void;
 }) {
-
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: submitPost,
-    retry: 1, // Retry once for flaky networks (recommended for social media)
-    onMutate: async (newPost: Post) => {
-      // Define query key for user's feed
-      const feedKey = ['feed', { userId: userId }];
+    retry: 1,
+    onMutate: async (newPost: NewPost) => {
+     
+      const queryFilter: QueryFilters = { queryKey: ["post-feed", "for-you"] };
+      const feedKey = ["post-feed", "for-you"];
 
       // Cancel ongoing queries to prevent race conditions
-      await queryClient.cancelQueries({ queryKey: feedKey });
+      await queryClient.cancelQueries(queryFilter);
 
       // Snapshot previous data for rollback
-      const previousData = queryClient.getQueryData<InfiniteData<FeedResponse, string | null>>(feedKey);
+      const previousData =
+        queryClient.getQueryData<InfiniteData<PostsPage, string | null>>(
+          feedKey
+        );
+
+      console.log(
+        "this is the previous data .......................==============================",
+        previousData,
+        'and this is the new profile image url ------------------------------', newPost.user?.avatar
+      );
 
       // Optimistically update the cache
-      queryClient.setQueryData<InfiniteData<FeedResponse, string | null>>(feedKey, (oldData) => {
-        if (!oldData) return oldData;
-        const firstPage = oldData.pages[0];
-        if (!firstPage) return oldData;
-        return {
-          pageParams: oldData.pageParams,
-          pages: [
-            {
-              posts: [{ ...newPost, id: `temp-${Date.now()}` }, ...firstPage.posts], // Temp ID for optimism
-              nextCursor: firstPage.nextCursor,
-            },
-            ...oldData.pages.slice(1),
-          ],
-        };
-      });
+      queryClient.setQueriesData<InfiniteData<PostsPage, string | null>>(
+        queryFilter,
+        (oldData) => {
+          const firstPage = oldData?.pages[0];
+
+          if (firstPage) {
+            return {
+              pageParams: oldData.pageParams,
+              pages: [
+                {
+                  posts: [newPost, ...firstPage.posts],
+                  nextCursor: firstPage.nextCursor,
+                },
+                ...oldData.pages.slice(1),
+              ],
+            };
+          }
+        }
+      );
 
       // Return context for rollback
       return { previousData };
     },
     onError: (error, _variables, context) => {
       // Rollback to previous data
-      const feedKey = ['feed', { userId: userId }];
+      const feedKey = ["feed", "for-you"];
       if (context?.previousData) {
         queryClient.setQueryData(feedKey, context.previousData);
       }
-      console.error('Post creation error:', error); // Log for debugging
-      setError('Failed to post. Please try again.');
-      setTimeout(() => setError(""), 3000);
+      console.error("Post creation error:", error);
+     
       setIsPosting(false);
-      toast.error( "Failed to post. Please try again.");
+      toast.error("Failed to post. Please try again.");
     },
-    onSuccess: (newPost) => {
-      console.log('this onsuccess is getting called ..........................')
-      // Update cache with real server data
-      const feedKey = ['feed', { userId: userId}];
-      queryClient.setQueryData<InfiniteData<FeedResponse, string | null>>(feedKey, (oldData) => {
-        if (!oldData) return oldData;
-        const firstPage = oldData.pages[0];
-        if (!firstPage) return oldData;
-        const actualPost = 'data' in newPost ? newPost.data : newPost;
-        return {
-          pageParams: oldData.pageParams,
-          pages: [
-            {
-              posts: [
-                actualPost as Post,
-                ...firstPage.posts.filter((post) => post.id !== `temp-${Date.now()}`), // Remove temp post
-              ],
-              nextCursor: firstPage.nextCursor,
-            },
-            ...oldData.pages.slice(1),
-          ],
-        };
-      });
-
-      // Invalidate queries without data for consistency
+    onSuccess: () => {
+     
+      const feedKey = ["feed", "for-you"];
+     
       queryClient.invalidateQueries({
         queryKey: feedKey,
         predicate: (query) => !query.state.data, // Only fetch empty queries
@@ -114,16 +108,16 @@ export function useSubmitPostMutation({
 
       // Show success and reset UI
       setShowSuccess(true);
-      toast.success( "Post created" );
-      setTimeout(() => {
+      toast.success("Post created");
+      // setTimeout(() => {
         setShowSuccess(false);
         onClose();
-        setPostContent('');
+        setPostContent("");
         setSelectedMedia([]);
         setPoll(null);
         setAudienceType(AudienceType.PUBLIC);
         setCommentControl(CommentControl.ANYONE);
-      }, 2000);
+      // }, 2000);
     },
   });
 

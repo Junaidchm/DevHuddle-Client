@@ -89,9 +89,9 @@ export async function serverFetch(
     cookieStore.get("refresh_token")?.value ?? null;
 
   const headers = new Headers(options.headers);
-  if (accessToken) {
-    headers.set("Authorization", `Bearer ${accessToken}`);
-  }
+  // if (accessToken) {
+  //   headers.set("Authorization", `Bearer ${accessToken}`);
+  // }
 
   let response = await fetch(`${API_URL}${url}`, {
     ...options,
@@ -117,7 +117,7 @@ export async function serverFetch(
       throw new Error("No access token after refresh");
     }
 
-    headers.set("Authorization", `Bearer ${accessToken}`);
+    // headers.set("Authorization", `Bearer ${accessToken}`);
     response = await fetch(`${API_URL}${url}`, {
       ...options,
       headers: {
@@ -132,4 +132,96 @@ export async function serverFetch(
   }
 
   return response;
+}
+
+// export async function serverFetch(
+//   path: string,
+//   options: RequestInit = {}
+// ): Promise<Response> {
+//   let session = await getSession();
+
+//   // 🔄 If token missing or expired → refresh
+//   if (session.needsRefresh) {
+//     const currentPath = encodeURIComponent(path);
+
+//     // hit your Next.js API route which sets new access_token
+//     await fetch(`/api/auth/refresh?returnTo=${currentPath}`, {
+//       method: "GET",
+//       credentials: "include",
+//     });
+
+//     // 🔁 re-check session after refresh
+//     session = await getSession();
+
+//     if (!session.session) {
+//       throw new Error("Unable to refresh session");
+//     }
+//   }
+
+//   // ✅ Grab latest access token from cookies
+//   const cookieStore = await cookies();
+//   const accessToken = cookieStore.get("access_token")?.value;
+
+//   if (!accessToken) {
+//     throw new Error("No access token available");
+//   }
+
+//   // 📡 Call API Gateway
+//   const response = await fetch(`${API_URL}${path}`, {
+//     ...options,
+//     headers: {
+//       ...(options.headers || {}),
+//       Authorization: `Bearer ${accessToken}`,
+//     },
+//     credentials: "include",
+//   });
+
+//   return response;
+// }
+
+export async function serverFetchSilent(
+  url: string,
+  options: RequestInit = {},
+): Promise<Response> {
+  const session = await getSession();
+
+  console.log("serverFetchSilent is working without any problem ======================================")
+
+  if (session.needsRefresh) {
+    const refreshRes = await fetch(
+      `${API_URL}/api/auth/refresh-token`,
+      {
+        method: "GET",
+        credentials: "include",
+      }
+    );
+
+    if (!refreshRes.ok) {
+      throw new Error("Session expired");
+    }
+
+    const { accessToken } = await refreshRes.json();
+    if (!accessToken) {
+      throw new Error("No access token after refresh");
+    }
+  }
+
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("access_token")?.value;
+  const refresToken = cookieStore.get("refresh_token")?.value;
+  if (!accessToken) {
+    throw new Error("No access token");
+  }
+
+
+  let response = await fetch(`${process.env.API_URL}${url}`, {
+    ...options,
+    headers: {
+      ...options.headers,
+      Cookie: `access_token=${accessToken};refresh_token=${refresToken}`,
+    },
+  });
+   
+  return response
+  
 }

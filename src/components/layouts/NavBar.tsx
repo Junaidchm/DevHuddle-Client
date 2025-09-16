@@ -1,6 +1,6 @@
 "use client"
 
-import { NavLink } from "@/src/app/(app)/profile/update/[username]/components"
+import { NavLink } from "@/src/app/(main)/profile/update/[username]/components";
 import usePresignedProfileImage from "@/src/customHooks/usePresignedProfileImage";
 import { RootState } from "@/src/store/store";
 import Link from "next/link";
@@ -9,7 +9,7 @@ import { useSelector } from "react-redux";
 export default function NavBar() {
 
     const user = useSelector((state: RootState) => state.user.user);
-    const profileImageUrl = undefined
+    const profileImageUrl = usePresignedProfileImage()
 
     return (
         <nav className="bg-white/95 backdrop-blur-md shadow sticky top-0 z-[100] px-6 py-3 flex justify-between items-center">

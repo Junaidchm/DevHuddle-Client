@@ -1,6 +1,7 @@
 // src/app/layout.tsx (NOT just app/(auth)/layout.tsx)
 import { Providers } from "@/src/store/providers";
 import { Toaster } from "react-hot-toast";
+import "./globals.css"
 
 export default function RootLayout({
   children,

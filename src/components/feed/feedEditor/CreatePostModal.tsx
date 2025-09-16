@@ -10,19 +10,27 @@ import {
   BarChart2,
 } from "lucide-react";
 import PostSettingsModal from "./PostSettingsModal";
-import { ImageData, User, Media, Poll } from "@/src/app/types/feed";
+import { ImageData, User, Media, Poll, NewPost } from "@/src/app/types/feed";
 import { z } from "zod";
 import dynamic from "next/dynamic";
 import PhotoEditorModal from "./PhotoEditorModal";
-import { AudienceType, CommentControl, MediaContext, useMedia } from "@/src/contexts/MediaContext";
+import {
+  AudienceType,
+  CommentControl,
+  MediaContext,
+  useMedia,
+} from "@/src/contexts/MediaContext";
 import PollModal from "./PollModal";
-import { useSubmitPostMutation } from "../mutations/useSubmitPostMutation";
+// import { useSubmitPostMutation } from "../mutations/useSubmitPostMutation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/src/store/store";
 import toast from "react-hot-toast";
 import { getPresignedUrl } from "@/src/app/lib/general/getPresignedUrl";
 import { uploadToS3 } from "@/src/app/lib/general/uploadToS3WithProgressTracking";
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, useMutation } from "@tanstack/react-query";
+import { submitPost } from "./actions/submitPost";
+import { anotheruseSubmitPostMutation } from "../mutations/useSubmitPostMutation";
+import { PROFILE_DEFAULT_URL } from "@/src/constents";
 
 const LazyPostSettingsModal = dynamic(() => import("./PostSettingsModal"), {
   ssr: false,
@@ -38,13 +46,12 @@ const LazyVideoEditorModal = dynamic(() => import("./VideoEdit"), {
 interface CreatePostModalProps {
   isOpen: boolean;
   onClose: () => void;
-  user: User;
 }
 
 export default function CreatePostModal({
   isOpen,
   onClose,
-  user,
+
 }: CreatePostModalProps) {
   const [postContent, setPostContent] = useState("");
   const [poll, setPoll] = useState<Poll | null>(null);
@@ -59,91 +66,53 @@ export default function CreatePostModal({
   const [uploadProgress, setUploadProgress] = useState<Record<number, number>>(
     {}
   );
+  const queryClient = new QueryClient();
 
-  const {type,audienceType,settingAudienceType,commentControl,settingCommentControl,setMedia} = useMedia()
+  const {
+    type,
+    audienceType,
+    settingAudienceType,
+    commentControl,
+    settingCommentControl,
+    setMedia,
+  } = useMedia();
 
-  const userId = useSelector(
-    (state: RootState) => state?.user?.user?.id
-  ) as string;
-  const mutation = useSubmitPostMutation({ userId,
-  setShowSuccess,
-  setError,
-  setIsPosting,
-  setPostContent,
-  setSelectedMedia : setMedia,
-  setPoll,
-  setAudienceType: settingAudienceType,
-  setCommentControl : settingCommentControl,
-  onClose,});
+  const reduxUser = useSelector((state: RootState) => state?.user?.user);
+
+  const mutation = anotheruseSubmitPostMutation({
+    setShowSuccess,
+    setError,
+    setIsPosting,
+    setPostContent,
+    setSelectedMedia: setMedia,
+    setPoll,
+    setAudienceType: settingAudienceType,
+    setCommentControl: settingCommentControl,
+    onClose,
+  });
 
   async function onSubmit() {
     if (!postContent.trim() && media.length == 0 && !poll) {
       toast.error("Please add content, media, or a poll.");
     }
-
-    // setIsPosting(true);
-    // setError("");
+    setIsPosting(true);
+    setError("");
 
     try {
-      const uploadedMedia: Media[] = await Promise.all(
-        media.map(async (item:Media) => {
-          console.log("this is the items", item);
-          if (item.url && !item.url.startsWith("http")) {
-            const { url: presignedUrl, key } = await getPresignedUrl(
-              "feed",
-              "PUT",
-              item.name,
-              item.type
-            );
-            const uploadedUrl = await uploadToS3(
-              item.file!,
-              presignedUrl,
-              (progress) => {
-                setUploadProgress((prev) => ({ ...prev, [item.id]: progress }));
-              }
-            );
-
-            return { ...item, url: uploadedUrl };
-          }
-          return item;
-        })
-      );
-
-      const postPayload = {
-        type,
-        visibility: audienceType,
-        commentControl,
+      const newPostProps: NewPost = {
         content: postContent,
-        media: uploadedMedia.map(({ file, ...rest }) => rest),
-        poll: poll || undefined,
+        createdAt: String(new Date().toISOString()),
+        user: {
+          avatar: reduxUser?.profilePicture as string,
+          name: reduxUser?.name as string,
+          username:reduxUser?.username 
+        },
+        id: crypto.randomUUID(),
+        userId: reduxUser?.id as string,
       };
-
-      mutation.mutate(postPayload, {
-        // onSuccess: () => {
-        //   setShowSuccess(true);
-        //   setTimeout(() => {
-        //     setShowSuccess(false);
-        //     setPostContent("");
-        //     clearMedia();
-        //     setPoll(null);
-        //     settingAudienceType(AudienceType.PUBLIC);
-        //     settingCommentControl(CommentControl.ANYONE)
-        //     setUploadProgress({});
-        //     onClose();
-        //     queryClient.invalidateQueries({ queryKey: ["feed", userId] });
-        //   }, 2000);
-        // },
-        // onError: (err) => {
-        //   // setError("Failed to post. Please try again.");
-        //   setTimeout(() => setError(""), 3000);
-        // },
-        // onSettled: () => {
-        //   setIsPosting(false);
-        // },
-      });
+      mutation.mutate(newPostProps);
     } catch (err: any) {
-
-
+      toast.error("Error submitting post please try again ");
     }
   }
 
@@ -167,13 +136,13 @@ export default function CreatePostModal({
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
               <img
-                src={user.avatar}
-                alt={`${user.name}'s Avatar`}
+                src={`${process.env.NEXT_PUBLIC_IMAGE_PATH}${reduxUser?.profilePicture}`}
+                alt={`${reduxUser?.name}'s Avatar`}
                 className="w-12 h-12 rounded-full object-cover"
                 aria-label="User avatar"
               />
               <div>
-                <h3 className="font-semibold text-slate-800">{user.name}</h3>
+                <h3 className="font-semibold text-slate-800">{reduxUser?.name}</h3>
                 <button
                   onClick={() => setShowPostSettings(true)}
                   className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
@@ -217,7 +186,7 @@ export default function CreatePostModal({
             />
             {media.length > 0 && (
               <div className="mt-4 space-y-2 max-h-48 overflow-y-auto">
-                {media.map((media:Media) => (
+                {media.map((media: Media) => (
                   <div
                     key={media.id}
                     className="relative bg-gray-50 rounded-lg p-3 flex items-center justify-between"

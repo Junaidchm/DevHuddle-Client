@@ -1,12 +1,12 @@
 "use client";
 import showLogoutConfirmation from "@/src/utils/showLogoutConfirmation";
-import { SettingsTab } from "../(app)/profile/update/[username]/components";
 import "../styles/admin.css";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/src/store/store";
 import { usePathname, useRouter } from "next/navigation";
 import { useAdminRedirectIfNotAuthenticated } from "@/src/customHooks/useAdminAuthenticated";
 import Link from "next/link";
+import { SettingsTab } from "../(main)/profile/update/[username]/components";
 
 export default function AdminLayout({
   children,

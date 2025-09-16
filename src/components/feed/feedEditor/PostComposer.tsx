@@ -6,6 +6,8 @@ import { Image, FileText, CheckCircle, Calendar, Video } from "lucide-react";
 import { ImageData, User } from "@/src/app/types/feed";
 import dynamic from "next/dynamic";
 import { MediaContext, MediaProvider } from "@/src/contexts/MediaContext";
+import usePresignedProfileImage from "@/src/customHooks/usePresignedProfileImage";
+import { PROFILE_DEFAULT_URL } from "@/src/constents";
 
 const LazyCreatePostModal = dynamic(() => import("./CreatePostModal"), {
   ssr: false,
@@ -30,15 +32,15 @@ export default function PostComposer({ userId, user }: PostComposerProps) {
   const [isPollModalOpen, setIsPollModalOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<ImageData[]>([]);
 
-  console.log('post PostComposer is rerunning everytime ')
+  const profileImage = usePresignedProfileImage()
 
   return (
     <MediaProvider>
-      <div className="bg-white rounded-xl p-4 mb-6 border border-slate-200 shadow-sm">
+      <div className="bg-white rounded-xl p-4 mb-6 border border-slate-200 shadow-sm ">
         <div className="flex items-center gap-3 mb-4">
           <img
-            src={user.avatar}
-            alt={`${user.name}'s Profile`}
+            src={profileImage ? profileImage : PROFILE_DEFAULT_URL}
+            // alt={`${user.name}'s Profile`}
             className="w-12 h-12 rounded-full object-cover"
             aria-label="User profile image"
           />
@@ -102,7 +104,6 @@ export default function PostComposer({ userId, user }: PostComposerProps) {
           <LazyCreatePostModal
             isOpen={isCreatePostModalOpen}
             onClose={() => setIsCreatePostModalOpen(false)}
-            user={user}
           />
         )}
         {/* {isPhotoModalOpen && (
