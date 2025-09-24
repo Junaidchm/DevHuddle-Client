@@ -11,10 +11,10 @@ export default function usePresignedProfileImage() {
   const user = useSelector((state: RootState) => state.user.user);
 
   const isProfilePicAvailable =
-    user?.profilePicture && user.profilePicture !== "null";
+    user?.profilePicture && user.profilePicture !== "null" ;
 
   const [profileImageUrl, setProfileImageUrl] = useState(
-    isProfilePicAvailable ? user.profilePicture : PROFILE_DEFAULT_URL
+    isProfilePicAvailable && user.profilePicture?.startsWith('http') ? user.profilePicture : PROFILE_DEFAULT_URL
   );
 
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);

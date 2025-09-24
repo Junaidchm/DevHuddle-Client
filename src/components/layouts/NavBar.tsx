@@ -1,6 +1,7 @@
 "use client"
 
 import { NavLink } from "@/src/app/(main)/profile/update/[username]/components";
+import { PROFILE_DEFAULT_URL } from "@/src/constents";
 import usePresignedProfileImage from "@/src/customHooks/usePresignedProfileImage";
 import { RootState } from "@/src/store/store";
 import Link from "next/link";

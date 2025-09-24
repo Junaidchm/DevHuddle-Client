@@ -114,7 +114,7 @@ export const EditPanel: React.FC<EditPanelProps> = ({
                 ariaLabel="Flip vertical"
               />
             </div>
-            <div>
+            {/* <div>
               <h4 className="text-sm font-medium text-slate-700 mb-3">
                 Aspect Ratio
               </h4>
@@ -138,7 +138,7 @@ export const EditPanel: React.FC<EditPanelProps> = ({
                   )
                 )}
               </div>
-            </div>
+            </div> */}
 
             <SliderControl
               label="Zoom"

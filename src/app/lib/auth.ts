@@ -53,6 +53,8 @@ export async function getSession(): Promise<{
     let accessToken: string | null =
       cookieStore.get("access_token")?.value ?? null;
 
+     console.log('this is the access token -------------------------->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', accessToken )
+
     if (!accessToken) {
       const cookieStore = await cookies();
       const refreshToken = cookieStore.get("refresh_token")?.value;
@@ -66,6 +68,8 @@ export async function getSession(): Promise<{
 
     const session = verifyToken(accessToken, ACCESS_SECRET);
 
+    console.log('this is the session chekcing ............=============================================', session)
+
     if (!session) {
       return { session: null, needsRefresh: true, needsLogout: false };
     }
@@ -77,62 +81,114 @@ export async function getSession(): Promise<{
   }
 }
 
-export async function serverFetch(
+
+
+export async function serverFetchSilent(
   url: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<Response> {
-  "use server";
-  const cookieStore = await cookies();
-  let accessToken: string | null =
-    cookieStore.get("access_token")?.value ?? null;
-  let refresToken: string | null =
-    cookieStore.get("refresh_token")?.value ?? null;
+  const session = await getSession();
 
-  const headers = new Headers(options.headers);
-  // if (accessToken) {
-  //   headers.set("Authorization", `Bearer ${accessToken}`);
-  // }
+  console.log('this is the session details -------------------------', session)
+  if (session.needsRefresh) {
 
-  let response = await fetch(`${API_URL}${url}`, {
-    ...options,
-    headers: {
-      Cookie: `access_token=${accessToken};refresh_token=${refresToken}`,
-    },
-  });
+    console.log("serverFetchSilent is working without any problem ======================================", options)
 
-  if (response.status === 401) {
-    const refreshRes = await fetch("/api/auth/refresh", {
-      method: "GET",
-    });
+    const refreshRes = await fetch(
+      `${API_URL}/api/auth/refresh-token`,
+      {
+        method: "GET",
+        credentials: "include",
+      }
+    );
 
     if (!refreshRes.ok) {
       throw new Error("Session expired");
     }
 
-    // Get new token from cookies
-    const updatedCookies = await cookies();
-    accessToken = updatedCookies.get("access_token")?.value ?? null;
-
+    const { accessToken } = await refreshRes.json();
     if (!accessToken) {
       throw new Error("No access token after refresh");
     }
-
-    // headers.set("Authorization", `Bearer ${accessToken}`);
-    response = await fetch(`${API_URL}${url}`, {
-      ...options,
-      headers: {
-        Cookie: `access_token=${accessToken};refresh_token=${refresToken}`,
-      },
-      credentials: "include",
-    });
   }
 
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("access_token")?.value;
+  const refresToken = cookieStore.get("refresh_token")?.value;
+  if (!accessToken) {
+    throw new Error("No access token");
   }
-
-  return response;
+  
+  
+  let response = await fetch(`${process.env.API_URL}${url}`, {
+    ...options,
+    headers: {
+      ...options.headers,
+      Cookie: `access_token=${accessToken};refresh_token=${refresToken}`,
+    },
+  });
+   
+  return response
+  
 }
+
+
+// export async function serverFetch(
+//   url: string,
+//   options: RequestInit = {}
+// ): Promise<Response> {
+//   "use server";
+//   const cookieStore = await cookies();
+//   let accessToken: string | null =
+//     cookieStore.get("access_token")?.value ?? null;
+//   let refresToken: string | null =
+//     cookieStore.get("refresh_token")?.value ?? null;
+
+//   const headers = new Headers(options.headers);
+//   // if (accessToken) {
+//   //   headers.set("Authorization", `Bearer ${accessToken}`);
+//   // }
+
+//   let response = await fetch(`${API_URL}${url}`, {
+//     ...options,
+//     headers: {
+//       Cookie: `access_token=${accessToken};refresh_token=${refresToken}`,
+//     },
+//   });
+
+//   if (response.status === 401) {
+//     const refreshRes = await fetch("/api/auth/refresh", {
+//       method: "GET",
+//     });
+
+//     if (!refreshRes.ok) {
+//       throw new Error("Session expired");
+//     }
+
+//     // Get new token from cookies
+//     const updatedCookies = await cookies();
+//     accessToken = updatedCookies.get("access_token")?.value ?? null;
+
+//     if (!accessToken) {
+//       throw new Error("No access token after refresh");
+//     }
+
+//     // headers.set("Authorization", `Bearer ${accessToken}`);
+//     response = await fetch(`${API_URL}${url}`, {
+//       ...options,
+//       headers: {
+//         Cookie: `access_token=${accessToken};refresh_token=${refresToken}`,
+//       },
+//       credentials: "include",
+//     });
+//   }
+
+//   if (!response.ok) {
+//     throw new Error(`API error: ${response.status}`);
+//   }
+
+//   return response;
+// }
 
 // export async function serverFetch(
 //   path: string,
@@ -178,50 +234,3 @@ export async function serverFetch(
 
 //   return response;
 // }
-
-export async function serverFetchSilent(
-  url: string,
-  options: RequestInit = {},
-): Promise<Response> {
-  const session = await getSession();
-
-  console.log("serverFetchSilent is working without any problem ======================================")
-
-  if (session.needsRefresh) {
-    const refreshRes = await fetch(
-      `${API_URL}/api/auth/refresh-token`,
-      {
-        method: "GET",
-        credentials: "include",
-      }
-    );
-
-    if (!refreshRes.ok) {
-      throw new Error("Session expired");
-    }
-
-    const { accessToken } = await refreshRes.json();
-    if (!accessToken) {
-      throw new Error("No access token after refresh");
-    }
-  }
-
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get("access_token")?.value;
-  const refresToken = cookieStore.get("refresh_token")?.value;
-  if (!accessToken) {
-    throw new Error("No access token");
-  }
-
-
-  let response = await fetch(`${process.env.API_URL}${url}`, {
-    ...options,
-    headers: {
-      ...options.headers,
-      Cookie: `access_token=${accessToken};refresh_token=${refresToken}`,
-    },
-  });
-   
-  return response
-  
-}

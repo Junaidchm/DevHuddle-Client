@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ImageTransform, Media, PhotoEditorModalProps, User as UserType } from "@/src/app/types/feed";
+import { ImageTransform, Media, PhotoEditorModalProps, User, User as UserType } from "@/src/app/types/feed";
 import EditorModal from "./EditorModal";
 import { ImageUploader } from "./ImageUploader";
 import { ImagePreview } from "./ImagePreview";
@@ -14,6 +14,7 @@ import { useMedia } from "@/src/contexts/MediaContext";
 import { handleImageUpload } from "@/lib/feed/handleImageUpload";
 import { default_ImageTransform, filters } from "@/src/constents/feed";
 import { getImageStyle } from "@/lib/feed/getImageStyle";
+import useMediaUpload from "./Hooks/useMediaUpload";
 
 
 
@@ -29,6 +30,15 @@ export default function PhotoEditorModal({
     setTransform,
     setcurrentMediaId
   } = useMedia();
+
+   const {
+    startUpload,
+    attachments,
+    isUploading,
+    uploadProgress,
+    removeAttachment,
+    reset: resetMediaUploads,
+  } = useMediaUpload();
 
   const [selectedImages, setSelectedImages] = useState<Media[]>([]);
   const [rightPanelView, setRightPanelView] = useState<
@@ -100,14 +110,11 @@ export default function PhotoEditorModal({
     }
   };
 
-  const removeImage = (imageId: string) => {
+  const removeImage = (imageId: string,fileName?:string) => {
     const newImages = selectedImages.filter((img) => img.id !== imageId);
     setMedia(newImages);
-    // setImageTransforms((prev) => {
-    //   const newTransforms = { ...prev };
-    //   delete newTransforms[imageId];
-    //   return newTransforms;
-    // });
+    
+   
     if (currentImageIndex >= newImages.length && newImages.length > 0) {
       setCurrentImageIndex(newImages.length - 1);
     } else if (newImages.length === 0) {
@@ -192,7 +199,7 @@ export default function PhotoEditorModal({
         {selectedImages.length > 0 ? (
           <ImagePreview
             image={selectedImages[currentImageIndex]?.url as string}
-            taggedUsers={selectedImages[currentImageIndex]?.taggedUsers}
+            taggedUsers={selectedImages[currentImageIndex]?.taggedUsers as User[]} 
             transform={getCurrentImageTransform()}
             getImageStyle={() =>
               getImageStyle(
@@ -209,12 +216,15 @@ export default function PhotoEditorModal({
                 addMedia,
                 media,
                 setCurrentImageIndex,
-                setcurrentMediaId
+                setcurrentMediaId,
+                startUpload,
+                attachments
               )
             }
             triggerUpload={triggerUpload}
             resetInput={resetInput}
             fileInputRef={fileInputRef}
+            disabled = {isUploading || attachments.length>=5}
           />
         )}
         <ActionBar
@@ -231,6 +241,8 @@ export default function PhotoEditorModal({
           }}
           imageCount={selectedImages.length}
           onDone={onClose}
+          isUploading={isUploading}
+          uploadProgress={uploadProgress}
         />
 
         <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">

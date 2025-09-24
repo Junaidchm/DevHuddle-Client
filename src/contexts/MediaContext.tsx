@@ -76,6 +76,7 @@ export const MediaProvider = ({ children }: { children: ReactNode }) => {
 
   const setMedia = (newMedia: Media[]) => {
     setMediaState(newMedia);
+    console.log('the media is set now ===================================', newMedia)
   };
 
   const clearMedia = () => {

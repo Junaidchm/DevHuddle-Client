@@ -5,15 +5,136 @@ import { formatRelativeDate } from "@/src/utils/formateRelativeDate";
 import DeletePostDialog from "./DeletePostModal";
 import { useSelector } from "react-redux";
 import { RootState } from "@/src/store/store";
+import Image from "next/image";
 
 interface PostProp {
   post: NewPost;
   onDeletePost?: (postId: string) => void;
 }
 
-export default function PostCard({ post, onDeletePost }: PostProp) {
+// Attachment interface based on your data structure
+interface Attachment {
+ id: string,
+postId:string;
+type:string;
+url: string,
+createdAt: string
+}
 
-  
+const ImageCarousel = ({ attachments }: { attachments: Attachment[] }) => {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Filter only IMAGE type attachments
+  const imageAttachments = attachments.filter(
+    (attachment) => attachment.type === "IMAGE"
+  );
+
+  if (!imageAttachments || imageAttachments.length === 0) return null;
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) =>
+      prev === imageAttachments.length - 1 ? 0 : prev + 1
+    );
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) =>
+      prev === 0 ? imageAttachments.length - 1 : prev - 1
+    );
+  };
+
+  const goToImage = (index: number) => {
+    setCurrentImageIndex(index);
+  };
+
+  return (
+    <div className="relative w-full h-80 bg-gray-100 rounded-lg overflow-hidden">
+      {/* Main Image Display */}
+      <div className="relative w-full h-full">
+        <Image
+          src={imageAttachments[currentImageIndex].url} // /a/... URL
+          alt={`Post image ${currentImageIndex + 1}`}
+          width={800} // ✅ Required: Fixed width
+          height={400} // ✅ Required: Fixed height (2:1 aspect ratio)
+          className="w-full h-full object-cover"
+          priority={currentImageIndex === 0} // ✅ Optional: Load first image eagerly
+        />
+
+        {/* Navigation Arrows - Only show if more than 1 image */}
+        {imageAttachments.length > 1 && (
+          <>
+            {/* Previous Arrow */}
+            <button
+              onClick={prevImage}
+              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-2 transition-all duration-200 z-10"
+              aria-label="Previous image"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="15,18 9,12 15,6" />
+              </svg>
+            </button>
+
+            {/* Next Arrow */}
+            <button
+              onClick={nextImage}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-2 transition-all duration-200 z-10"
+              aria-label="Next image"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="9,18 15,12 9,6" />
+              </svg>
+            </button>
+
+            {/* Image Counter */}
+            <div className="absolute top-3 right-3 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded-full z-10">
+              {currentImageIndex + 1} / {imageAttachments.length}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Dot Indicators - Only show if more than 1 image */}
+      {imageAttachments.length > 1 && (
+        <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
+          {imageAttachments.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => goToImage(index)}
+              className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                index === currentImageIndex
+                  ? "bg-white"
+                  : "bg-white bg-opacity-50 hover:bg-opacity-75"
+              }`}
+              aria-label={`Go to image ${index + 1}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default function PostCard({ post, onDeletePost }: PostProp) {
+  console.log("this is the post =====================------------------", post);
+
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{
@@ -33,14 +154,9 @@ export default function PostCard({ post, onDeletePost }: PostProp) {
   useEffect(() => {
     if (showMenu && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      setMenuPosition({ top: rect.bottom + 8, left: rect.right - 192 }); // 192 = width of menu
+      setMenuPosition({ top: rect.bottom + 8, left: rect.right - 192 });
     }
   }, [showMenu]);
-
-  console.log(
-    "this is the post id which we want to delete =========================================",
-    post.id
-  );
 
   return (
     <>
@@ -82,7 +198,6 @@ export default function PostCard({ post, onDeletePost }: PostProp) {
                   <span className="font-bold text-base text-gray-900">
                     @{post.user?.username}
                   </span>
-                 
                 </div>
                 <div className="text-xs text-slate-500">
                   {formatRelativeDate(new Date(post.createdAt))}
@@ -93,12 +208,21 @@ export default function PostCard({ post, onDeletePost }: PostProp) {
         </div>
 
         <div className="p-4">
-          <p className="mb-0 text-sm text-slate-700 leading-relaxed">
+          <p className="mb-4 text-sm text-slate-700 leading-relaxed">
             {post.content}
           </p>
+
+          {/* Image Carousel Section */}
+          {post.attachments && post.attachments.length > 0 && (
+            <div className="mb-4">
+              <ImageCarousel attachments={post.attachments} />
+            </div>
+          )}
+
           <PostIntract />
         </div>
       </article>
+
       {/* Dropdown menu rendered in fixed position */}
       {showMenu && menuPosition && (
         <>
@@ -113,7 +237,6 @@ export default function PostCard({ post, onDeletePost }: PostProp) {
             style={{ top: menuPosition.top, left: menuPosition.left }}
           >
             {/* Edit post */}
-
             {post.userId === userid && (
               <button
                 onClick={() => setShowMenu(false)}
@@ -212,6 +335,7 @@ export default function PostCard({ post, onDeletePost }: PostProp) {
           </div>
         </>
       )}
+
       {post.userId === userid && (
         <DeletePostDialog
           post={post}
@@ -219,62 +343,6 @@ export default function PostCard({ post, onDeletePost }: PostProp) {
           onClose={() => setShowDeleteDialog(false)}
         />
       )}
-
-      {/* Delete Confirmation Dialog */}
-      {/* {showDeleteDialog && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-[#000000aa] bg-opacity-50">
-          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-lg bg-white text-left shadow-xl transition-all">
-            <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-              <div className="sm:flex sm:items-start">
-                <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-red-600"
-                  >
-                    <polyline points="3,6 5,6 21,6" />
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                    <line x1="10" y1="11" x2="10" y2="17" />
-                    <line x1="14" y1="11" x2="14" y2="17" />
-                  </svg>
-                </div>
-                <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
-                  <h3 className="text-base font-semibold leading-6 text-gray-900">
-                    Delete Post
-                  </h3>
-                  <div className="mt-2">
-                    <p className="text-sm text-gray-500">
-                      Are you sure you want to delete this post? This action cannot be undone.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                className="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
-              >
-                Delete
-              </button>
-              <button
-                type="button"
-                onClick={handleCancelDelete}
-                className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )} */}
     </>
   );
 }

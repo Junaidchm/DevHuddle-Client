@@ -18,7 +18,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
   className = '',
   triggerUpload,
   resetInput,
-  fileInputRef
+  fileInputRef,
 }) => {
   
   // useEffect(() => {
@@ -47,7 +47,9 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
         type="file"
         accept="image/*"
         multiple
-        onChange={onUpload}
+        onChange={(e)=> {
+          onUpload(e)  
+        }}
         className="hidden"
         disabled={disabled}
       />

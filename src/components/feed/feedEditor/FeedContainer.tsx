@@ -27,10 +27,12 @@ export default function FeedContainer() {
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
 
-  const posts : NewPost[] = data?.pages.flatMap((page) => page.posts) as NewPost[];
+  const posts: NewPost[] = data?.pages.flatMap(
+    (page) => page.posts
+  ) as NewPost[];
 
   if (status === "pending") {
-    return <PostsLoadingSkeleton/>;
+    return <PostsLoadingSkeleton />;
   }
 
   if (status === "success" && !posts?.length && !hasNextPage) {
@@ -58,7 +60,6 @@ export default function FeedContainer() {
         <PostCard key={post.id} post={post} />
       ))}
       {isFetchingNextPage && <Loader2 className="mx-auto my-3 animate-spin" />}
-     
     </InfiniteScorllContainer>
   );
 }

@@ -13,6 +13,8 @@ export const ActionBar: React.FC<ActionBarProps> = ({
   imageCount,
   onDone,
   className = '',
+  isUploading,
+  uploadProgress
 }) => {
   return (
     <div
@@ -54,6 +56,8 @@ export const ActionBar: React.FC<ActionBarProps> = ({
         onClick={onDone}
         ariaLabel={`Done editing, ${imageCount} images`}
         label={` Done (${imageCount})`}
+        isUploading={isUploading}
+        uploadProgress={uploadProgress}
       />
     </div>
   );

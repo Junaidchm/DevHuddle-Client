@@ -1,3 +1,5 @@
+
+
 import {
   FeedResponse,
   NewPost,
@@ -44,6 +46,7 @@ export function anotheruseSubmitPostMutation({
     retry: 1,
     onMutate: async (newPost: NewPost) => {
      
+     
       const queryFilter: QueryFilters = { queryKey: ["post-feed", "for-you"] };
       const feedKey = ["post-feed", "for-you"];
 
@@ -54,13 +57,7 @@ export function anotheruseSubmitPostMutation({
       const previousData =
         queryClient.getQueryData<InfiniteData<PostsPage, string | null>>(
           feedKey
-        );
-
-      console.log(
-        "this is the previous data .......................==============================",
-        previousData,
-        'and this is the new profile image url ------------------------------', newPost.user?.avatar
-      );
+        ); 
 
       // Optimistically update the cache
       queryClient.setQueriesData<InfiniteData<PostsPage, string | null>>(

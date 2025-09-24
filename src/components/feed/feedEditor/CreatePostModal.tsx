@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import PostSettingsModal from "./PostSettingsModal";
 import { ImageData, User, Media, Poll, NewPost } from "@/src/app/types/feed";
-import { z } from "zod";
+import { boolean, z } from "zod";
 import dynamic from "next/dynamic";
 import PhotoEditorModal from "./PhotoEditorModal";
 import {
@@ -31,6 +31,7 @@ import { QueryClient, useMutation } from "@tanstack/react-query";
 import { submitPost } from "./actions/submitPost";
 import { anotheruseSubmitPostMutation } from "../mutations/useSubmitPostMutation";
 import { PROFILE_DEFAULT_URL } from "@/src/constents";
+import useMediaUpload from "./Hooks/useMediaUpload";
 
 const LazyPostSettingsModal = dynamic(() => import("./PostSettingsModal"), {
   ssr: false,
@@ -51,7 +52,6 @@ interface CreatePostModalProps {
 export default function CreatePostModal({
   isOpen,
   onClose,
-
 }: CreatePostModalProps) {
   const [postContent, setPostContent] = useState("");
   const [poll, setPoll] = useState<Poll | null>(null);
@@ -61,11 +61,8 @@ export default function CreatePostModal({
   const [showPollModal, setShowPollModal] = useState(false);
   const [showVideoEditor, setShowVideoEditor] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const { media, clearMedia } = useMedia();
   const [error, setError] = useState("");
-  const [uploadProgress, setUploadProgress] = useState<Record<number, number>>(
-    {}
-  );
+ 
   const queryClient = new QueryClient();
 
   const {
@@ -75,7 +72,17 @@ export default function CreatePostModal({
     commentControl,
     settingCommentControl,
     setMedia,
+    media,
   } = useMedia();
+
+  const {
+    startUpload,
+    attachments,
+    isUploading,
+    uploadProgress,
+    removeAttachment,
+    reset: resetMediaUploads,
+  } = useMediaUpload();
 
   const reduxUser = useSelector((state: RootState) => state?.user?.user);
 
@@ -94,23 +101,42 @@ export default function CreatePostModal({
   async function onSubmit() {
     if (!postContent.trim() && media.length == 0 && !poll) {
       toast.error("Please add content, media, or a poll.");
+      return;
     }
+
     setIsPosting(true);
     setError("");
+
+    const postid = crypto.randomUUID();
 
     try {
       const newPostProps: NewPost = {
         content: postContent,
+        mediaIds: media.map((a) => a.mediaId).filter(Boolean) as string[],
         createdAt: String(new Date().toISOString()),
         user: {
           avatar: reduxUser?.profilePicture as string,
           name: reduxUser?.name as string,
-          username:reduxUser?.username 
+          username: reduxUser?.username,
         },
-        id: crypto.randomUUID(),
+        id: postid,
         userId: reduxUser?.id as string,
+        attachments: media.map((file) => {
+          return {
+            id: crypto.randomUUID(),
+            createdAt: String(new Date().toISOString()),
+            postId: postid,
+            type: file.type.startsWith("image") ? "IMAGE" : "VIDEO",
+            url: file.url as string,
+          };
+        }),
       };
-      mutation.mutate(newPostProps);
+      mutation.mutate(newPostProps, {
+        onSuccess: () => {
+          resetMediaUploads();
+          setMedia([]);
+        },
+      });
     } catch (err: any) {
       toast.error("Error submitting post please try again ");
     }
@@ -118,16 +144,8 @@ export default function CreatePostModal({
 
   if (!isOpen) return null;
 
-  // const rewriteWithAI = () => {
-  //   const aiSuggestions = [
-  //     "🚀 Excited to share my latest project! Building scalable web applications with React and Next.js has been an incredible journey. Always learning, always growing! #WebDev #React #NextJS",
-  //     "💡 Just discovered an amazing new approach to state management in React. The developer community never fails to inspire me with innovative solutions! #ReactJS #StateManagement #Innovation",
-  //     "🎯 Another day, another challenge conquered! Love how every coding problem teaches us something new. What's the most interesting bug you've solved recently? #CodingLife #ProblemSolving",
-  //   ];
-  //   const randomSuggestion =
-  //     aiSuggestions[Math.floor(Math.random() * aiSuggestions.length)];
-  //   setPostContent(randomSuggestion);
-  // };
+  
+  console.log("this modal is working multiple times");
 
   return (
     <>
@@ -142,7 +160,9 @@ export default function CreatePostModal({
                 aria-label="User avatar"
               />
               <div>
-                <h3 className="font-semibold text-slate-800">{reduxUser?.name}</h3>
+                <h3 className="font-semibold text-slate-800">
+                  {reduxUser?.name}
+                </h3>
                 <button
                   onClick={() => setShowPostSettings(true)}
                   className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
@@ -285,7 +305,7 @@ export default function CreatePostModal({
               </button>
             </div>
           </div>
-          <div className="px-6 pb-4">
+          {/* <div className="px-6 pb-4">
             <button
               // onClick={rewriteWithAI}
               className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
@@ -294,7 +314,7 @@ export default function CreatePostModal({
               <span className="text-orange-500 font-bold">✨</span>
               <span className="text-gray-700 font-medium">Rewrite with AI</span>
             </button>
-          </div>
+          </div> */}
           <div className="flex items-center justify-between p-6 border-t border-gray-200">
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-500">⏰</span>

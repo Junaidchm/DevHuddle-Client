@@ -121,3 +121,9 @@ export const logoutUser = async () => {
   const response = await axiosInstance.post("/auth/logout");
   return response;
 };
+
+
+export const validateAccessRefresh = async ()=> {
+  const response = await axiosInstance.post("/auth/me");
+  return response;
+}

@@ -37,7 +37,7 @@ export const Thumbnail: React.FC<ThumbnailProps> = ({
       </div>
       <IconButton
         icon={<span>×</span>}
-        onClick={() => onRemove(image.id)}
+        onClick={() => onRemove(image.id,image.name)}
         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
         ariaLabel={`Remove image ${image.name}`}
       />

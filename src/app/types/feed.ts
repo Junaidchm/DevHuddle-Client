@@ -18,6 +18,8 @@ export interface ActionBarProps {
   imageCount: number;
   onDone: () => void;
   className?: string;
+  isUploading?: boolean;
+  uploadProgress?: number;
 }
 
 export interface GradientButtonProps {
@@ -26,6 +28,8 @@ export interface GradientButtonProps {
   disabled?: boolean;
   className?: string;
   ariaLabel: string;
+  isUploading?: boolean;
+  uploadProgress?: number;
 }
 
 export interface ThumbnailProps {
@@ -33,7 +37,7 @@ export interface ThumbnailProps {
   index: number;
   isSelected: boolean;
   onSelect: (index: number) => void;
-  onRemove: (imageId: string) => void;
+  onRemove: (imageId: string, fileName: string) => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   className?: string;
@@ -113,6 +117,7 @@ export interface Media {
   name: string;
   taggedUsers?: User[];
   transform?: ImageTransform | videoTransform | null;
+  mediaId?: string | undefined | null;
 }
 
 export interface Post {
@@ -145,15 +150,38 @@ interface FeedResponsePost {
 }
 
 export interface submitPostProp {
-  content:string; 
+  content: string;
 }
 
 export interface NewPost {
   id: string;
   content: string;
+  mediaIds: string[];
   userId: string;
   createdAt: string;
   user: { name: string; username?: string; avatar: string } | null;
+  attachments: {
+    id: string;
+    postId: string;
+    type: string;
+    url: string;
+    createdAt: string;
+  }[];
+}
+
+export interface newPostSubmit {
+  id: string;
+  content: string;
+  userId: string;
+  createdAt: string;
+  user: { name: string; username?: string; avatar: string } | null;
+  attachments?: {
+    id: string;
+    post_id: string;
+    type: string;
+    url: string;
+    created_at: string;
+  }[];
 }
 
 export interface PostsPage {
