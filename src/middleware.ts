@@ -1,16 +1,28 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+// middleware.ts
+import { auth } from "@/auth";
 
-export function middleware(req: NextRequest) {
-  const refreshToken = req.cookies.get("refresh_token")?.value;
+export default auth((req) => {
 
-  if (!refreshToken) {
-    return NextResponse.redirect(new URL("/signIn", req.url));
+  console.log('middleeare is owrking here')
+
+  if (req.nextUrl.pathname == '/signIn' && req.auth?.user) {
+    return Response.redirect(new URL("/", req.url));
   }
 
-  return NextResponse.next();
-}
+  if (req.nextUrl.pathname === '/' && !req.auth?.user) {
+  return Response.redirect(new URL('/signIn', req.url));
+  }
+  
+  if (req.nextUrl.pathname.startsWith("/profile") && !req.auth?.user) {
+    return Response.redirect(new URL("/signIn", req.url));
+  }
 
+  // if (req.nextUrl.pathname.startsWith("/admin") && req.auth?.user?.role !== "admin") {
+  //   return Response.redirect(new URL("/unauthorized", req.url));
+  // }
+});
+  
+// Configure which paths need protection
 export const config = {
-  matcher: ["/","/profile/:path*"],
+  matcher: ["/", "/profile/:path*", "/signIn"], // secure homepage + profile
 };

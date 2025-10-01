@@ -7,7 +7,7 @@ import { parse } from "cookie";
 import { JwtPayload } from "../types";
 
 // Environment variables
-const API_URL = process.env.API_URL || "http://localhost:3000";
+const API_URL = process.env.API_URL || "http://localhost:8000";
 const ACCESS_SECRET = process.env.ACCESS_TOKEN_SECRET as string;
 const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET as string;
 
@@ -131,6 +131,7 @@ export async function serverFetchSilent(
   return response
   
 }
+
 
 
 // export async function serverFetch(

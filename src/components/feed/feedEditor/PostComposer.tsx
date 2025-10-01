@@ -8,6 +8,7 @@ import dynamic from "next/dynamic";
 import { MediaContext, MediaProvider } from "@/src/contexts/MediaContext";
 import usePresignedProfileImage from "@/src/customHooks/usePresignedProfileImage";
 import { PROFILE_DEFAULT_URL } from "@/src/constents";
+import { getSession } from "next-auth/react";
 
 const LazyCreatePostModal = dynamic(() => import("./CreatePostModal"), {
   ssr: false,
@@ -22,17 +23,17 @@ const LazyPollModal = dynamic(() => import("./PollModal"), { ssr: false });
 
 interface PostComposerProps {
   userId: string;
-  user: User;
 }
 
-export default function PostComposer({ userId, user }: PostComposerProps) {
+export default  function PostComposer({ userId}: PostComposerProps) {
   const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [isVideoModalOpen, setVideoModalOpen] = useState(false);
   const [isPollModalOpen, setIsPollModalOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<ImageData[]>([]);
 
-  const profileImage = usePresignedProfileImage()
+  const profileImage = usePresignedProfileImage();
+  
 
   return (
     <MediaProvider>
@@ -40,7 +41,6 @@ export default function PostComposer({ userId, user }: PostComposerProps) {
         <div className="flex items-center gap-3 mb-4">
           <img
             src={profileImage ? profileImage : PROFILE_DEFAULT_URL}
-            // alt={`${user.name}'s Profile`}
             className="w-12 h-12 rounded-full object-cover"
             aria-label="User profile image"
           />
@@ -104,6 +104,7 @@ export default function PostComposer({ userId, user }: PostComposerProps) {
           <LazyCreatePostModal
             isOpen={isCreatePostModalOpen}
             onClose={() => setIsCreatePostModalOpen(false)}
+            profileImage={profileImage}
           />
         )}
         {/* {isPhotoModalOpen && (

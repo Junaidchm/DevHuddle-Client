@@ -32,6 +32,8 @@ import { submitPost } from "./actions/submitPost";
 import { anotheruseSubmitPostMutation } from "../mutations/useSubmitPostMutation";
 import { PROFILE_DEFAULT_URL } from "@/src/constents";
 import useMediaUpload from "./Hooks/useMediaUpload";
+import { useSession } from "next-auth/react";
+import useGetUserData from "@/src/customHooks/useGetUserData";
 
 const LazyPostSettingsModal = dynamic(() => import("./PostSettingsModal"), {
   ssr: false,
@@ -47,6 +49,7 @@ const LazyVideoEditorModal = dynamic(() => import("./VideoEdit"), {
 interface CreatePostModalProps {
   isOpen: boolean;
   onClose: () => void;
+  profileImage: string;
 }
 
 export default function CreatePostModal({
@@ -62,7 +65,7 @@ export default function CreatePostModal({
   const [showVideoEditor, setShowVideoEditor] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState("");
- 
+
   const queryClient = new QueryClient();
 
   const {
@@ -75,16 +78,7 @@ export default function CreatePostModal({
     media,
   } = useMedia();
 
-  const {
-    startUpload,
-    attachments,
-    isUploading,
-    uploadProgress,
-    removeAttachment,
-    reset: resetMediaUploads,
-  } = useMediaUpload();
-
-  const reduxUser = useSelector((state: RootState) => state?.user?.user);
+  const { reset: resetMediaUploads } = useMediaUpload();
 
   const mutation = anotheruseSubmitPostMutation({
     setShowSuccess,
@@ -97,6 +91,8 @@ export default function CreatePostModal({
     setCommentControl: settingCommentControl,
     onClose,
   });
+
+  const user = useGetUserData();
 
   async function onSubmit() {
     if (!postContent.trim() && media.length == 0 && !poll) {
@@ -115,12 +111,12 @@ export default function CreatePostModal({
         mediaIds: media.map((a) => a.mediaId).filter(Boolean) as string[],
         createdAt: String(new Date().toISOString()),
         user: {
-          avatar: reduxUser?.profilePicture as string,
-          name: reduxUser?.name as string,
-          username: reduxUser?.username,
+          avatar: user?.image as string,
+          name: user?.name as string,
+          username: user?.username,
         },
         id: postid,
-        userId: reduxUser?.id as string,
+        userId: user?.id as string,
         attachments: media.map((file) => {
           return {
             id: crypto.randomUUID(),
@@ -144,7 +140,6 @@ export default function CreatePostModal({
 
   if (!isOpen) return null;
 
-  
   console.log("this modal is working multiple times");
 
   return (
@@ -154,15 +149,13 @@ export default function CreatePostModal({
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
               <img
-                src={`${process.env.NEXT_PUBLIC_IMAGE_PATH}${reduxUser?.profilePicture}`}
-                alt={`${reduxUser?.name}'s Avatar`}
+                src={`${process.env.NEXT_PUBLIC_IMAGE_PATH}${user?.image}`}
+                alt={`${user?.name}'s Avatar`}
                 className="w-12 h-12 rounded-full object-cover"
                 aria-label="User avatar"
               />
               <div>
-                <h3 className="font-semibold text-slate-800">
-                  {reduxUser?.name}
-                </h3>
+                <h3 className="font-semibold text-slate-800">{user?.name}</h3>
                 <button
                   onClick={() => setShowPostSettings(true)}
                   className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"

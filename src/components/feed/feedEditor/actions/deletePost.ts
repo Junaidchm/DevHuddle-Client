@@ -1,10 +1,11 @@
 "use server";
 
 import { serverFetchSilent } from "@/src/app/lib/auth";
+import { serverFetch } from "@/src/app/lib/serverFetch";
 
 export async function deletePost(Id: string) {
   try {
-    const res = await serverFetchSilent("/feed/delete", {
+    const res = await serverFetch("/feed/delete", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -12,13 +13,8 @@ export async function deletePost(Id: string) {
       }),
     });
 
-    if (!res.ok) {
-      throw new Error(`Failed to DELETE post: ${res.statusText}`);
-    }
 
-    const response = await res.json();
-
-    return response.deletedPost;
+    return res.deletedPost;
   } catch (error) {
     console.error("Error in DeletePost:", error);
     throw error;

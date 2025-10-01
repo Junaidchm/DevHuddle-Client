@@ -4,12 +4,13 @@ import { NavLink } from "@/src/app/(main)/profile/update/[username]/components";
 import { PROFILE_DEFAULT_URL } from "@/src/constents";
 import usePresignedProfileImage from "@/src/customHooks/usePresignedProfileImage";
 import { RootState } from "@/src/store/store";
+import { getSession, useSession } from "next-auth/react";
 import Link from "next/link";
 import { useSelector } from "react-redux";
 
 export default function NavBar() {
 
-    const user = useSelector((state: RootState) => state.user.user);
+    const { data: session } = useSession()
     const profileImageUrl = usePresignedProfileImage()
 
     return (
@@ -43,8 +44,8 @@ export default function NavBar() {
             isActive={false}
           />
         </div>
-        {user ? (
-          <Link href={`/profile/update/${user.username}`}>
+        {session?.user ? (
+          <Link href={`/profile/update/${session.user.username}`}>
             <button className="profile-btn flex items-center gap-2 bg-transparent border-none cursor-pointer">
               <img
                 src={profileImageUrl}
@@ -56,7 +57,7 @@ export default function NavBar() {
         ) : (
           <Link
             href="/signIn"
-            className="no-underline bg-gradient-to-br from-gradient-start to-gradient-end text-white px-4 py-2 rounded-md font-medium text-sm transition-transform-shadow duration-200 ease-in-out shadow-xs hover:-translate-y-0.5 hover:shadow-xl-profile"
+            className="no-underline bg-gradient-to-br from-gradient-start to-gradient-end text-black px-4 py-2 rounded-md font-medium text-sm transition-transform-shadow duration-200 ease-in-out shadow-xs hover:-translate-y-0.5 hover:shadow-xl-profile"
           >
             Log In
           </Link>

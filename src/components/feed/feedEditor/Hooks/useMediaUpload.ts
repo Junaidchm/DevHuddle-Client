@@ -16,7 +16,7 @@ export default function useMediaUpload() {
   const attachmentsRef = useRef<Attachment[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number>();
 
-  const { addMedia, media, setMedia, setTransform, setcurrentMediaId } =
+  const { addMedia } =
     useMedia();
 
   const { startUpload, isUploading } = useUploadThing("attachment", {

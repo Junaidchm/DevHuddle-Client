@@ -12,6 +12,7 @@ import { useState } from "react";
 import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
 import { extractRouterConfig } from "uploadthing/server";
 import { fileRouter } from "../app/api/uploadthing/core";
+import { SessionProvider } from "next-auth/react";
 
 // const queryClient = new QueryClient();
 
@@ -22,10 +23,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <NextSSRPlugin routerConfig={extractRouterConfig(fileRouter)} />
+        <SessionProvider >
         <QueryClientProvider client={queryClient}>
           {children}
           <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>
+        </SessionProvider>
       </PersistGate>
     </Provider>
   );

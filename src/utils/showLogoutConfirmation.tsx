@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { logoutUserAction } from "../store/slices/userSlice";
 import { QueryClient } from "@tanstack/react-query";
+import { signOut } from "next-auth/react";
 
 export default function showLogoutConfirmation(dispatch: AppDispatch, router: ReturnType<typeof useRouter>,url:string) {
 
@@ -22,11 +23,23 @@ export default function showLogoutConfirmation(dispatch: AppDispatch, router: Re
             onClick={async () => {
               toast.dismiss(t.id);
               try {
-                queryClient.clear()
-                await logoutUser();
-                dispatch(logoutUserAction());
-                localStorage.clear()
+                // queryClient.clear()
+                // // await logoutUser();
+                // // dispatch(logoutUserAction());
+                // signOut()
+                // localStorage.clear()
+                // toast.success("Logged out successfully!");
+                // router.push(url);
+                // ✅ logout from NextAuth (cookies cleared)
+                await signOut({ redirect: false });
+
+                // ✅ if you keep custom user data in Redux/localStorage
+                // dispatch(logoutUserAction());
+                localStorage.clear();
+
                 toast.success("Logged out successfully!");
+
+                // ✅ navigate manually
                 router.push(url);
               } catch (err) {
                 toast.error("Logout failed");

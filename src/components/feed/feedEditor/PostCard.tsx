@@ -6,6 +6,7 @@ import DeletePostDialog from "./DeletePostModal";
 import { useSelector } from "react-redux";
 import { RootState } from "@/src/store/store";
 import Image from "next/image";
+import useGetUserData from "@/src/customHooks/useGetUserData";
 
 interface PostProp {
   post: NewPost;
@@ -133,7 +134,6 @@ const ImageCarousel = ({ attachments }: { attachments: Attachment[] }) => {
 };
 
 export default function PostCard({ post, onDeletePost }: PostProp) {
-  console.log("this is the post =====================------------------", post);
 
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -143,7 +143,7 @@ export default function PostCard({ post, onDeletePost }: PostProp) {
   } | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
 
-  const userid = useSelector((state: RootState) => state.user.user?.id);
+  const userid = useGetUserData().id
 
   const handleDeleteClick = () => {
     setShowMenu(false);

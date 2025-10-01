@@ -10,7 +10,6 @@ import DeletePostDialog from "./DeletePostModal";
 import PostsLoadingSkeleton from "./PostsLoadingSkeleton ";
 import { NewPost } from "@/src/app/types/feed";
 
-export const dynamic = "force-dynamic";
 
 export default function FeedContainer() {
   const {

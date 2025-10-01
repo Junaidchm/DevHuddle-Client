@@ -6,17 +6,20 @@ import { useEffect, useState, useRef } from "react";
 import { RootState } from "../store/store";
 import { PROFILE_DEFAULT_URL } from "../constents";
 import { getPresignedUrlForImage } from "../services/api/auth.service";
+import { useSession } from "next-auth/react";
 
 export default function usePresignedProfileImage() {
-  const user = useSelector((state: RootState) => state.user.user);
+  // const user = useSelector((state: RootState) => state.user.user);
+    const { data: session } = useSession();
+    const user = session?.user;
 
   const isProfilePicAvailable =
-    user?.profilePicture && user.profilePicture !== "null" ;
+    user?.image && user.image !== "null" ;
 
   const [profileImageUrl, setProfileImageUrl] = useState(
-    isProfilePicAvailable && user.profilePicture?.startsWith('http') ? user.profilePicture : PROFILE_DEFAULT_URL
+    isProfilePicAvailable && user.image?.startsWith('http') ? user.image : PROFILE_DEFAULT_URL
   );
-
+  
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchSignedUrl = async () => {
@@ -26,7 +29,7 @@ export default function usePresignedProfileImage() {
     }
 
     try {
-      const { url, expiresAt } = await getPresignedUrlForImage(user.profilePicture!);
+      const { url, expiresAt } = await getPresignedUrlForImage(user.image!);
       setProfileImageUrl(url);
 
       if (refreshTimeoutRef.current) {
@@ -50,7 +53,7 @@ export default function usePresignedProfileImage() {
         clearTimeout(refreshTimeoutRef.current);
       }
     };
-  }, [user?.profilePicture]);
+  }, [user?.image]);
 
   return profileImageUrl;
 }
