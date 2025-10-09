@@ -21,7 +21,7 @@ export default async function CommunityFeed({ params }: CommunityFeedProps) {
         <FeedContainer /> 
       </main>
       <aside className="w-[300px] flex-shrink-0 hidden md:block">
-        {/* <Sidebar user={user} contributors={initialFeed.contributors} /> */}
+        <Sidebar />
       </aside>
     </div>
   );

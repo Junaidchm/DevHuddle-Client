@@ -35,8 +35,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           const data = await res.json();
 
-          console.log('this is the data which is fetched from the browser ----------------------------------------->', data)
-
           return {
             id: data.user.id,
             username: data.user.username,

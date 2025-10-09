@@ -36,3 +36,21 @@ export interface JwtPayload {
   exp?: number; 
   [key: string]: any;
 }
+
+export interface FollowerInfo {
+  followers: number;
+  isFollowedByUser: boolean;
+}
+
+export interface Suggestion {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  _count: { followers: number };
+  isFollowedByUser: boolean;
+}
+
+export interface SuggestionsResponse {
+  suggestions: Suggestion[];
+}

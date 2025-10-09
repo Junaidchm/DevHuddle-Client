@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     LOCAL_APIGATEWAY_URL: process.env.LOCAL_APIGATEWAY_URL,
   },
   experimental: {
+    // ppr: 'incremental',
     staleTimes: {
       dynamic: 30,
     },
