@@ -22,12 +22,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
-        <NextSSRPlugin routerConfig={extractRouterConfig(fileRouter)} />
-        <SessionProvider >
-        <QueryClientProvider client={queryClient}>
-          {children}
-          <ReactQueryDevtools initialIsOpen={false} />
-        </QueryClientProvider>
+        <SessionProvider>
+          <NextSSRPlugin routerConfig={extractRouterConfig(fileRouter)} />
+
+          <QueryClientProvider client={queryClient}>
+            {children}
+            <ReactQueryDevtools initialIsOpen={false} />
+          </QueryClientProvider>
         </SessionProvider>
       </PersistGate>
     </Provider>

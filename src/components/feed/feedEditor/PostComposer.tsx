@@ -8,7 +8,7 @@ import dynamic from "next/dynamic";
 import { MediaContext, MediaProvider } from "@/src/contexts/MediaContext";
 import usePresignedProfileImage from "@/src/customHooks/usePresignedProfileImage";
 import { PROFILE_DEFAULT_URL } from "@/src/constents";
-import { getSession } from "next-auth/react";
+
 
 const LazyCreatePostModal = dynamic(() => import("./CreatePostModal"), {
   ssr: false,

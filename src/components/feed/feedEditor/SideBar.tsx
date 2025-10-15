@@ -127,7 +127,7 @@
 //       </div>
 //     </aside>
 //   );
-// }
+// }f
 
 // app/components/Sidebar.tsx
 import React from "react";
@@ -204,7 +204,7 @@ export default async function Sidebar() {
             <div key={user.id} className="flex items-center gap-3">
               <div className="relative">
                 <img
-                  src={user.profilePicture ?? "/default-avatar.png"}
+                  src={`${process.env.NEXT_PUBLIC_IMAGE_PATH}${user.profilePicture}` || "/default-avatar.png"}
                   alt={`${user.name}'s avatar`}
                   className="w-[42px] h-[42px] rounded-full object-cover"
                   aria-label="Contributor avatar"

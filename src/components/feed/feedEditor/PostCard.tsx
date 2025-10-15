@@ -1,16 +1,16 @@
+'use client'
 import { Media, NewPost, Post } from "@/src/app/types/feed";
 import React, { useState, useRef, useEffect } from "react";
 import { PostIntract } from "./PostIntract";
 import { formatRelativeDate } from "@/src/utils/formateRelativeDate";
 import DeletePostDialog from "./DeletePostModal";
-import { useSelector } from "react-redux";
-import { RootState } from "@/src/store/store";
 import Image from "next/image";
 import useGetUserData from "@/src/customHooks/useGetUserData";
 
 interface PostProp {
   post: NewPost;
   onDeletePost?: (postId: string) => void;
+  userid:string
 }
 
 // Attachment interface based on your data structure
@@ -133,7 +133,7 @@ const ImageCarousel = ({ attachments }: { attachments: Attachment[] }) => {
   );
 };
 
-export default function PostCard({ post, onDeletePost }: PostProp) {
+export default function PostCard({ post, onDeletePost,userid }: PostProp) {
 
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -143,7 +143,7 @@ export default function PostCard({ post, onDeletePost }: PostProp) {
   } | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
 
-  const userid = useGetUserData().id
+  // const userid = useGetUserData().id
 
   const handleDeleteClick = () => {
     setShowMenu(false);

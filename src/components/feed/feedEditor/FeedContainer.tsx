@@ -11,7 +11,8 @@ import PostsLoadingSkeleton from "./PostsLoadingSkeleton ";
 import { NewPost } from "@/src/app/types/feed";
 
 
-export default function FeedContainer() {
+
+export default function FeedContainer({userid}:{userid:string}) {
   const {
     data,
     fetchNextPage,
@@ -25,6 +26,8 @@ export default function FeedContainer() {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
+
+   
 
   const posts: NewPost[] = data?.pages.flatMap(
     (page) => page.posts
@@ -56,7 +59,7 @@ export default function FeedContainer() {
       onBottomReached={() => !isLoading && hasNextPage && fetchNextPage()}
     >
       {posts?.map((post) => (
-        <PostCard key={post.id} post={post} />
+        <PostCard userid={userid} key={post.id} post={post} />
       ))}
       {isFetchingNextPage && <Loader2 className="mx-auto my-3 animate-spin" />}
     </InfiniteScorllContainer>
