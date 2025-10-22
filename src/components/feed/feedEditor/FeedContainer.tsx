@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react";
 import DeletePostDialog from "./DeletePostModal";
 import PostsLoadingSkeleton from "./PostsLoadingSkeleton ";
 import { NewPost } from "@/src/app/types/feed";
+import { useSession } from "next-auth/react";
 
 
 
@@ -26,8 +27,9 @@ export default function FeedContainer({userid}:{userid:string}) {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
+  
 
-   
+  const {status:sessionStatus} = useSession()
 
   const posts: NewPost[] = data?.pages.flatMap(
     (page) => page.posts

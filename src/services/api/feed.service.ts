@@ -34,7 +34,7 @@
 //   }
 // };
 
-import axiosInstance from "@/src/axios/axios";
+import { axiosInstance } from "@/src/axios/axios";
 import { authHeaders } from "@/src/utils/getAxioHeader";
 
 

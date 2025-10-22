@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { signIn, useSession } from "next-auth/react";
@@ -32,11 +31,8 @@ type SignInSchema = z.infer<typeof signInSchema>;
 
 export default function SignIn() {
   const router = useRouter();
-  const {status} = useSession()
-  const { update: updateSession } = useSession();
   const dispatch = useDispatch<AppDispatch>();
   const { loading } = useSelector((state: RootState) => state.user);
-  
 
   useRedirectIfAuthenticated();
 
@@ -63,7 +59,7 @@ export default function SignIn() {
     try {
       // Use NextAuth signIn
       const result = (await signIn("credentials", {
-        redirect: false, // We handle redirect manually
+        redirect: false, 
         email: data.email,
         password: data.password,
       })) as { error?: string };
@@ -71,13 +67,10 @@ export default function SignIn() {
       if (result?.error) {
         toast.error(result.error || "Login failed");
       } else {
-
-           // Update the session after successful login
-          await updateSession();
-
         toast.success("Login successful", { position: "bottom-center" });
-
-        router.push("/"); // Redirect after successful login
+        // router.push("/"); // Redirect after successful login
+        window.location.href = "/"
+      
       }
     } catch (error: any) {
       const errorMessage =

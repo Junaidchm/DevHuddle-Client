@@ -24,7 +24,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <PersistGate loading={null} persistor={persistor}>
         <SessionProvider>
           <NextSSRPlugin routerConfig={extractRouterConfig(fileRouter)} />
-
           <QueryClientProvider client={queryClient}>
             {children}
             <ReactQueryDevtools initialIsOpen={false} />

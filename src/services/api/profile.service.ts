@@ -1,41 +1,56 @@
 
 // app/services/api.ts
+import { api } from '@/src/app/lib/ky';
 import { FollowerInfo } from '@/src/app/types';
-import axiosInstance from '@/src/axios/axios';
-import { authHeaders } from '@/src/utils/getAxioHeader';
-
-// const API_URL = process.env.LOCAL_APIGATEWAY_URL as string;
 
 
 export const fetchProfile = async (username: string) => {
-  const headers = await authHeaders();;
-  const response = await axiosInstance.get(`auth/user_profile/${username}`,{headers});
-  console.log('this is the response coming from:', response);
-  return response.data;
+  try {
+    const response = await api.get(`auth/user_profile/${username}`).json();
+    console.log('this is the response coming from:', response);
+    return response;
+  } catch (error: any) {
+    if (error.message === 'UNAUTHORIZED') {
+      throw { status: 401, message: 'Unauthorized' };
+    }
+    throw error;
+  }
 };
 
-export const getFollowerInfo = async (userId: string):Promise<FollowerInfo> => {
-  const headers = await authHeaders();
-  const response = await axiosInstance.get(`auth/${userId}/followers`, { headers });
-  return response.data;
+export const getFollowerInfo = async (userId: string): Promise<FollowerInfo> => {
+  try {
+    const response = await api.get(`auth/${userId}/followers`).json<FollowerInfo>();
+    return response;
+  } catch (error: any) {
+    if (error.message === 'UNAUTHORIZED') {
+      throw { status: 401, message: 'Unauthorized' };
+    }
+    throw error;
+  }
 };
 
 export const fetchFollowing = async (username: string) => {
-  const headers = await authHeaders();
-  const response = await axiosInstance.get(`/following/${username}`, { headers });
-  return response.data;
+  try {
+    const response = await api.get(`following/${username}`).json();
+    return response;
+  } catch (error: any) {
+    if (error.message === 'UNAUTHORIZED') {
+      throw { status: 401, message: 'Unauthorized' };
+    }
+    throw error;
+  }
 };
 
-export const followUser = async (targetUserId: string) => {
-  const headers = await authHeaders();
-  await axiosInstance.post('/follow', { targetUserId }, { headers });
-};
+
 
 export const unfollowUser = async (targetUserId: string) => {
-  const headers = await authHeaders();
-  await axiosInstance.delete('/unfollow', {
-    headers,
-    data: { targetUserId },
-  });
+  try {
+    await api.delete('unfollow', { json: { targetUserId } });
+  } catch (error: any) {
+    if (error.message === 'UNAUTHORIZED') {
+      throw { status: 401, message: 'Unauthorized' };
+    }
+    throw error;
+  }
 };
 

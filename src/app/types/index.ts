@@ -54,3 +54,18 @@ export interface Suggestion {
 export interface SuggestionsResponse {
   suggestions: Suggestion[];
 }
+
+
+
+
+// follows 
+
+export interface SuggestedFollower {
+  id: string;
+  username: string;
+  name: string;
+  profilePicture: string | null;
+  _count: {
+    followers: number;
+  };
+}

@@ -16,7 +16,6 @@ export default async function CommunityFeed({ params }: CommunityFeedProps) {
   let { userId } = params;
 
   const session = await auth();
-  console.log('this is the auth data ------------>' , session)
 
   return (
     <div className="max-w-6xl mx-auto my-8 px-[5%] flex gap-8 flex-wrap">

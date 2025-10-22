@@ -1,7 +1,7 @@
 "use client";
 
 import { InputField, PrimaryButton } from "@/src/components/layouts/auth";
-import { PsswordRestRequest } from "@/src/services/api/auth.service";
+import { passwordResetRequest } from "@/src/services/api/auth.service";
 import { AppDispatch } from "@/src/store/store";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
@@ -32,7 +32,7 @@ export default function ForgotPassword() {
 
   const onSubmit = async (data: ForgotSchema) => {
     try {
-      await PsswordRestRequest(data)
+      await passwordResetRequest(data)
       toast.success("Reset mail send you your mail", {
         position: "bottom-center",
       });

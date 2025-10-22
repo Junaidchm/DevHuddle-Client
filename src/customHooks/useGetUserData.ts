@@ -24,16 +24,16 @@ import { useSession } from "next-auth/react";
 
 export default function useGetUserData() {
   const { data: session, status } = useSession();
-
+  
+  // Don't throw error while loading
   if (status === "loading") {
-    return null; // or return { loading: true }
+    return null; // or return loading state
+  }
+  
+  // Only throw error if explicitly unauthenticated
+  if (status === "unauthenticated" || !session?.user) {
+    throw new Error("There is no user found");
   }
 
-  if (status === "unauthenticated") {
-    return null;
-  }
-
-  return session?.user ?? null;
+  return session.user;
 }
-
-
