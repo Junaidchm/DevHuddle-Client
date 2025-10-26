@@ -10,7 +10,7 @@ import { getSuggestedUsersWithFollowerInfo } from "@/src/app/actions/follow";
 export default function SidebarClient() {
   const data = useQuery({
     queryKey: ["suggestions"],
-    queryFn: ()=> getSuggestedUsersWithFollowerInfo(), // Client-side API call
+    queryFn: ()=> getSuggestedUsersWithFollowerInfo(), 
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
     refetchOnMount: true,
@@ -70,6 +70,7 @@ export default function SidebarClient() {
               <div className="flex-shrink-0">
                 <FollowButtonText
                   userId={user.id}
+                  buttonType="suggestion"
                   initialData={{
                     followers: user._count.followers,
                     isFollowedByUser: false,

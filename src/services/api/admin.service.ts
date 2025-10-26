@@ -1,4 +1,5 @@
-import axiosInstance from "@/src/axios/axios";
+import { axiosInstance } from "@/src/axios/axios";
+
 
 export const getAllUsers = async ({
   page = 1,

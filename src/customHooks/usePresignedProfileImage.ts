@@ -1,17 +1,21 @@
-
 "use client";
 
-import { useSelector } from "react-redux";
 import { useEffect, useState, useRef } from "react";
-import { RootState } from "../store/store";
 import { PROFILE_DEFAULT_URL } from "../constents";
 import { getPresignedUrlForImage } from "../services/api/auth.service";
 import { useSession } from "next-auth/react";
+import { useAuthHeaders } from "../hooks/useAuthHeaders";
 
+/**
+ * ✅ FIXED: usePresignedProfileImage hook
+ * 
+ * Now properly uses useAuthHeaders() hook to get auth headers
+ * and passes them to service functions
+ */
 export default function usePresignedProfileImage() {
-  // const user = useSelector((state: RootState) => state.user.user);
-    const { data: session } = useSession();
-    const user = session?.user;
+  const { data: session } = useSession();
+  const user = session?.user;
+  const authHeaders = useAuthHeaders();
 
   const isProfilePicAvailable =
     user?.image && user.image !== "null" ;
@@ -23,13 +27,13 @@ export default function usePresignedProfileImage() {
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchSignedUrl = async () => {
-    if (!isProfilePicAvailable) {
+    if (!isProfilePicAvailable || !authHeaders.Authorization) {
       setProfileImageUrl(PROFILE_DEFAULT_URL);
       return;
     }
 
     try {
-      const { url, expiresAt } = await getPresignedUrlForImage(user.image!);
+      const { url, expiresAt } = await getPresignedUrlForImage(user.image!, authHeaders);
       setProfileImageUrl(url);
 
       if (refreshTimeoutRef.current) {
@@ -53,7 +57,7 @@ export default function usePresignedProfileImage() {
         clearTimeout(refreshTimeoutRef.current);
       }
     };
-  }, [user?.image]);
+  }, [user?.image, authHeaders.Authorization]);
 
   return profileImageUrl;
 }

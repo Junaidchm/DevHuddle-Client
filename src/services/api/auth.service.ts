@@ -180,27 +180,30 @@ export const resetPassword = async (data: ResetPasswordPayload) => {
 
 // ----------------- Protected APIs -----------------
 
-export const getUser = async () => {
-  const headers = await authHeaders();
+/**
+ * ✅ FIXED: Auth service
+ * 
+ * All protected API calls now accept headers as parameters.
+ * Components should pass auth headers from useAuthHeaders() hook.
+ */
+
+export const getUser = async (headers: Record<string, string>) => {
   const response = await axiosInstance.get("/auth/me", { headers });
   return response;
 };
 
-export const getProfile = async () => {
-  const headers = await authHeaders();
+export const getProfile = async (headers: Record<string, string>) => {
   const response = await axiosInstance.get("/auth/profile", { headers });
   return response;
 };
 
-export const updateProfile = async (payload: userUpdate) => {
-  const headers = await authHeaders();
+export const updateProfile = async (payload: userUpdate, headers: Record<string, string>) => {
   const response = await axiosInstance.patch("/auth/profile", payload, { headers });
   return response.data;
 };
 
-export const getPresignedUrlForImage = async (key: string) => {
+export const getPresignedUrlForImage = async (key: string, headers: Record<string, string>) => {
   try {
-    const headers = await authHeaders();
     const response = await axiosInstance.post(
       "/auth/generate-presigned-url",
       { operation: "GET", key },
@@ -212,9 +215,8 @@ export const getPresignedUrlForImage = async (key: string) => {
   }
 };
 
-export const uploadToS3 = async (file: File) => {
+export const uploadToS3 = async (file: File, headers: Record<string, string>) => {
   try {
-    const headers = await authHeaders();
     // Step 1: Get the presigned URL from your backend
     const response = await axiosInstance.post(
       "/auth/generate-presigned-url",
@@ -243,14 +245,12 @@ export const uploadToS3 = async (file: File) => {
   }
 };
 
-export const logoutUser = async () => {
-  const headers = await authHeaders();
+export const logoutUser = async (headers: Record<string, string>) => {
   const response = await axiosInstance.post("/auth/logout", {}, { headers });
   return response;
 };
 
-export const validateAccessRefresh = async () => {
-  const headers = await authHeaders();
+export const validateAccessRefresh = async (headers: Record<string, string>) => {
   const response = await axiosInstance.post("/auth/me", {}, { headers });
   return response;
 };

@@ -1,164 +1,12 @@
-// import { useSession } from "next-auth/react";
-// import { FollowerInfo, SuggestedFollower } from "../app/types";
-// import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-// import { getFollowerInfo } from "../services/api/profile.service";
-// import { followUser } from "../services/api/follow.service";
-// import toast from "react-hot-toast";
-// import { useRouter } from "next/navigation";
-// import {  useRef, useState } from "react";
-// import { current } from "@reduxjs/toolkit";
-
-// type FollowButtonToogleType = "suggession" | "profile";
-
-// interface UseFollowerInfoOptions {
-//   userId: string;
-//   initialData?: FollowerInfo;
-//   buttonType?: FollowButtonToogleType;
-// }
-
-// export function useFollowerInfo({
-//   userId,
-//   initialData,
-//   buttonType,
-// }: UseFollowerInfoOptions): {
-//   toogleFollow: (toogleType: FollowButtonToogleType) => void;
-//   isFollowing: boolean;
-//   isPending: boolean;
-// } {
-//   const { data: session } = useSession();
-//   const router = useRouter();
-//   const queryClient = useQueryClient();
-
-//   // foollowed unfollowed
-//   const isFollowed = useRef(false);
-
-//   const query = useQuery({
-//     queryKey: ["follower-info", userId],
-//     queryFn: () => getFollowerInfo(userId),
-//     initialData,
-//     staleTime: Infinity,
-//     retry: (failureCount, error: any) => {
-//       if (error?.status === 401) return false;
-//       return failureCount < 2;
-//     },
-//     enabled: !!session?.user?.accessToken,
-//   });
-
-//   const followMutation = useMutation({
-//     mutationFn: () => followUser(userId),
-//     onMutate: async () => {
-//       if (buttonType === "profile") {
-//         await queryClient.cancelQueries({
-//           queryKey: ["follower-info", userId],
-//         });
-
-//         // Snapshot previous value
-//         const previousData = queryClient.getQueryData<FollowerInfo>([
-//           "follower-info",
-//           userId,
-//         ]);
-
-//         // Optimistically update
-//         queryClient.setQueryData<FollowerInfo>(
-//           ["follower-info", userId],
-//           (old) => {
-//             if (!old) return old;
-//             return {
-//               ...old,
-//               followers: old.followers + 1,
-//               isFollowedByUser: true,
-//             };
-//           }
-//         );
-
-//         return { previousData };
-//       }
-//       if (buttonType === "suggession") {
-//         await queryClient.cancelQueries({ queryKey: ["suggestions"] });
-//         const previousData = queryClient.getQueryData<{ suggestions: SuggestedFollower[] }>(["suggestions"]);
-//         queryClient.setQueryData(
-//           ["suggestions"],
-//           (old: SuggestedFollower[]) => {
-//             if (!old?.) return old;
-//             return old.map()
-//           }
-//         );
-//         isFollowed.current = true;
-//       }
-//     },
-//     onError: (error: any, variables, context) => {
-//       if (context?.previousData) {
-//         queryClient.setQueryData(
-//           ["follower-info", userId],
-//           context.previousData
-//         );
-//       }
-
-//       isFollowed.current = false;
-
-//       // Handle specific error cases
-//       if (error?.status === 401) {
-//         toast.error("Please sign in to follow users");
-//         router.push("/signIn");
-//       } else if (error?.status === 403) {
-//         toast.error("You cannot follow this user");
-//       } else {
-//         toast.error("Failed to follow user. Please try again.");
-//       }
-//     },
-//     onSuccess: () => {
-//       toast.success("Successfully followed user!");
-//       isFollowed.current = true;
-//       // Invalidate related queries
-//       // queryClient.invalidateQueries({ queryKey: ["follower-info", userId] });
-//       queryClient.invalidateQueries({ queryKey: ["suggestions"] });
-//     },
-//   });
-
-//   const unfollowMutation = useMutation({});
-
-//   const toogleFollow = (toogleType: FollowButtonToogleType) => {
-//     if (!session?.user?.accessToken) {
-//       toast.error("Please sign in to follow users");
-//       router.push("/signIn");
-//       return;
-//     }
-//     if (toogleType === "profile") {
-//       if (query.data?.isFollowedByUser) {
-//         unfollowMutation.mutate();
-//       } else {
-//         followMutation.mutate();
-//       }
-//     }
-//     if (toogleType === "suggession") {
-//       if (isFollowed.current) {
-//         unfollowMutation.mutate();
-//       } else {
-//         followMutation.mutate();
-//       }
-//     }
-//   };
-
-//   return {
-//     // Actions
-//     toogleFollow,
-//     isFollowing:
-//       buttonType === "profile"
-//         ? query.data?.isFollowedByUser ?? false
-//         : isFollowed.current,
-//     // Loading states
-//     isPending: followMutation.isPending || unfollowMutation.isPending,
-//   };
-// }
-
 import { useSession } from "next-auth/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useRef } from "react";
-import { followUser, unfollowUser } from "../services/api/follow.service";
-import { getFollowerInfo } from "../services/api/profile.service";
+import { followUser, getFollowerInfo, unfollowUser } from "../services/api/follow.service";
 import type { FollowerInfo, SuggestedFollower } from "../app/types";
+import { followUserAction } from "../app/actions/follow";
+import { useAuthHeaders } from "../hooks/useAuthHeaders";
 
 type FollowButtonToggleType = "suggestion" | "profile";
 
@@ -174,16 +22,17 @@ export function useFollowerInfo({
   buttonType = "profile",
 }: UseFollowerInfoOptions) {
   const { data: session } = useSession();
+  const authHeaders = useAuthHeaders();
   const router = useRouter();
   const queryClient = useQueryClient();
   const isFollowed = useRef(initialData?.isFollowedByUser ?? false);
-  const actionBeingPerformed = useRef<'follow' | 'unfollow' | null>(null);
+  const actionBeingPerformed = useRef<"follow" | "unfollow" | null>(null);
 
   const query = useQuery({
     queryKey: ["follower-info", userId],
-    queryFn: () => getFollowerInfo(userId),
+    queryFn: () => getFollowerInfo(userId, authHeaders),
     initialData,
-    staleTime: Infinity,
+    staleTime: 5 * 60 * 1000, // Stale after 5 minutes
     enabled: !!session?.user?.accessToken,
   });
 
@@ -194,23 +43,19 @@ export function useFollowerInfo({
   };
 
   const followMutation = useMutation({
-    mutationFn: () => followUser(userId),
+    mutationFn: () => followUser(userId, authHeaders),
     onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ["follower-info", userId] });
-      await queryClient.cancelQueries({ queryKey: ["suggestions"] });
-
-      console.log("the following mutation is working without error ===");
-      actionBeingPerformed.current = 'follow';
-
-      const prevFollowerInfo = queryClient.getQueryData<FollowerInfo>([
-        "follower-info",
-        userId,
-      ]);
-      const prevSuggestions = queryClient.getQueryData<{
-        suggestions: SuggestedFollower[];
-      }>(["suggestions"]);
+      actionBeingPerformed.current = "follow";
 
       if (buttonType === "profile") {
+        await queryClient.cancelQueries({
+          queryKey: ["follower-info", userId],
+        });
+        const prevFollowerInfo = queryClient.getQueryData<FollowerInfo>([
+          "follower-info",
+          userId,
+        ]);
+
         queryClient.setQueryData<FollowerInfo>(
           ["follower-info", userId],
           (old) => {
@@ -222,7 +67,15 @@ export function useFollowerInfo({
             };
           }
         );
+
+        return { prevFollowerInfo };
       }
+
+      await queryClient.cancelQueries({ queryKey: ["suggestions"] });
+
+      const prevSuggestions = queryClient.getQueryData<{
+        suggestions: SuggestedFollower[];
+      }>(["suggestions"]);
 
       queryClient.setQueryData<{ suggestions: SuggestedFollower[] }>(
         ["suggestions"],
@@ -244,7 +97,7 @@ export function useFollowerInfo({
       );
 
       // Don't set isFollowed.current here - let the UI handle the optimistic update
-      return { prevFollowerInfo, prevSuggestions };
+      return { prevSuggestions };
     },
     onError: (error: any, _, context) => {
       if (context?.prevFollowerInfo) {
@@ -261,21 +114,60 @@ export function useFollowerInfo({
       if (error?.status === 401) requireLogin();
       else toast.error("Failed to follow user. Please try again.");
     },
-    onSuccess: () => {
+    onSuccess: (serverdata: any) => {
       toast.success("Followed successfully!");
       isFollowed.current = true;
       actionBeingPerformed.current = null;
+
+      if (buttonType === "profile" && serverdata.success && serverdata.data) {
+        queryClient.setQueryData<FollowerInfo>(
+          ["follower-info", userId],
+          (old) => {
+            return {
+              ...old,
+              followers: serverdata.data.followers,
+              isFollowedByUser: serverdata.data.isFollowedByUser,
+            };
+          }
+        );
+      }
+
+      if (
+        buttonType === "suggestion" &&
+        serverdata.success &&
+        serverdata.data
+      ) {
+        queryClient.setQueryData<{ suggestions: SuggestedFollower[] }>(
+          ["suggestions"],
+          (old) => {
+            if (!old?.suggestions) return old;
+            return {
+              ...old,
+              suggestions: old.suggestions.map((user) =>
+                user.id === userId
+                  ? {
+                      ...user,
+                      _count: { followers: serverdata.data.followingCount },
+                      isFollowedByUser: true,
+                    }
+                  : user
+              ),
+            };
+          }
+        );
+      }
+
       // queryClient.invalidateQueries({ queryKey: ["suggestions"] });
     },
   });
 
   const unfollowMutation = useMutation({
-    mutationFn: () => unfollowUser(userId),
+    mutationFn: () => unfollowUser(userId, authHeaders),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ["follower-info", userId] });
       await queryClient.cancelQueries({ queryKey: ["suggestions"] });
 
-      actionBeingPerformed.current = 'unfollow';
+      actionBeingPerformed.current = "unfollow";
 
       const prevFollowerInfo = queryClient.getQueryData<FollowerInfo>([
         "follower-info",
@@ -346,19 +238,6 @@ export function useFollowerInfo({
     },
   });
 
-  // const toggleFollow = () => {
-  //   if (!session?.user?.accessToken) return requireLogin();
-
-  //   if(buttonType === "profile") {
-
-  //   }
-
-  //   // const currentFollowState =
-  //   //   buttonType === "profile" ? query.data?.isFollowedByUser : isFollowed.current;
-
-  //   // if (currentFollowState) unfollowMutation.mutate();
-  //   // else followMutation.mutate();
-  // };
 
   const toogleFollow = (toogleType: FollowButtonToggleType) => {
     if (!session?.user?.accessToken) {
@@ -381,9 +260,10 @@ export function useFollowerInfo({
   };
 
   // For suggestions, we need to track the current action being performed
-  const isCurrentlyFollowing = buttonType === "profile" 
-    ? query.data?.isFollowedByUser ?? false
-    : isFollowed.current;
+  const isCurrentlyFollowing =
+    buttonType === "profile"
+      ? query.data?.isFollowedByUser ?? false
+      : isFollowed.current;
 
   return {
     toogleFollow,

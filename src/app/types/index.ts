@@ -69,3 +69,31 @@ export interface SuggestedFollower {
     followers: number;
   };
 }
+
+
+
+// Types based on backend NotificationObject schema
+export interface Notification {
+  id: string;
+  type:
+    | "FOLLOW"
+    | "MENTION"
+    | "COMMENT"
+    | "LIKE"
+    | "COLLAB"
+    | "EVENT"
+    | "MESSAGE"
+    | "SUPPORT";
+  entityId: string;
+  summary: {
+    text: string;
+    actors: string[];
+    count: number;
+  };
+  createdAt: string;
+  readAt?: string | null;
+}
+
+export interface UnreadCountResponse {
+  unreadCount: number;
+}

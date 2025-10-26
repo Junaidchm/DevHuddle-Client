@@ -1,15 +1,19 @@
 "use server";
 
-import { getSession } from "@/src/app/lib/auth";
-import { cookies } from "next/headers";
+import { auth } from "@/auth";
 
 const API_URL = process.env.API_URL || "http://localhost:8000";
 
+/**
+ * ✅ FIXED: Server action for getting access and refresh tokens
+ * 
+ * Now uses proper NextAuth auth() function instead of non-existent getSession
+ */
 export async function get_access_refresh(): Promise<{
   access_token: string;
   refresh_token: string;
 }> {
-  const session = await getSession();
+  const session = await auth();
 
   console.log("this is the session details -------------------------", session);
   if (session.needsRefresh) {

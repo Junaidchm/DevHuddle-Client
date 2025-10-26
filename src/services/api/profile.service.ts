@@ -17,17 +17,7 @@ export const fetchProfile = async (username: string) => {
   }
 };
 
-export const getFollowerInfo = async (userId: string): Promise<FollowerInfo> => {
-  try {
-    const response = await api.get(`auth/${userId}/followers`).json<FollowerInfo>();
-    return response;
-  } catch (error: any) {
-    if (error.message === 'UNAUTHORIZED') {
-      throw { status: 401, message: 'Unauthorized' };
-    }
-    throw error;
-  }
-};
+;
 
 export const fetchFollowing = async (username: string) => {
   try {

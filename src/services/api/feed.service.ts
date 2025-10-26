@@ -35,13 +35,15 @@
 // };
 
 import { axiosInstance } from "@/src/axios/axios";
-import { authHeaders } from "@/src/utils/getAxioHeader";
 
+/**
+ * ✅ FIXED: Feed service
+ * 
+ * Protected API calls now accept headers as parameters.
+ */
 
-export const fetchFeed = async (cursor: string | null) => {
+export const fetchFeed = async (cursor: string | null, headers: Record<string, string>) => {
   try {
-    const headers = await authHeaders();
-
     const res = await axiosInstance.get("feed/list", {
       params: { cursor },
       headers,
@@ -58,13 +60,11 @@ export const fetchFeed = async (cursor: string | null) => {
   }
 };
 
-export const uploadMedia = async (data: {
-  url: string;
-  type: "IMAGE" | "VIDEO";
-}) => {
+export const uploadMedia = async (
+  data: { url: string; type: "IMAGE" | "VIDEO" },
+  headers: Record<string, string>
+) => {
   try {
-    const headers = await authHeaders();
-
     const res = await axiosInstance.post("feed/media", data, {
       headers,
     });

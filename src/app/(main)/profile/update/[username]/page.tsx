@@ -33,8 +33,11 @@ import { useProtected } from "@/src/customHooks/useProtected";
 import showLogoutConfirmation from "@/src/utils/showLogoutConfirmation";
 import { userUpdate } from "@/src/types/auth";
 import usePresignedProfileImage from "@/src/customHooks/usePresignedProfileImage";
+import { useAuthHeaders } from "@/src/hooks/useAuthHeaders";
 
 export default function ProfilePage() {
+  const authHeaders = useAuthHeaders();
+
   // useRedirectIfNotAuthenticated();
   // useProtected();
   const profileImageUrl = usePresignedProfileImage();
@@ -50,7 +53,7 @@ export default function ProfilePage() {
   } = useQuery({
     queryFn: async () => {
       try {
-        const res = await getProfile();
+        const res = await getProfile(authHeaders);
         return res.data;
       } catch (err: any) {
         throw new Error("Could not load profile data");
@@ -124,12 +127,12 @@ export default function ProfilePage() {
       };
       let profilePictureKey: string | undefined;
       if (data.profileImage instanceof File) {
-        profilePictureKey = await uploadToS3(data.profileImage);
+        profilePictureKey = await uploadToS3(data.profileImage,authHeaders);
         payload.profilePicture = profilePictureKey;
       }
      
       console.log('this is the profile picuture key')
-      await updateProfile(payload);
+      await updateProfile(payload,authHeaders);
       if (profilePictureKey) {
         dispatch(setProfilePicture(profilePictureKey));
       }

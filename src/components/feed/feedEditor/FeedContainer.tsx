@@ -1,19 +1,24 @@
 "use client";
 
-import React, { useRef, useCallback } from "react";
+import React from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import PostCard from "./PostCard";
 import { fetchFeed } from "@/src/services/api/feed.service";
 import InfiniteScorllContainer from "../../layouts/InfiniteScrollContainer";
 import { Loader2 } from "lucide-react";
-import DeletePostDialog from "./DeletePostModal";
 import PostsLoadingSkeleton from "./PostsLoadingSkeleton ";
 import { NewPost } from "@/src/app/types/feed";
-import { useSession } from "next-auth/react";
+import { useAuthHeaders } from "@/src/hooks/useAuthHeaders";
 
-
-
+/**
+ * ✅ FIXED: FeedContainer using proper auth pattern
+ * 
+ * Now using useAuthHeaders() hook to get auth headers
+ * and passing them to fetchFeed service function
+ */
 export default function FeedContainer({userid}:{userid:string}) {
+  const authHeaders = useAuthHeaders();
+  
   const {
     data,
     fetchNextPage,
@@ -23,13 +28,11 @@ export default function FeedContainer({userid}:{userid:string}) {
     status,
   } = useInfiniteQuery({
     queryKey: ["post-feed", "for-you"],
-    queryFn: ({ pageParam }) => fetchFeed(pageParam),
+    queryFn: ({ pageParam }) => fetchFeed(pageParam, authHeaders as Record<string, string>),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled: !!authHeaders.Authorization, // Only fetch when authenticated
   });
-  
-
-  const {status:sessionStatus} = useSession()
 
   const posts: NewPost[] = data?.pages.flatMap(
     (page) => page.posts

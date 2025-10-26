@@ -22,7 +22,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
-        <SessionProvider>
+        <SessionProvider
+          refetchInterval={5 * 60} // Refetch session every 5 minutes (only if page is active)
+          refetchOnWindowFocus={false} // Don't refetch on every tab focus
+          refetchWhenOffline={false} // Don't refetch when offline
+        >
           <NextSSRPlugin routerConfig={extractRouterConfig(fileRouter)} />
           <QueryClientProvider client={queryClient}>
             {children}

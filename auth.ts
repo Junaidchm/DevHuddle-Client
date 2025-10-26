@@ -82,8 +82,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       // Otherwise refresh
       try {
-
-        console.log('this is the refresh token -------------------------------------->','this is the token-->' , token , token.refreshToken)
         const res = await fetch(
           `${process.env.LOCAL_APIGATEWAY_URL}/auth/refresh`,
           {
