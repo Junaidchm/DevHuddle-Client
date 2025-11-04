@@ -9,9 +9,10 @@ import Pagination from './Pagination';
 interface FollowersSectionProps {
   username: string;
   currentUserId?: string;
+  initialProfile: any;
 }
 
-const FollowersSection = ({ username, currentUserId }: FollowersSectionProps) => {
+const FollowersSection = ({ username, currentUserId, initialProfile }: FollowersSectionProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [view, setView] = useState<'followers' | 'following'>('followers');
 
@@ -24,11 +25,11 @@ const FollowersSection = ({ username, currentUserId }: FollowersSectionProps) =>
     <section id="followers">
       <FollowersHeader onSearch={handleSearch} view={view} setView={setView} />
       <NetworkStats
-        followers="843"
-        following="128"
+        followers={initialProfile?._count?.followers.toString() || '0'}
+        following={initialProfile?._count?.following.toString() || '0'}
         topDomain="Frontend"
-        followerChange="24"
-        followingChange="7"
+        followerChange="0" // Placeholder
+        followingChange="0" // Placeholder
         domainPercentage="65"
       />
       <FollowerList username={username} currentUserId={currentUserId} view={view} />

@@ -33,7 +33,7 @@ import { useProtected } from "@/src/customHooks/useProtected";
 import showLogoutConfirmation from "@/src/utils/showLogoutConfirmation";
 import { userUpdate } from "@/src/types/auth";
 import usePresignedProfileImage from "@/src/customHooks/usePresignedProfileImage";
-import { useAuthHeaders } from "@/src/hooks/useAuthHeaders";
+import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 
 export default function ProfilePage() {
   const authHeaders = useAuthHeaders();
@@ -131,7 +131,7 @@ export default function ProfilePage() {
         payload.profilePicture = profilePictureKey;
       }
      
-      console.log('this is the profile picuture key')
+      console.log('this is the profile picuture key' , profilePictureKey)
       await updateProfile(payload,authHeaders);
       if (profilePictureKey) {
         dispatch(setProfilePicture(profilePictureKey));

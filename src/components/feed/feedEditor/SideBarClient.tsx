@@ -1,16 +1,14 @@
 // app/components/SidebarClient.tsx
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { FollowButtonText } from "@/src/components/FollowButton";
+import { FollowButton } from "@/src/components/FollowButton";
 import { SuggestedFollower } from "@/src/app/types";
 import { getSuggestedUsersWithFollowerInfo } from "@/src/app/actions/follow";
 
-
-
-export default function SidebarClient() {
+export default function SidebarClient({id}: { id: string }) {
   const data = useQuery({
-    queryKey: ["suggestions"],
-    queryFn: ()=> getSuggestedUsersWithFollowerInfo(), 
+    queryKey: ["suggestions", id],
+    queryFn: () => getSuggestedUsersWithFollowerInfo(),
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
     refetchOnMount: true,
@@ -18,12 +16,7 @@ export default function SidebarClient() {
 
   // Assume the data is already the array of users to follow
   const usersToFollow: SuggestedFollower[] | [] = data?.data?.suggestions ?? [];
-  console.log(
-    "this is the suggested data ---------------->",
-    usersToFollow,
-    usersToFollow.length
-  );
-
+  
   if (!usersToFollow.length) {
     return (
       <div className="space-y-5 rounded-2xl bg-card p-5 shadow-sm">
@@ -36,7 +29,7 @@ export default function SidebarClient() {
   }
 
   return (
-    <aside className="w-[300px] flex-shrink-0">
+    <aside className="w-[350px] flex-shrink-0">
       <div className="bg-white rounded-xl p-6 mb-6 border border-slate-200 shadow-sm">
         <h3 className="m-0 mb-4 text-lg font-semibold text-text-main flex items-center gap-2">
           {/* SVG icon here */}
@@ -47,7 +40,10 @@ export default function SidebarClient() {
             <div key={user.id} className="flex items-center gap-3">
               <div className="relative">
                 <img
-                  src={`${process.env.NEXT_PUBLIC_IMAGE_PATH}${user.profilePicture}` || "/default-avatar.png"}
+                  src={
+                    `${process.env.NEXT_PUBLIC_IMAGE_PATH}${user.profilePicture}` ||
+                    "/default-avatar.png"
+                  }
                   alt={`${user.name}'s avatar`}
                   className="w-[42px] h-[42px] rounded-full object-cover"
                   aria-label="Contributor avatar"
@@ -63,18 +59,25 @@ export default function SidebarClient() {
                 <div className="text-xs text-text-light flex items-center gap-1">
                   <span className="w-1 h-1 bg-slate-300 rounded-full" />
                   <span className="text-xs text-text-light">
-                    {user._count.followers} followers
+                    {user.followersCount} followers
                   </span>
                 </div>
               </div>
               <div className="flex-shrink-0">
-                <FollowButtonText
+                {/* <FollowButtonText
                   userId={user.id}
                   buttonType="suggestion"
                   initialData={{
                     followers: user._count.followers,
                     isFollowedByUser: false,
                   }}
+                /> */}
+                <FollowButton
+                  userId={user.id}
+                  context="suggestion"
+                  initialFollowerCount={user.followersCount}
+                  initialIsFollowing={user.isFollowedByUser}
+                  size="sm"
                 />
               </div>
             </div>

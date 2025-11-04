@@ -36,6 +36,6 @@ export function useAuthHeaders(): Record<string, string> {
     }
     return {
       Authorization: `Bearer ${session.user.accessToken}`,
-    };
+    } as { Authorization: string };
   }, [session?.user?.accessToken]);
 }

@@ -11,6 +11,8 @@ export const followUser = async (
   headers: Record<string, string>
 ) => {
   try {
+
+    console.log('the request is comming here ---------------------------------', targetUserId, headers)
     const result = await axiosInstance.post(
       "users/follows/follow",
       { targetUserId },
@@ -33,6 +35,8 @@ export const unfollowUser = async (
   headers: Record<string, string>
 ) => {
   try {
+
+    console.log('the request is comming here ---------------------------------', targetUserId, headers)
     await axiosInstance.post("users/follows/unfollow", { targetUserId }, { headers });
   } catch (error: any) {
     if (error.message === "UNAUTHORIZED") {

@@ -28,7 +28,10 @@ const userSlice = createSlice({
       state.error = null;
     },
     setProfilePicture: (state, {payload}) => {
+
+      console.log("set Profile dispatch is working without any problem ==========================>");
       if (state.user) {
+        console.log('this is the payload for profile image =================>' , payload)
         state.user.profilePicture = payload;
       }
     },

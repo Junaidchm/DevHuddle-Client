@@ -21,6 +21,7 @@
 
 "use client";
 import { useSession } from "next-auth/react";
+import React, { useMemo } from "react";
 
 export default function useGetUserData() {
   const { data: session, status } = useSession();
@@ -35,5 +36,7 @@ export default function useGetUserData() {
     throw new Error("There is no user found");
   }
 
-  return session.user;
+  return useMemo(()=> {
+    return session.user;
+  }, [session.user]);
 }

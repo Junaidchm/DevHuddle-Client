@@ -1,44 +1,92 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { getNotifications, getUnreadCount } from "../services/api/notification.service";
-import { Notification, UnreadCountResponse } from "../app/types";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
-import { useAuthHeaders } from "../hooks/useAuthHeaders";
+import { useAuthHeaders } from "./useAuthHeaders";
+import {
+  deleteNotification,
+  getNotificationsPage,
+  getUnreadCount,
+  markAllAsRead,
+  markAsRead,
+} from "../services/api/notification.service";
+import { GetNotificationsResult } from "../app/types";
 
-/**
- * ✅ FIXED: Custom hook to fetch notifications for the current user.
- *
- * This hook now correctly uses `useSession` to get the user's ID and
- * `useAuthHeaders` to get the authentication headers, passing them
- * explicitly to the `getNotifications` service function.
- */
-export function useNotifications() {
+const PAGE_SIZE = 20;
+
+export function useNotificationsInfinite() {
   const { data: session } = useSession();
   const authHeaders = useAuthHeaders();
   const userId = session?.user?.id;
 
-  return useQuery<Notification[], Error>({
+  return useInfiniteQuery<GetNotificationsResult, Error>({
     queryKey: ["notifications", userId],
-    queryFn: () => getNotifications(userId!, authHeaders),
-    enabled: !!userId && !!authHeaders.Authorization, // Only run if user is authenticated
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    queryFn: ({ pageParam = 0 }) =>
+      getNotificationsPage(userId!, pageParam, PAGE_SIZE, authHeaders),
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.hasMore ? allPages.length : undefined,
+    initialPageParam: 0, // ADD THIS LINE
+    enabled: !!userId && !!authHeaders.Authorization,
+    staleTime: 5 * 60 * 1000,
   });
 }
-/**
- * ✅ FIXED: Custom hook to fetch the unread notification count.
- *
- * Follows the correct pattern of using hooks to get session data
- * and passing it to the service function.
- */
+
 export function useUnreadCount() {
   const { data: session } = useSession();
   const authHeaders = useAuthHeaders();
   const userId = session?.user?.id;
-  return useQuery<UnreadCountResponse, Error>({
+
+  return useQuery<{ unreadCount: number }, Error>({
     queryKey: ["unread-count", userId],
     queryFn: () => getUnreadCount(userId!, authHeaders),
-    enabled: !!userId && !!authHeaders.Authorization, // Only run if user is authenticated
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!userId && !!authHeaders.Authorization,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useMarkAsRead() {
+  const { data: session } = useSession();
+  const authHeaders = useAuthHeaders();
+  const userId = session?.user?.id;
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (notificationId: string) =>
+      markAsRead(notificationId, userId!, authHeaders),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications", userId] });
+      qc.invalidateQueries({ queryKey: ["unread-count", userId] });
+    },
+  });
+}
+
+export function useDeleteNotification() {
+  const { data: session } = useSession();
+  const authHeaders = useAuthHeaders();
+  const userId = session?.user?.id;
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (notificationId: string) =>
+      deleteNotification(notificationId, userId!, authHeaders),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications", userId] });
+      qc.invalidateQueries({ queryKey: ["unread-count", userId] });
+    },
+  });
+}
+
+export function useMarkAllAsRead() {
+  const { data: session } = useSession();
+  const authHeaders = useAuthHeaders();
+  const userId = session?.user?.id;
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => markAllAsRead(userId!, authHeaders),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications", userId] });
+      qc.setQueryData(["unread-count", userId], { unreadCount: 0 });
+    },
   });
 }

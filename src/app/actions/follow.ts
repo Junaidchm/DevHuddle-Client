@@ -12,9 +12,11 @@ interface SuggestedFollower {
   username: string;
   name: string;
   profilePicture: string | null;
-  _count: {
-    followers: number;
-  };
+  // _count: {
+  //   followers: number;
+  // };
+  followersCount:number;
+  isFollowedByUser:boolean;
 }
 
 /**

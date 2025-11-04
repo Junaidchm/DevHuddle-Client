@@ -8,13 +8,14 @@ import {
   ResetPasswordPayload,
 } from "@/src/types/auth";
 import {
-  getUserfrom,
-  // RequestPasswordReset,
-  ResetPassword,
-  signIn,
-  userSingup,
+  getUser as getUserFromApi,
+  passwordResetRequest,
+  resetPassword as resetPasswordApi,
+  userSignup,
   verifyOTP,
 } from "@/src/services/api/auth.service";
+import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
+import { getSession } from "next-auth/react";
 
 export const register = createAsyncThunk<
   void,
@@ -22,7 +23,7 @@ export const register = createAsyncThunk<
   { rejectValue: string }
 >("auth/register", async (data, { rejectWithValue }) => {
   try {
-    await userSingup(data);
+    await userSignup(data);
     localStorage.setItem("signupEmail", data.email);
   } catch (error: any) {
     return rejectWithValue(
@@ -37,9 +38,11 @@ export const verifyOtp = createAsyncThunk<
   { rejectValue: string }
 >("auth/verifyOTP", async (data, { rejectWithValue }) => {
   try {
-    const user = await verifyOTP(data);
+    await verifyOTP(data);
     localStorage.removeItem("signupEmail");
-    const response = await getUserfrom();
+    const session = await getSession();
+    const headers = { Authorization: `Bearer ${session?.user?.accessToken}` };
+    const response = await getUserFromApi(headers);
     return response.data;
   } catch (error: any) {
     return rejectWithValue(
@@ -48,37 +51,31 @@ export const verifyOtp = createAsyncThunk<
   }
 });
 
-export const GetUser = createAsyncThunk<User, void, { rejectValue: string }>(
-  "auth/getUser",
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await getUserfrom();
-      return response.data;
-    } catch (err: any) {
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to fetch user"
-      );
-    }
-  }
-);
-
 export const loginUser = createAsyncThunk<
   User,
   LoginPayload,
   { rejectValue: string }
->("auth/login", async (data, { rejectWithValue }) => {
+>("auth/login", async (payload, { rejectWithValue }) => {
   try {
-    await signIn(data);
-    const response = await getUserfrom();
+    // The actual sign-in is handled by NextAuth.
+    // After sign-in, we get the session and fetch user data.
+    const session = await getSession();
+    if (!session?.user?.accessToken) {
+      throw new Error("Authentication failed or access token missing.");
+    }
+    const headers = { Authorization: `Bearer ${session.user.accessToken}` };
+    const response = await getUserFromApi(headers);
     return response.data;
   } catch (error: any) {
     return rejectWithValue(error.response?.data?.message || "Login failed");
   }
 });
 
-export const googleAuth = createAsyncThunk<void, void, { rejectValue: string }>(
-  "auth/googleAuth",
-  async (_, { rejectWithValue }) => {
+export const googleAuth = createAsyncThunk<
+  void,
+  void,
+  { rejectValue: string }
+>("auth/googleAuth", async (_, { rejectWithValue }) => {
     try {
       window.location.href = "http://localhost:8080/auth/google";
     } catch (error: any) {
@@ -88,17 +85,23 @@ export const googleAuth = createAsyncThunk<void, void, { rejectValue: string }>(
 );
 
 export const getUser = createAsyncThunk<User, void, { rejectValue: string }>(
-  'auth/getUser',
+  "auth/getUser",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await getUserfrom()
+      const session = await getSession();
+      if (!session?.user?.accessToken) {
+        throw new Error("Not authenticated");
+      }
+      const headers = { Authorization: `Bearer ${session.user.accessToken}` };
+      const response = await getUserFromApi(headers);
       return response.data;
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || 'Failed to fetch user');
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to fetch user"
+      );
     }
   }
 );
-
 
 export const requestPasswordReset = createAsyncThunk<
   void,
@@ -106,8 +109,8 @@ export const requestPasswordReset = createAsyncThunk<
   { rejectValue: string }
 >("auth/requestPasswordReset", async (data, { rejectWithValue }) => {
   try {
-    // const response = await RequestPasswordReset(data);
-    // return response.data
+    const response = await passwordResetRequest(data);
+    return response.data;
   } catch (err: any) {
     rejectWithValue(
       err.response?.data?.message || "Failed to request password reset"
@@ -121,7 +124,7 @@ export const resetPassword = createAsyncThunk<
   { rejectValue: string }
 >("auth/resetPassword", async (data, { rejectWithValue }) => {
   try {
-    await ResetPassword(data);
+    await resetPasswordApi(data);
   } catch (err: any) {
     rejectWithValue(err.response?.data?.message || "Failed to reset password");
   }

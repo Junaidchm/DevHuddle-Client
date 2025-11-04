@@ -7,6 +7,8 @@ import { AppDispatch } from "@/src/store/store";
 import { verifyOtp } from "@/src/store/actions/authActions";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { verifyOTP } from "@/src/services/api/auth.service";
 
 const otpSchema = z.object({
   otp: z
@@ -73,9 +75,28 @@ export default function VerifyForm() {
   const onSubmit = async (data: OtpFormData) => {
     try {
       const otp = data.otp.join(""); // Combine OTP array into a single string
-      await dispatch(verifyOtp({ email, otp })).unwrap();
+      await verifyOTP({email, otp});
+
+      // 2. Programmatically sign in with NextAuth
+      const password = localStorage.getItem("signupPassword");
+      if (!password) {
+        toast.error("Session expired. Please sign in manually.");
+        router.push("/signIn");
+        return;
+      }
+
+      const result = await signIn("credentials", {
+        redirect: false, // Prevent NextAuth from redirecting
+        email: email,
+        password: password,
+      });
       
-      router.push("/");
+      localStorage.removeItem("signupEmail"); // Clean up stored email
+      localStorage.removeItem("signupPassword"); // Clean up stored password
+
+      if (result?.error) throw new Error(result.error);
+
+      window.location.href = "/";
     } catch (error: any) {
       const errorMessage =
         error?.message || error || "Something went wrong during verification";

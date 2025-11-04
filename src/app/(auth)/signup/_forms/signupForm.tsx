@@ -118,6 +118,10 @@ export default function SignUpForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       await dispatch(register(values)).unwrap();
+      // Temporarily store password for auto-login after verification
+      localStorage.setItem("signupPassword", values.password);
+      localStorage.setItem("signupEmail", values.email);
+
       toast.success("Registration successful! Please verify your email.", {
         position: "bottom-center",
       });

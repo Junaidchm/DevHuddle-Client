@@ -143,7 +143,7 @@ export default async function Sidebar() {
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <SidebarClient />
+      <SidebarClient id={session.user.id} />
     </HydrationBoundary>
   );
 }

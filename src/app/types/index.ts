@@ -29,11 +29,10 @@ export interface User {
   updatedAt: Date;
 }
 
-
 export interface JwtPayload {
   email: string;
   jti: string;
-  exp?: number; 
+  exp?: number;
   [key: string]: any;
 }
 
@@ -55,22 +54,19 @@ export interface SuggestionsResponse {
   suggestions: Suggestion[];
 }
 
-
-
-
-// follows 
+// follows
 
 export interface SuggestedFollower {
   id: string;
   username: string;
   name: string;
   profilePicture: string | null;
-  _count: {
-    followers: number;
-  };
+  // _count: {
+  //   followers: number;
+  // },
+  followersCount:number;
+  isFollowedByUser:boolean;
 }
-
-
 
 // Types based on backend NotificationObject schema
 export interface Notification {
@@ -96,4 +92,25 @@ export interface Notification {
 
 export interface UnreadCountResponse {
   unreadCount: number;
+}
+
+export type AuthHeaders = Record<string, string>;
+
+export interface GetNotificationsResult {
+  notifications: Array<{
+    id: string;
+    type: string;
+    entityType: string;
+    entityId: string;
+    contextId?: string | null;
+    summary: any;
+    metadata?: any;
+    aggregatedCount: number;
+    read: boolean;
+    readAt?: string | null;
+    createdAt: string;
+    actors: string[];
+  }>;
+  total: number;
+  hasMore: boolean;
 }

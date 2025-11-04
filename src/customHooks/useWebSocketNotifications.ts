@@ -1,52 +1,65 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { useSession } from 'next-auth/react';
+import { useEffect, useRef } from "react";
+import { useSession } from "next-auth/react";
+import { useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 
-interface WebSocketMessage {
-  type: 'new_notification' | 'unread_count';
-  data: any;
-}
 
 export function useWebSocketNotifications() {
   const { data: session } = useSession();
-  const userId = session?.user?.id;
   const queryClient = useQueryClient();
-  const [socket, setSocket] = useState<WebSocket | null>(null);
+  const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    if (!userId) return;
+    if (session?.user?.accessToken && !ws.current) {
+      const token = session.user.accessToken;
+      const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL}/notifications?token=${token}`;
 
-    const ws = new WebSocket(`${process.env.NEXT_PUBLIC_WS_URL}/notifications?userId=${userId}`);
-    setSocket(ws);
+      const socket = new WebSocket(wsUrl);
+      ws.current = socket;
 
-    ws.onopen = () => {
-      console.log('WebSocket connected for user:', userId);
-    };
+      socket.onopen = () => {
+        console.log("WebSocket connection established");
+      };
 
-    ws.onmessage = (event) => {
-      const message: WebSocketMessage = JSON.parse(event.data);
-      if (message.type === 'new_notification') {
-        // Invalidate notifications to refetch
-        queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
-      } else if (message.type === 'unread_count') {
-        queryClient.setQueryData(['unreadCount', userId], { unreadCount: message.data.unreadCount });
-      }
-    };
+      socket.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        console.log("Received message:", message);
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
+        switch (message.type) {
+          case "new_notification":
+            toast.success(message.data.summary.text);
+            queryClient.invalidateQueries({ queryKey: ["notifications",session.user.id] });
+            queryClient.invalidateQueries({ queryKey: ["unread-count",session.user.id] });
+            break;
+          case "unread_count":
+            console.log('this call for unread count is actually working without any problem ----------------->',message.data.unreadCount)
+            queryClient.setQueryData(["unread-count", session.user.id], {
+              unreadCount: message.data.unreadCount,
+            });
+            break;
+          default:
+            break;
+        }
+      };
 
-    ws.onclose = () => {
-      console.log('WebSocket disconnected');
-    };
+      socket.onclose = () => {
+        console.log("WebSocket connection closed");
+        ws.current = null;
+      };
 
-    return () => {
-      ws.close();
-    };
-  }, [userId, queryClient]);
+      socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        socket.close();
+      };
 
-  return socket;
+      return () => {
+        if (ws.current) {
+          ws.current.close();
+          ws.current = null;
+        }
+      };
+    }
+  }, [session?.user?.accessToken, session?.user?.id]);
 }

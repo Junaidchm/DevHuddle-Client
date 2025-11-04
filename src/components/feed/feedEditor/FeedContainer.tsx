@@ -8,7 +8,7 @@ import InfiniteScorllContainer from "../../layouts/InfiniteScrollContainer";
 import { Loader2 } from "lucide-react";
 import PostsLoadingSkeleton from "./PostsLoadingSkeleton ";
 import { NewPost } from "@/src/app/types/feed";
-import { useAuthHeaders } from "@/src/hooks/useAuthHeaders";
+import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 
 /**
  * ✅ FIXED: FeedContainer using proper auth pattern

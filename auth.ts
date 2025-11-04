@@ -101,7 +101,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         };
       } catch (err) {
         console.error("Token refresh failed:", err);
-        return { ...token, error: "RefreshTokenError" };
+        // Invalidate the session by returning null, which will sign the user out.
+        // This prevents an infinite refresh loop.
+        return null;
       }
     },
 

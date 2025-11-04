@@ -9,7 +9,7 @@ import {
   PrimaryButton,
 } from "@/src/components/layouts/auth";
 import useRedirectIfAuthenticated from "@/src/customHooks/useRedirectIfAuthenticated";
-import { googleAuth } from "@/src/store/actions/authActions";
+import { googleAuth, loginUser } from "@/src/store/actions/authActions";
 import { AppDispatch, RootState } from "@/src/store/store";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
@@ -67,6 +67,7 @@ export default function SignIn() {
       if (result?.error) {
         toast.error(result.error || "Login failed");
       } else {
+        
         toast.success("Login successful", { position: "bottom-center" });
         // router.push("/"); // Redirect after successful login
         window.location.href = "/"

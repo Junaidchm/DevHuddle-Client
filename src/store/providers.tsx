@@ -13,8 +13,7 @@ import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
 import { extractRouterConfig } from "uploadthing/server";
 import { fileRouter } from "../app/api/uploadthing/core";
 import { SessionProvider } from "next-auth/react";
-
-// const queryClient = new QueryClient();
+import SessionProviderWrapper from "./SessionProviderWrapper";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // ⚡ Important: keep QueryClient stable across renders
@@ -27,11 +26,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
           refetchOnWindowFocus={false} // Don't refetch on every tab focus
           refetchWhenOffline={false} // Don't refetch when offline
         >
-          <NextSSRPlugin routerConfig={extractRouterConfig(fileRouter)} />
-          <QueryClientProvider client={queryClient}>
-            {children}
-            <ReactQueryDevtools initialIsOpen={false} />
-          </QueryClientProvider>
+          <SessionProviderWrapper>
+            <NextSSRPlugin routerConfig={extractRouterConfig(fileRouter)} />
+            <QueryClientProvider client={queryClient}>
+              {children}
+              <ReactQueryDevtools initialIsOpen={false} />
+            </QueryClientProvider>
+          </SessionProviderWrapper>
         </SessionProvider>
       </PersistGate>
     </Provider>

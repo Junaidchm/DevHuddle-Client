@@ -16,6 +16,8 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isAuthenticated = !!req.auth?.user;
 
+  console.log('this is middlware stuff for authe ---------------->', req.auth?.user)
+
   // Redirect to home if already logged in and trying to access sign-in
   if (pathname === '/signIn' && isAuthenticated) {
     return NextResponse.redirect(new URL("/", req.url));

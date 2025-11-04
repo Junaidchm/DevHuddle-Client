@@ -4,7 +4,8 @@
 import React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import { followUser, unfollowUser } from '@/src/services/api/profile.service';
+import { useAuthHeaders } from '@/src/customHooks/useAuthHeaders';
+import { followUser, unfollowUser } from '@/src/services/api/follow.service';
 
 interface FollowerProps {
   id: string;
@@ -19,36 +20,64 @@ interface FollowerProps {
 
 const FollowerItem = ({ id, imgSrc, name, username, role, alt, isFollowing, currentUserId }: FollowerProps) => {
   const queryClient = useQueryClient();
+  const authHeaders = useAuthHeaders();
+  const queryKey = ['network', username, 'following']; // Assuming we might need to invalidate both lists
 
   const followMutation = useMutation({
-    mutationFn: () => followUser(id),
-    onMutate: async () => {
-      await queryClient.cancelQueries(['followers']);
-      const previousFollowers = queryClient.getQueryData(['followers']) || [];
-      queryClient.setQueryData(['followers'], (old: any[]) => [...old, { id, username, isFollowing: true }]);
-      return { previousFollowers };
+    mutationFn: () => followUser(id, authHeaders),
+    onMutate: async (userId: string) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousData = queryClient.getQueryData(queryKey);
+      queryClient.setQueryData(queryKey, (oldData: any[] | undefined) =>
+        oldData?.map(user => user.id === userId ? { ...user, isFollowing: true } : user)
+      );
+      return { previousData };
     },
     onError: (err, _, context) => {
-      queryClient.setQueryData(['followers'], context?.previousFollowers);
-      toast.error('Failed to follow');
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKey, context.previousData);
+      }
+      toast.error('Failed to follow user.');
     },
-    onSettled: () => queryClient.invalidateQueries(['followers']),
+    onSettled: () => {
+     
+      
+      queryClient.invalidateQueries({ queryKey: ['network'] });
+      queryClient.invalidateQueries({ queryKey: ['profile', username] });
+    },
   });
 
   const unfollowMutation = useMutation({
-    mutationFn: () => unfollowUser(id),
-    onMutate: async () => {
-      await queryClient.cancelQueries(['followers']);
-      const previousFollowers = queryClient.getQueryData(['followers']) || [];
-      queryClient.setQueryData(['followers'], (old: any[]) => old.filter((f) => f.id !== id));
-      return { previousFollowers };
+    mutationFn: () => unfollowUser(id, authHeaders),
+    onMutate: async (userId: string) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousData = queryClient.getQueryData(queryKey);
+      queryClient.setQueryData(queryKey, (oldData: any[] | undefined) =>
+        oldData?.map(user => user.id === userId ? { ...user, isFollowing: false } : user)
+      );
+      return { previousData };
     },
     onError: (err, _, context) => {
-      queryClient.setQueryData(['followers'], context?.previousFollowers);
-      toast.error('Failed to unfollow');
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKey, context.previousData);
+      }
+      toast.error('Failed to unfollow user.');
     },
-    onSettled: () => queryClient.invalidateQueries(['followers']),
+    onSettled: () => {
+
+      console.log('the unfollow mutaiton is  success %%%%%%%%%%%%%%%%%%%%%%%%%%% ')
+      queryClient.invalidateQueries({ queryKey: ['network'] });
+      queryClient.invalidateQueries({ queryKey: ['profile', username] });
+    },
   });
+
+  const handleFollowToggle = () => {
+    if (isFollowing) {
+      unfollowMutation.mutate(id);
+    } else {
+      followMutation.mutate(id);
+    }
+  };
 
   return (
     <div className="p-5 border-b border-slate-100 last:border-b-0 flex justify-between items-center">
@@ -71,8 +100,9 @@ const FollowerItem = ({ id, imgSrc, name, username, role, alt, isFollowing, curr
             Message
           </button>
           <button
-            className={`py-2 px-4 rounded-md text-sm font-medium cursor-pointer transition-all duration-200 ${isFollowing ? 'bg-gray-200 text-gray-500 hover:bg-gray-300' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
-            onClick={() => (isFollowing ? unfollowMutation.mutate() : followMutation.mutate())}
+            className={`py-2 px-4 rounded-md text-sm font-medium cursor-pointer transition-all duration-200 disabled:opacity-50 ${isFollowing ? 'bg-gray-200 text-gray-600 hover:bg-gray-300' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+            onClick={handleFollowToggle}
+            disabled={followMutation.isPending || unfollowMutation.isPending}
           >
             {isFollowing ? 'Unfollow' : 'Follow'}
           </button>
