@@ -29,7 +29,6 @@ export function useWebSocketNotifications() {
 
         switch (message.type) {
           case "new_notification":
-            toast.success(message.data.summary.text);
             queryClient.invalidateQueries({ queryKey: ["notifications",session.user.id] });
             queryClient.invalidateQueries({ queryKey: ["unread-count",session.user.id] });
             break;
@@ -55,8 +54,8 @@ export function useWebSocketNotifications() {
       };
 
       return () => {
-        if (ws.current) {
-          ws.current.close();
+        if (socket) {
+          socket.close();
           ws.current = null;
         }
       };
