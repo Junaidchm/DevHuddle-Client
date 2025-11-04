@@ -4,17 +4,6 @@ interface FollowerInfo {
   isFollowedByUser: boolean;
 }
 
-interface SuggestedFollower {
-  id: string;
-  username: string;
-  name: string;
-  profilePicture: string | null;
-  _count: {
-    followers: number;
-  };
-  isFollowedByUser: boolean;
-}
-
 interface MutationContext {
   prevData: FollowerInfo | { suggestions: SuggestedFollower[] } | undefined;
   context: "profile" | "suggestion";
@@ -24,10 +13,16 @@ import { useSession } from "next-auth/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { followUser, getFollowerInfo, unfollowUser } from "../services/api/follow.service";
+import {
+  followUser,
+  getFollowerInfo,
+  unfollowUser,
+} from "../services/api/follow.service";
 import { useAuthHeaders } from "../customHooks/useAuthHeaders";
+import { SuggestedFollower } from "../app/types";
 
 interface UseFollowOptions {
+  theUser: string;
   userId: string;
   context: "suggestion" | "profile";
   initialFollowerCount?: number;
@@ -35,6 +30,7 @@ interface UseFollowOptions {
 }
 
 export function useFollow({
+  theUser,
   userId,
   context,
   initialFollowerCount,
@@ -49,12 +45,13 @@ export function useFollow({
   const followerInfoQuery = useQuery({
     queryKey: ["follower-info", userId],
     queryFn: () => getFollowerInfo(userId, authHeaders),
-    initialData: initialFollowerCount !== undefined && initialIsFollowing !== undefined
-      ? {
-          followers: initialFollowerCount,
-          isFollowedByUser: initialIsFollowing,
-        }
-      : undefined,
+    initialData:
+      initialFollowerCount !== undefined && initialIsFollowing !== undefined
+        ? {
+            followers: initialFollowerCount,
+            isFollowedByUser: initialIsFollowing,
+          }
+        : undefined,
     staleTime: 5 * 60 * 1000, // Stale after 5 minutes
     enabled: !!session?.user?.accessToken && context === "profile",
   });
@@ -69,37 +66,49 @@ export function useFollow({
     mutationFn: () => followUser(userId, authHeaders),
     onMutate: async () => {
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["follower-info", userId] });
-      await queryClient.cancelQueries({ queryKey: ["suggestions"] });
+      await queryClient.cancelQueries({ queryKey: ["follower-info", userId, theUser] });
+      await queryClient.cancelQueries({ queryKey: ["suggestions", theUser] });
 
       let prevData;
-      
+
       if (context === "profile") {
         // Update profile follower info optimistically
-        prevData = queryClient.getQueryData<FollowerInfo>(["follower-info", userId]);
-        queryClient.setQueryData<FollowerInfo>(["follower-info", userId], old => old && {
-          ...old,
-          followers: old.followers + 1,
-          isFollowedByUser: true,
-        });
+        prevData = queryClient.getQueryData<FollowerInfo>([
+          "follower-info",
+          userId,
+        ]);
+        queryClient.setQueryData<FollowerInfo>(
+          ["follower-info", userId],
+          (old) =>
+            old && {
+              ...old,
+              followers: old.followers + 1,
+              isFollowedByUser: true,
+            }
+        );
       } else {
         // Update suggestions optimistically
-        prevData = queryClient.getQueryData<{ suggestions: SuggestedFollower[] }>(["suggestions"]);
-        queryClient.setQueryData<{ suggestions: SuggestedFollower[] }>(["suggestions"], old => {
-          if (!old?.suggestions) return old;
-          return {
-            ...old,
-            suggestions: old.suggestions.map(user =>
-              user.id === userId
-                ? {
-                    ...user,
-                    _count: { followers: user._count.followers + 1 },
-                    isFollowedByUser: true,
-                  }
-                : user
-            ),
-          };
-        });
+        prevData = queryClient.getQueryData<{
+          suggestions: SuggestedFollower[];
+        }>(["suggestions", theUser]);
+        queryClient.setQueryData<{ suggestions: SuggestedFollower[] }>(
+          ["suggestions", theUser],
+          (old) => {
+            if (!old?.suggestions) return old;
+            return {
+              ...old,
+              suggestions: old.suggestions.map((user) =>
+                user.id === userId
+                  ? {
+                      ...user,
+                      followersCount: user.followersCount + 1,
+                      isFollowedByUser: true,
+                    }
+                  : user
+              ),
+            };
+          }
+        );
       }
 
       return { prevData, context };
@@ -110,7 +119,7 @@ export function useFollow({
         if (context.context === "profile") {
           queryClient.setQueryData(["follower-info", userId], context.prevData);
         } else {
-          queryClient.setQueryData(["suggestions"], context.prevData);
+          queryClient.setQueryData(["suggestions", theUser], context.prevData);
         }
       }
 
@@ -119,30 +128,40 @@ export function useFollow({
     },
     onSuccess: (response) => {
       toast.success("Followed successfully!");
-      
+
       // Update cache with server data
       if (context === "profile" && response.success && response.data) {
-        queryClient.setQueryData<FollowerInfo>(["follower-info", userId], old => ({
-          ...old,
-          followers: response.data.followers,
-          isFollowedByUser: true,
-        }));
-      } else if (context === "suggestion" && response.success && response.data) {
-        queryClient.setQueryData<{ suggestions: SuggestedFollower[] }>(["suggestions"], old => {
-          if (!old?.suggestions) return old;
-          return {
+        queryClient.setQueryData<FollowerInfo>(
+          ["follower-info", userId],
+          (old) => ({
             ...old,
-            suggestions: old.suggestions.map(user =>
-              user.id === userId
-                ? {
-                    ...user,
-                    _count: { followers: response.data.followingCount },
-                    isFollowedByUser: true,
-                  }
-                : user
-            ),
-          };
-        });
+            followers: response.data.followers,
+            isFollowedByUser: true,
+          })
+        );
+      } else if (
+        context === "suggestion" &&
+        response.success &&
+        response.data
+      ) {
+        queryClient.setQueryData<{ suggestions: SuggestedFollower[] }>(
+          ["suggestions", theUser],
+          (old) => {
+            if (!old?.suggestions) return old;
+            return {
+              ...old,
+              suggestions: old.suggestions.map((user) =>
+                user.id === userId
+                  ? {
+                      ...user,
+                      followersCount: response.data.followingCount,
+                      isFollowedByUser: true,
+                    }
+                  : user
+              ),
+            };
+          }
+        );
       }
     },
   });
@@ -150,35 +169,47 @@ export function useFollow({
   const unfollowMutation = useMutation<any, any, void, MutationContext>({
     mutationFn: () => unfollowUser(userId, authHeaders),
     onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ["follower-info", userId] });
-      await queryClient.cancelQueries({ queryKey: ["suggestions"] });
+      await queryClient.cancelQueries({ queryKey: ["follower-info", userId, theUser] });
+      await queryClient.cancelQueries({ queryKey: ["suggestions", theUser] });
 
       let prevData;
 
       if (context === "profile") {
-        prevData = queryClient.getQueryData<FollowerInfo>(["follower-info", userId]);
-        queryClient.setQueryData<FollowerInfo>(["follower-info", userId], old => old && {
-          ...old,
-          followers: Math.max(0, old.followers - 1),
-          isFollowedByUser: false,
-        });
+        prevData = queryClient.getQueryData<FollowerInfo>([
+          "follower-info",
+          userId,
+        ]);
+        queryClient.setQueryData<FollowerInfo>(
+          ["follower-info", userId],
+          (old) =>
+            old && {
+              ...old,
+              followers: Math.max(0, old.followers - 1),
+              isFollowedByUser: false,
+            }
+        );
       } else {
-        prevData = queryClient.getQueryData<{ suggestions: SuggestedFollower[] }>(["suggestions"]);
-        queryClient.setQueryData<{ suggestions: SuggestedFollower[] }>(["suggestions"], old => {
-          if (!old?.suggestions) return old;
-          return {
-            ...old,
-            suggestions: old.suggestions.map(user =>
-              user.id === userId
-                ? {
-                    ...user,
-                    _count: { followers: Math.max(0, user._count.followers - 1) },
-                    isFollowedByUser: false,
-                  }
-                : user
-            ),
-          };
-        });
+        prevData = queryClient.getQueryData<{
+          suggestions: SuggestedFollower[];
+        }>(["suggestions", theUser]);
+        queryClient.setQueryData<{ suggestions: SuggestedFollower[] }>(
+          ["suggestions", theUser],
+          (old) => {
+            if (!old?.suggestions) return old;
+            return {
+              ...old,
+              suggestions: old.suggestions.map((user) =>
+                user.id === userId
+                  ? {
+                      ...user,
+                      followersCount: user.followersCount - 1,
+                      isFollowedByUser: false,
+                    }
+                  : user
+              ),
+            };
+          }
+        );
       }
 
       return { prevData, context };
@@ -188,7 +219,7 @@ export function useFollow({
         if (context.context === "profile") {
           queryClient.setQueryData(["follower-info", userId], context.prevData);
         } else {
-          queryClient.setQueryData(["suggestions"], context.prevData);
+          queryClient.setQueryData(["suggestions", theUser], context.prevData);
         }
       }
 
@@ -205,10 +236,14 @@ export function useFollow({
       return requireLogin();
     }
 
-    const isFollowing = context === "profile"
-      ? followerInfoQuery.data?.isFollowedByUser
-      : queryClient.getQueryData<{ suggestions: SuggestedFollower[] }>(["suggestions"])
-          ?.suggestions?.find(u => u.id === userId)?.isFollowedByUser;
+    const isFollowing =
+      context === "profile"
+        ? followerInfoQuery.data?.isFollowedByUser
+        : queryClient.getQueryData<{ suggestions: SuggestedFollower[] }>([
+            "suggestions",
+            theUser,
+          ])
+            ?.suggestions?.find((u) => u.id === userId)?.isFollowedByUser;
 
     if (isFollowing) {
       unfollowMutation.mutate();
@@ -221,9 +256,13 @@ export function useFollow({
     if (context === "profile") {
       return followerInfoQuery.data?.isFollowedByUser ?? false;
     }
-    
-    const suggestedUser = queryClient.getQueryData<{ suggestions: SuggestedFollower[] }>(["suggestions"])
-      ?.suggestions?.find(u => u.id === userId);
+
+    const suggestedUser = queryClient
+      .getQueryData<{ suggestions: SuggestedFollower[] }>([
+        "suggestions",
+        theUser,
+      ])
+      ?.suggestions?.find((u) => u.id === userId);
     return suggestedUser?.isFollowedByUser ?? false;
   };
 
@@ -231,10 +270,14 @@ export function useFollow({
     if (context === "profile") {
       return followerInfoQuery.data?.followers ?? 0;
     }
-    
-    const suggestedUser = queryClient.getQueryData<{ suggestions: SuggestedFollower[] }>(["suggestions"])
-      ?.suggestions?.find(u => u.id === userId);
-    return suggestedUser?._count?.followers ?? 0;
+
+    const suggestedUser = queryClient
+      .getQueryData<{ suggestions: SuggestedFollower[] }>([
+        "suggestions",
+        theUser,
+      ])
+      ?.suggestions?.find((u) => u.id === userId);
+    return suggestedUser?.followersCount as number;
   };
 
   return {
@@ -242,6 +285,10 @@ export function useFollow({
     isFollowing: getCurrentFollowing(),
     isPending: followMutation.isPending || unfollowMutation.isPending,
     followerCount: getCurrentFollowerCount(),
-    action: followMutation.isPending ? "follow" : unfollowMutation.isPending ? "unfollow" : null,
+    action: followMutation.isPending
+      ? "follow"
+      : unfollowMutation.isPending
+      ? "unfollow"
+      : null,
   };
 }

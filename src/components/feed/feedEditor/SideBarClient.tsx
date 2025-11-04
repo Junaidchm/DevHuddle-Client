@@ -73,6 +73,7 @@ export default function SidebarClient({id}: { id: string }) {
                   }}
                 /> */}
                 <FollowButton
+                  theUser={id}
                   userId={user.id}
                   context="suggestion"
                   initialFollowerCount={user.followersCount}
