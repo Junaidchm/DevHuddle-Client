@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "./store";
 import { getUser } from "./actions/authActions";
 import { logoutUserAction } from "./slices/userSlice";
+import FullScreenLoader from "../components/FullScreenLoader";
 
 /**
  * This component is responsible for synchronizing the NextAuth session with the Redux store.
@@ -32,6 +33,11 @@ export default function SessionProviderWrapper({
       dispatch(logoutUserAction());
     }
   }, [status, isAuthenticated, dispatch]);
+
+  // Prevent rendering children until session status is determined
+  if (status === "loading") {
+    return <FullScreenLoader />;
+  }
 
   return <>{children}</>;
 }
