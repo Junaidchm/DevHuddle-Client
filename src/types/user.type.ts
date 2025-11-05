@@ -15,4 +15,5 @@ export type UserProfile = {
     following: number;
   };
   isFollowing?: boolean; // From the perspective of the logged-in user
+  isFollowedByUser?: boolean; // Whether the logged-in user follows this user
 };

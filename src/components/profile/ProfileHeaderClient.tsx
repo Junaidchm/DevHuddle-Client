@@ -22,15 +22,15 @@ const ProfileHeaderClient = ({ username, initialProfile, currentUserId, isOwnPro
   const queryClient = useQueryClient();
   const authHeaders = useAuthHeaders();
 
-  const { data: profile } = useQuery({
-    queryKey: ['profile', username],
-    queryFn: () => fetchProfileByUsername(username, authHeaders),
-    initialData: initialProfile,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+  // const { data: profile } = useQuery({
+  //   queryKey: ['profile', username],
+  //   queryFn: () => fetchProfileByUsername(username, authHeaders),
+  //   initialData: initialProfile,
+  //   staleTime: 5 * 60 * 1000, // 5 minutes
+  // });
 
   const followMutation = useMutation({
-    mutationFn: () => followUser(profile.id, authHeaders),
+    mutationFn: () => followUser(initialProfile.id, authHeaders),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['profile', username] });
       const previousProfile = queryClient.getQueryData<UserProfile>(['profile', username]);
@@ -56,7 +56,7 @@ const ProfileHeaderClient = ({ username, initialProfile, currentUserId, isOwnPro
   });
 
   const unfollowMutation = useMutation({
-    mutationFn: () => unfollowUser(profile.id, authHeaders),
+    mutationFn: () => unfollowUser(initialProfile.id, authHeaders),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['profile', username] });
       const previousProfile = queryClient.getQueryData<UserProfile>(['profile', username]);
@@ -83,12 +83,12 @@ const ProfileHeaderClient = ({ username, initialProfile, currentUserId, isOwnPro
 
   return (
     <>
-      <Avatar imgSrc={profile.profilePicture || PROFILE_DEFAULT_URL} alt={profile.name} />
+      <Avatar src={initialProfile.profilePicture || PROFILE_DEFAULT_URL} alt={initialProfile.name} />
       <ActionButtons
         username={username}
-        userId={profile.id}
+        userId={initialProfile.id}
         isOwnProfile={isOwnProfile}
-        isFollowing={profile.isFollowing}
+        isFollowing={initialProfile.isFollowing}
         onFollow={() => followMutation.mutate()}
         onUnfollow={() => unfollowMutation.mutate()}
         isPending={followMutation.isPending || unfollowMutation.isPending}

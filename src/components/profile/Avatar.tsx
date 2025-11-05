@@ -1,12 +1,19 @@
 // app/components/Avatar.tsx
 'use client';
 import React from 'react';
+import { cn } from '@/src/lib/utils';
 
-const Avatar = ({ imgSrc, alt }: { imgSrc: string; alt: string }) => {
+interface AvatarProps {
+  src: string;
+  alt: string;
+  className?: string;
+}
+
+const Avatar = ({ src, alt, className }: AvatarProps) => {
   return (
     <div className="relative">
-      <div className="w-[150px] h-[150px] rounded-full border-4 border-white overflow-hidden bg-white shadow-lg">
-        <img src={imgSrc} alt={alt} className="w-full h-full object-cover" />
+      <div className={cn("w-[150px] h-[150px] rounded-full border-4 border-white overflow-hidden bg-white shadow-lg", className)}>
+        <img src={src} alt={alt} className="w-full h-full object-cover" />
       </div>
       <button
         className="absolute bottom-2 right-2 bg-white text-blue-500 border-none w-8 h-8 rounded-full flex items-center justify-center cursor-pointer shadow-md"

@@ -3,10 +3,10 @@ import CoverImage from './CoverImage';
 import UserInfo from './UserInfo';
 import BasicStats from './BasicStats';
 import SocialLinks from './SocialLinks';
-import ProfileHeaderClient from './ProfileHederClient';
 import { UserProfile } from '@/src/types/user.type';
 import { PROFILE_DEFAULT_URL } from '@/src/constents';
 import { format } from 'date-fns';
+import ProfileHeaderClient from './ProfileHeaderClient';
 
 interface ProfileHeaderProps {
   username: string;
@@ -30,6 +30,7 @@ const ProfileHeader = ({ username, initialProfile, currentUserId }: ProfileHeade
               currentUserId={currentUserId}
               isOwnProfile={isOwnProfile}
             />
+            
             <UserInfo
               name={initialProfile.name}
               username={initialProfile.username}

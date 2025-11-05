@@ -66,7 +66,7 @@ export function useFollow({
     mutationFn: () => followUser(userId, authHeaders),
     onMutate: async () => {
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["follower-info", userId, theUser] });
+      await queryClient.cancelQueries({ queryKey: ["follower-info", userId] });
       await queryClient.cancelQueries({ queryKey: ["suggestions", theUser] });
 
       let prevData;
@@ -169,7 +169,7 @@ export function useFollow({
   const unfollowMutation = useMutation<any, any, void, MutationContext>({
     mutationFn: () => unfollowUser(userId, authHeaders),
     onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ["follower-info", userId, theUser] });
+      await queryClient.cancelQueries({ queryKey: ["follower-info", userId] });
       await queryClient.cancelQueries({ queryKey: ["suggestions", theUser] });
 
       let prevData;
