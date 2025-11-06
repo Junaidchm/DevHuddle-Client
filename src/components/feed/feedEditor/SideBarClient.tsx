@@ -1,13 +1,14 @@
 // app/components/SidebarClient.tsx
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { FollowButton } from "@/src/components/FollowButton";
 import { SuggestedFollower } from "@/src/app/types";
 import { getSuggestedUsersWithFollowerInfo } from "@/src/app/actions/follow";
+import { FollowButton } from "../../shared/FollowButton";
+import { queryKeys } from "../../profile/queryKeys";
 
 export default function SidebarClient({id}: { id: string }) {
   const data = useQuery({
-    queryKey: ["suggestions", id],
+    queryKey: queryKeys.suggestions.list(id),
     queryFn: () => getSuggestedUsersWithFollowerInfo(),
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
@@ -73,11 +74,8 @@ export default function SidebarClient({id}: { id: string }) {
                   }}
                 /> */}
                 <FollowButton
-                  theUser={id}
                   userId={user.id}
-                  context="suggestion"
-                  initialFollowerCount={user.followersCount}
-                  initialIsFollowing={user.isFollowedByUser}
+                  isFollowing={user.isFollowedByUser}
                   size="sm"
                 />
               </div>
