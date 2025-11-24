@@ -1,102 +1,16 @@
-// "use client";
-
-// import { Comment, Edit, Like, Share } from "@/src/constents/svg";
-// import React from "react";
-
-// // SocialActionButton component
-// interface SocialActionButtonProps {
-//   icon: React.ReactNode;
-//   count?: number;
-//   onClick?: () => void;
-//   className?: string;
-// }
-
-// export const SocialActionButton: React.FC<SocialActionButtonProps> = ({
-//   icon,
-//   count,
-//   onClick,
-//   className = "",
-// }) => (
-//   <button
-//     className={`bg-transparent border-none flex items-center gap-1.5 text-sm text-text-light cursor-pointer px-2 py-1 rounded transition-colors duration-200 ease-in-out hover:bg-gray-200 hover:text-gradient-start ${className}`}
-//     onClick={onClick}
-//   >
-//     {icon}
-//     {count !== undefined && count}
-//   </button>
-// );
-
-// // SocialIconButton component
-// interface SocialIconButtonProps {
-//   icon: React.ReactNode;
-//   onClick?: () => void;
-//   className?: string;
-// }
-
-// export const SocialIconButton: React.FC<SocialIconButtonProps> = ({
-//   icon,
-//   onClick,
-//   className = "",
-// }) => (
-//   <button
-//     className={`bg-transparent border-none p-1 text-text-light cursor-pointer transition-colors duration-200 ease-in-out rounded hover:text-gradient-start ${className}`}
-//     onClick={onClick}
-//   >
-//     {icon}
-//   </button>
-// );
-
-// interface PostIntractProps {
-//   actions?: {
-//     likes?: { count: number; onClick?: () => void };
-//     comments?: { count: number; onClick?: () => void };
-//     share?: { onClick?: () => void };
-//     edit?: { onClick?: () => void };
-//     more?: { onClick?: () => void };
-//   };
-//   className?: string;
-// }
-
-// export const PostIntract: React.FC<PostIntractProps> = ({ actions }) => {
-//   return (
-//     <div className="flex justify-between items-center pt-3 border-t border-slate-100">
-//       <div className="flex gap-6">
-//         {true && (
-//           <SocialActionButton
-//             icon={Like}
-//             count={3}
-//             onClick={()=> {}}
-//           />
-//         )}
-//         {true && (
-//           <SocialActionButton
-//             icon={Comment}
-//             count={2}
-//             onClick={()=> {}}
-//           />
-//         )}
-//       </div>
-//       <div className="flex gap-3">
-//         {true && (
-//           <SocialIconButton icon={Share} onClick={()=> {}} />
-//         )}
-//         {true && (
-//           <SocialIconButton icon={Edit} onClick={()=> {}} />
-//         )}
-//       </div>
-//     </div>
-//   );
-// };
-
 "use client";
 
 import { Comment, Edit, Like, Share } from "@/src/constents/svg";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { NewPost, PostEngagement } from "@/src/app/types/feed";
 // import { CommentSection } from "./CommentSection";
 // import { ShareDialog } from "./ShareDialog";
 // import { ReportDialog } from "./ReportDialog";
 import { useLikeMutation } from "../mutations/useLikeMutation";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/src/lib/queryKeys";
+import { InfiniteData } from "@tanstack/react-query";
+import { PostsPage } from "@/src/app/types/feed";
 
 // SocialActionButton component
 interface SocialActionButtonProps {
@@ -105,6 +19,7 @@ interface SocialActionButtonProps {
   onClick?: () => void;
   className?: string;
   isActive?: boolean;
+  disabled?: boolean;
 }
 
 export const SocialActionButton: React.FC<SocialActionButtonProps> = ({
@@ -113,14 +28,16 @@ export const SocialActionButton: React.FC<SocialActionButtonProps> = ({
   onClick,
   className = "",
   isActive = false,
+  disabled = false,
 }) => (
   <button
     className={`bg-transparent border-none flex items-center gap-1.5 text-sm cursor-pointer px-2 py-1 rounded transition-all duration-200 ease-in-out hover:bg-gray-100 ${
       isActive
         ? "text-blue-600 fill-blue-600"
         : "text-gray-600 hover:text-blue-600"
-    } ${className}`}
+    } ${disabled ? "opacity-50 cursor-not-allowed" : ""} ${className}`}
     onClick={onClick}
+    disabled={disabled}
     aria-label={`${count || 0} ${isActive ? "liked" : "likes"}`}
   >
     {icon}
@@ -166,18 +83,46 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
   const [showReportDialog, setShowReportDialog] = useState(false);
 
   const likeMutation = useLikeMutation();
+  const queryClient = useQueryClient();
 
-  // Get engagement data from post
-  const engagement: PostEngagement = post.engagement || {
-    likesCount: 0,
-    commentsCount: 0,
-    sharesCount: 0,
-    isLiked: false,
-    isShared: false,
-  };
+  // Get engagement data from post, with reactive cache updates
+  const engagement: PostEngagement = useMemo(() => {
+    // First, try to get from post prop
+    if (post.engagement) {
+      return post.engagement;
+    }
+
+    // Fallback: try to get from cache
+    const cachedPost = queryClient.getQueryData<InfiniteData<PostsPage, string | null>>(
+      ["post-feed", "for-you"]
+    );
+    
+    if (cachedPost) {
+      const foundPost = cachedPost.pages
+        .flatMap(page => page.posts)
+        .find(p => p.id === post.id);
+      
+      if (foundPost?.engagement) {
+        return foundPost.engagement;
+      }
+    }
+
+    // Default fallback
+    return {
+      likesCount: 0,
+      commentsCount: 0,
+      sharesCount: 0,
+      isLiked: false,
+      isShared: false,
+    };
+  }, [post, queryClient]);
 
   const handleLike = () => {
     if (!post.id) return;
+    
+    // Prevent duplicate likes
+    if (likeMutation.isPending) return;
+    
     likeMutation.mutate({
       postId: post.id,
       isLiked: engagement.isLiked,
@@ -219,6 +164,7 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
             onClick={handleLike}
             isActive={engagement.isLiked}
             className={likeMutation.isPending ? "opacity-50 cursor-wait" : ""}
+            disabled={likeMutation.isPending}
           />
           <SocialActionButton
             icon={Comment}
