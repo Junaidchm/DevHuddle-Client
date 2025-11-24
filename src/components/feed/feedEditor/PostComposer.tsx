@@ -104,7 +104,7 @@ export default  function PostComposer({ userId}: PostComposerProps) {
           <LazyCreatePostModal
             isOpen={isCreatePostModalOpen}
             onClose={() => setIsCreatePostModalOpen(false)}
-            profileImage={profileImage}
+            profileImage={profileImage!}
           />
         )}
         {/* {isPhotoModalOpen && (

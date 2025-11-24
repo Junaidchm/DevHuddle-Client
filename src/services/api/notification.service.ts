@@ -15,51 +15,8 @@
 import { AuthHeaders, GetNotificationsResult } from "@/src/app/types";
 import { axiosInstance } from "@/src/axios/axios";
 
-// import { axiosInstance } from "@/src/axios/axios";
 
-// /**
-//  * Get notifications for a user
-//  * @param userId - The user ID from the session
-//  * @param headers - Auth headers with Authorization token
-//  */
-// export const getNotifications = async (userId: string, headers: Record<string, string>) => {
-//   try {
-//     const result = await axiosInstance.get(`notifications/${userId}`, {
-//       headers,
-//     });
-
-//     return result.data;
-//   } catch (error: any) {
-//     if (error.message === "UNAUTHORIZED") {
-//       throw { status: 401, message: "Unauthorized" };
-//     }
-//     throw error;
-//   }
-// };
-
-// /**
-//  * Get unread notifications count for a user
-//  * @param userId - The user ID from the session
-//  * @param headers - Auth headers with Authorization token
-//  */
-// export const getUnreadCount = async (userId: string, headers: Record<string, string>) => {
-//   try {
-//     const result = await axiosInstance.get(
-//       `notifications/${userId}/unread-count`,
-//       {
-//         headers,
-//       }
-//     );
-
-//     return result.data;
-//   } catch (error: any) {
-//     if (error.message === "UNAUTHORIZED") {
-//       throw { status: 401, message: "Unauthorized" };
-//     }
-//     throw error;
-//   }
-// };
-
+import { API_ROUTES } from "@/src/constants/api.routes";
 
 export const getNotificationsPage = async (
   userId: string,
@@ -68,7 +25,7 @@ export const getNotificationsPage = async (
   headers: AuthHeaders
 ): Promise<GetNotificationsResult> => {
   const offset = page * pageSize;
-  const res = await axiosInstance.get(`notifications/${userId}`, {
+  const res = await axiosInstance.get(API_ROUTES.NOTIFICATIONS.BY_USER(userId), {
     params: { limit: pageSize, offset },
     headers,
   });
@@ -79,7 +36,7 @@ export const getUnreadCount = async (
   userId: string,
   headers: AuthHeaders
 ): Promise<{ unreadCount: number }> => {
-  const res = await axiosInstance.get(`notifications/${userId}/unread-count`, {
+  const res = await axiosInstance.get(API_ROUTES.NOTIFICATIONS.UNREAD_COUNT(userId), {
     headers,
   });
   return res.data?.data || { unreadCount: 0 };
@@ -91,7 +48,7 @@ export const markAsRead = async (
   headers: AuthHeaders
 ): Promise<void> => {
   await axiosInstance.patch(
-    `notifications/${notificationId}/read`,
+    API_ROUTES.NOTIFICATIONS.MARK_READ(notificationId),
     { recipientId: userId },
     { headers }
   );
@@ -102,7 +59,7 @@ export const markAllAsRead = async (
   headers: AuthHeaders
 ): Promise<void> => {
   await axiosInstance.post(
-    `notifications/${userId}/mark-all-read`,
+    API_ROUTES.NOTIFICATIONS.MARK_ALL_READ(userId),
     {},
     { headers }
   );
@@ -113,7 +70,7 @@ export const deleteNotification = async (
   userId: string,
   headers: AuthHeaders
 ): Promise<void> => {
-  await axiosInstance.delete(`notifications/${notificationId}`, {
+  await axiosInstance.delete(API_ROUTES.NOTIFICATIONS.DELETE(notificationId), {
     data: { recipientId: userId },
     headers,
   });

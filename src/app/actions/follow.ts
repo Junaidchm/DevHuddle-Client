@@ -3,9 +3,10 @@
 import { auth } from "@/auth";
 import { FollowerInfo } from "@/src/app/types";
 import { redirect } from "next/navigation";
-import { api } from "@/src/app/lib/ky";
+import { api, stripLeadingSlash } from "@/src/app/lib/ky";
 import { authCheckRedirectToSignin } from "../lib/authCheck";
 import { revalidatePath } from "next/cache";
+import { API_ROUTES } from "@/src/constants/api.routes";
 
 interface SuggestedFollower {
   id: string;
@@ -34,7 +35,7 @@ export async function getFollowerInfoAction(
     }
 
     const data = await api
-      .get(`auth/${userId}/followers`, {
+      .get(stripLeadingSlash(API_ROUTES.FOLLOWS.FOLLOWERS_INFO(userId)), {
         // Add cache control for better performance
         next: { revalidate: 60 }, // Revalidate every minute
       })
@@ -68,7 +69,7 @@ export async function getMultipleFollowerInfoAction(
     const promises = userIds.map(async (userId) => {
       try {
         const data = await api
-          .get(`auth/${userId}/followers`, {
+          .get(stripLeadingSlash(API_ROUTES.FOLLOWS.FOLLOWERS_INFO(userId)), {
             next: { revalidate: 60 },
           })
           .json<FollowerInfo>();
@@ -124,7 +125,7 @@ export async function getSuggestedUsersWithFollowerInfo(limit: number = 5) {
 
     // Fetch suggestions
     const suggestions = await api
-      .get(`users/follows/suggestions?limit=${limit}`)
+      .get(`${stripLeadingSlash(API_ROUTES.FOLLOWS.SUGGESTIONS)}?limit=${limit}`)
       .json<SuggestedFollower[]>();
 
     if (!Array.isArray(suggestions) || suggestions.length === 0) {
@@ -169,7 +170,7 @@ export async function followUserAction(targetUserId: string) {
     }
    console.log('the request is going for follow ---------------------------------> ')
     const response = await api
-      .post("users/follows/follow", {
+      .post(stripLeadingSlash(API_ROUTES.FOLLOWS.FOLLOW), {
         json: { targetUserId },
       })
       .json<{ data: { followingCount?: number } }>();

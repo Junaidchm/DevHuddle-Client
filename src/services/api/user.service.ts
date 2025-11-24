@@ -1,4 +1,5 @@
 import { axiosInstance } from "@/src/axios/axios";
+import { API_ROUTES } from "@/src/constants/api.routes";
 
 export interface SearchedUser {
   id: string;
@@ -13,7 +14,7 @@ export const searchUsers = async (
 ): Promise<SearchedUser[]> => {
   if (!query) return [];
   try {
-    const response = await axiosInstance.get<SearchedUser[]>(`/users/search`, {
+    const response = await axiosInstance.get<SearchedUser[]>(API_ROUTES.USERS.SEARCH, {
       params: { q: query },
       headers,
     });

@@ -10,12 +10,6 @@ import PostsLoadingSkeleton from "./PostsLoadingSkeleton ";
 import { NewPost } from "@/src/app/types/feed";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 
-/**
- * ✅ FIXED: FeedContainer using proper auth pattern
- * 
- * Now using useAuthHeaders() hook to get auth headers
- * and passing them to fetchFeed service function
- */
 export default function FeedContainer({userid}:{userid:string}) {
   const authHeaders = useAuthHeaders();
   

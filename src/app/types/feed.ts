@@ -147,6 +147,7 @@ interface FeedResponsePost {
     username?: string;
     avatar: string;
   };
+  engagement?: PostEngagement;
 }
 
 export interface submitPostProp {
@@ -167,6 +168,7 @@ export interface NewPost {
     url: string;
     createdAt: string;
   }[];
+  engagement?: PostEngagement;
 }
 
 export interface newPostSubmit {
@@ -200,4 +202,214 @@ export interface ImageData {
   preview: string;
   name: string;
   url: string;
+}
+
+
+// ========== ENGAGEMENT TYPES ==========
+
+/**
+ * Post engagement metrics
+ */
+export interface PostEngagement {
+  likesCount: number;
+  commentsCount: number;
+  sharesCount: number;
+  isLiked: boolean;
+  isShared: boolean;
+}
+
+/**
+ * Comment engagement metrics
+ */
+export interface CommentEngagement {
+  likesCount: number;
+  isLiked: boolean;
+}
+
+/**
+ * Comment data structure
+ */
+export interface Comment {
+  id: string;
+  postId: string;
+  userId: string;
+  content: string;
+  parentCommentId?: string | null;
+  likesCount: number;
+  createdAt: string;
+  updatedAt: string;
+  editedAt?: string | null;
+  user: {
+    id: string;
+    name: string;
+    username: string;
+    avatar: string;
+  };
+  replies?: Comment[];
+  commentMentions?: Mention[];
+}
+
+/**
+ * Comment list response with pagination
+ */
+export interface CommentListResponse {
+  success: boolean;
+  data: Comment[];
+  pagination: {
+    limit: number;
+    offset: number;
+    count: number;
+  };
+}
+
+/**
+ * Mention data structure
+ */
+export interface Mention {
+  id: string;
+  mentionedUserId: string;
+  actorId: string;
+  createdAt: string;
+  user?: {
+    id: string;
+    name: string;
+    username: string;
+    avatar: string;
+  };
+}
+
+/**
+ * Share type enum
+ */
+export type ShareType = "RESHARE" | "QUOTE";
+
+/**
+ * Share data structure
+ */
+export interface Share {
+  id: string;
+  postId: string;
+  userId: string;
+  shareType: ShareType;
+  caption?: string | null;
+  createdAt: string;
+  user?: {
+    id: string;
+    name: string;
+    username: string;
+    avatar: string;
+  };
+}
+
+/**
+ * Report reason enum
+ */
+export type ReportReason = 
+  | "SPAM" 
+  | "INAPPROPRIATE" 
+  | "HARASSMENT" 
+  | "HATE_SPEECH" 
+  | "VIOLENCE" 
+  | "SELF_HARM" 
+  | "OTHER";
+
+/**
+ * Report data structure
+ */
+export interface Report {
+  id: string;
+  reporterId: string;
+  targetType: "POST" | "COMMENT";
+  targetId: string;
+  reason: ReportReason;
+  status: "OPEN" | "INVESTIGATING" | "CLOSED";
+  createdAt: string;
+}
+
+/**
+ * Like response
+ */
+export interface LikeResponse {
+  success: boolean;
+  message: string;
+}
+
+/**
+ * Like status response
+ */
+export interface LikeStatusResponse {
+  success: boolean;
+  isLiked: boolean;
+}
+
+/**
+ * Like count response
+ */
+export interface LikeCountResponse {
+  success: boolean;
+  count: number;
+}
+
+/**
+ * Share response
+ */
+export interface ShareResponse {
+  success: boolean;
+  message: string;
+  data: Share;
+}
+
+/**
+ * Share status response
+ */
+export interface ShareStatusResponse {
+  success: boolean;
+  hasShared: boolean;
+}
+
+/**
+ * Report response
+ */
+export interface ReportResponse {
+  success: boolean;
+  message: string;
+  data: Report;
+}
+
+/**
+ * Updated NewPost interface with engagement data
+ */
+export interface NewPostWithEngagement extends NewPost {
+  engagement?: PostEngagement;
+}
+
+/**
+ * Comment creation request
+ */
+export interface CreateCommentRequest {
+  content: string;
+  parentCommentId?: string;
+}
+
+/**
+ * Comment update request
+ */
+export interface UpdateCommentRequest {
+  content: string;
+}
+
+/**
+ * Share request
+ */
+export interface ShareRequest {
+  shareType: ShareType;
+  caption?: string;
+}
+
+/**
+ * Report request
+ */
+export interface ReportRequest {
+  reason: ReportReason;
+  metadata?: Record<string, any>;
 }

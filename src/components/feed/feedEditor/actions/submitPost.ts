@@ -2,6 +2,7 @@
 
 import { serverFetch } from "@/src/app/lib/serverFetch";
 import { createPostSchema } from "@/src/app/lib/validation";
+import { API_ROUTES } from "@/src/constants/api.routes";
 
 export async function submitPost(input: {
   content: string;
@@ -10,7 +11,7 @@ export async function submitPost(input: {
   try {
     const { content, mediaIds } = createPostSchema.parse(input);
 
-    const res = await serverFetch("/feed/submit", {
+    const res = await serverFetch(API_ROUTES.FEED.SUBMIT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

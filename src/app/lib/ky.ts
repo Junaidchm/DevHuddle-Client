@@ -5,11 +5,16 @@
 
 import ky from "ky";
 import { auth } from "@/auth";
+import { getApiBaseUrl } from "@/src/constants/api.routes";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.LOCAL_APIGATEWAY_URL;
+const API_BASE_URL = getApiBaseUrl();
 
-if (!API_BASE_URL) {
-  throw new Error('API_BASE_URL environment variable is required');
+/**
+ * Helper to remove leading slash for ky routes
+ * ky with prefixUrl requires paths without leading slash
+ */
+export function stripLeadingSlash(path: string): string {
+  return path.startsWith('/') ? path.slice(1) : path;
 }
 
 // Create ky instance with enhanced retry policy and server-side auth

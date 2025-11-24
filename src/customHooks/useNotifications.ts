@@ -22,7 +22,7 @@ export function useNotificationsInfinite() {
   return useInfiniteQuery<GetNotificationsResult, Error>({
     queryKey: ["notifications", userId],
     queryFn: ({ pageParam = 0 }) =>
-      getNotificationsPage(userId!, pageParam, PAGE_SIZE, authHeaders),
+      getNotificationsPage(userId!, pageParam as number, PAGE_SIZE, authHeaders),
     getNextPageParam: (lastPage, allPages) =>
       lastPage.hasMore ? allPages.length : undefined,
     initialPageParam: 0, // ADD THIS LINE

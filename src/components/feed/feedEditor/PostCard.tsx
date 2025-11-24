@@ -143,7 +143,6 @@ export default function PostCard({ post, onDeletePost,userid }: PostProp) {
   } | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
 
-  // const userid = useGetUserData().id
 
   const handleDeleteClick = () => {
     setShowMenu(false);
@@ -219,7 +218,7 @@ export default function PostCard({ post, onDeletePost,userid }: PostProp) {
             </div>
           )}
 
-          <PostIntract />
+          <PostIntract post={post} />  
         </div>
       </article>
 

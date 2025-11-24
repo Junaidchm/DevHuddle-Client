@@ -1,11 +1,10 @@
 import { axiosInstance } from "@/src/axios/axios";
 import { UserProfile } from "@/src/types/user.type";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+import { API_ROUTES } from "@/src/constants/api.routes";
 
 export const fetchProfileByUsername = async (username: string, headers?: Record<string, string>): Promise<UserProfile> => {
   try {
-    const response = await axiosInstance.get(`/users/profile/${username}`, { headers });
+    const response = await axiosInstance.get(API_ROUTES.USERS.PROFILE_BY_USERNAME(username), { headers });
     return response.data;
   } catch (error) {
     console.error(`Error fetching profile for ${username}:`, error);
@@ -13,27 +12,8 @@ export const fetchProfileByUsername = async (username: string, headers?: Record<
   }
 };
 
-export const fetchFollowers = async (username: string, headers: Record<string, string>) => {
-  try {
-    console.log('fetch following is working without any proble ==========================>')
-    const response = await axiosInstance.get(`/users/profile/${username}/followers`, { headers });
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching followers for ${username}:`, error);
-    throw error;
-  }
-};
 
-export const fetchFollowing = async (username: string, headers: Record<string, string>) => {
-  try {
-    console.log('fetch following is working without any proble ==========================>')
-    const response = await axiosInstance.get(`/users/profile/${username}/following`, { headers });
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching following for ${username}:`, error);
-    throw error;
-  }
-};
+
 
 // export const followUser = async (userId: string, headers: Record<string, string>) => {
 //   try {

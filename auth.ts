@@ -1,6 +1,7 @@
 
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { API_ROUTES, getApiBaseUrl } from "./src/constants/api.routes";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -20,7 +21,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       authorize: async (credentials) => {
         try {
           const res = await fetch(
-            `${process.env.LOCAL_APIGATEWAY_URL}/auth/login`,
+            `${getApiBaseUrl()}${API_ROUTES.AUTH.LOGIN}`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -83,7 +84,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // Otherwise refresh
       try {
         const res = await fetch(
-          `${process.env.LOCAL_APIGATEWAY_URL}/auth/refresh`,
+          `${getApiBaseUrl()}${API_ROUTES.AUTH.REFRESH}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -94,6 +95,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!res.ok) throw new Error("Failed to refresh token");
         const data = await res.json();
 
+        
         return {
           ...token,
           accessToken: data.user.accessToken,

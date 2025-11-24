@@ -1,98 +1,44 @@
 // app/components/ProfileHeaderClient.tsx
 'use client';
 import React from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Avatar from './Avatar';
-import ActionButtons from './ActionButtons';
 import { PROFILE_DEFAULT_URL } from '@/src/constents';
-import toast from 'react-hot-toast';
-import { useAuthHeaders } from '@/src/customHooks/useAuthHeaders';
 import { UserProfile } from '@/src/types/user.type';
-import { followUser, unfollowUser } from '@/src/services/api/follow.service';
-import { fetchProfileByUsername } from '@/src/services/api/profile.service';
+import { useRouter } from 'next/navigation';
+import { FollowButton } from '../FollowButton';
 
 interface ProfileHeaderClientProps {
-  username: string;
-  initialProfile: UserProfile;
-  currentUserId?: string;
+  profile: UserProfile;
   isOwnProfile: boolean;
 }
 
-const ProfileHeaderClient = ({ username, initialProfile, currentUserId, isOwnProfile }: ProfileHeaderClientProps) => {
-  const queryClient = useQueryClient();
-  const authHeaders = useAuthHeaders();
-
-  // const { data: profile } = useQuery({
-  //   queryKey: ['profile', username],
-  //   queryFn: () => fetchProfileByUsername(username, authHeaders),
-  //   initialData: initialProfile,
-  //   staleTime: 5 * 60 * 1000, // 5 minutes
-  // });
-
-  const followMutation = useMutation({
-    mutationFn: () => followUser(initialProfile.id, authHeaders),
-    onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ['profile', username] });
-      const previousProfile = queryClient.getQueryData<UserProfile>(['profile', username]);
-      if (previousProfile) {
-        const updatedProfile = {
-          ...previousProfile,
-          isFollowing: true,
-          _count: { ...previousProfile._count, followers: previousProfile._count.followers + 1 },
-        };
-        queryClient.setQueryData(['profile', username], updatedProfile);
-      }
-      return { previousProfile };
-    },
-    onError: (err, _, context) => {
-      if (context?.previousProfile) {
-        queryClient.setQueryData(['profile', username], context.previousProfile);
-      }
-      toast.error('Failed to follow user.');
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile', username] });
-    },
-  });
-
-  const unfollowMutation = useMutation({
-    mutationFn: () => unfollowUser(initialProfile.id, authHeaders),
-    onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ['profile', username] });
-      const previousProfile = queryClient.getQueryData<UserProfile>(['profile', username]);
-      if (previousProfile) {
-        const updatedProfile = {
-          ...previousProfile,
-          isFollowing: false,
-          _count: { ...previousProfile._count, followers: previousProfile._count.followers - 1 },
-        };
-        queryClient.setQueryData(['profile', username], updatedProfile);
-      }
-      return { previousProfile };
-    },
-    onError: (err, _, context) => {
-      if (context?.previousProfile) {
-        queryClient.setQueryData(['profile', username], context.previousProfile);
-      }
-      toast.error('Failed to unfollow user.');
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile', username] });
-    },
-  });
+const ProfileHeaderClient = ({ profile, isOwnProfile }: ProfileHeaderClientProps) => {
+  const router = useRouter();
 
   return (
     <>
-      <Avatar src={initialProfile.profilePicture || PROFILE_DEFAULT_URL} alt={initialProfile.name} />
-      <ActionButtons
-        username={username}
-        userId={initialProfile.id}
-        isOwnProfile={isOwnProfile}
-        isFollowing={initialProfile.isFollowing}
-        onFollow={() => followMutation.mutate()}
-        onUnfollow={() => unfollowMutation.mutate()}
-        isPending={followMutation.isPending || unfollowMutation.isPending}
-      />
+      <Avatar src={profile.profilePicture || PROFILE_DEFAULT_URL} alt={profile.name} />
+      <div className="flex flex-col gap-3 mt-6 min-w-[150px]">
+        {isOwnProfile ? (
+          <button
+            className="bg-gradient-to-br from-blue-500 to-purple-500 text-white border-none py-2.5 px-5 rounded-lg font-medium cursor-pointer transition-all duration-200 text-sm flex items-center justify-center gap-2 hover:opacity-90"
+            onClick={() => router.push(`/profile/update/${profile.username}`)}
+          >
+            Edit Profile
+          </button>
+        ) : (
+          <FollowButton userId={profile.id} isFollowing={profile.isFollowing!} />
+        )}
+        <button
+          className="bg-white text-slate-500 border border-slate-200 py-2.5 px-5 rounded-lg font-medium cursor-pointer transition-all duration-200 text-sm flex items-center justify-center gap-2 hover:bg-gray-50"
+          onClick={() => {
+            navigator.clipboard.writeText(window.location.href);
+            alert('Profile URL copied to clipboard!');
+          }}
+        >
+          Share Profile
+        </button>
+      </div>
     </>
   );
 };

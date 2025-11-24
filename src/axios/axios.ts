@@ -23,11 +23,10 @@ import toast from "react-hot-toast";
  * }
  * ```
  */
+import { getApiBaseUrl } from "@/src/constants/api.routes";
+
 export const axiosInstance: AxiosInstance = axios.create({
-  baseURL:
-    process.env.NODE_ENV == "development"
-      ? process.env.LOCAL_APIGATEWAY_URL
-      : process.env.PRODUCT_APIGATEWAY_URL,
+  baseURL: getApiBaseUrl(),
   timeout: 10 * 1000,
   withCredentials: true,
 });

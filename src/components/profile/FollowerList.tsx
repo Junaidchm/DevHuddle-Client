@@ -6,7 +6,9 @@ import { useQuery } from '@tanstack/react-query';
 import FollowerItem from './FollowerItem'; // Ensure this path is correct
 import { useAuthHeaders } from '@/src/customHooks/useAuthHeaders';
 import { PROFILE_DEFAULT_URL } from '@/src/constents';
-import { fetchFollowers, fetchFollowing } from '@/src/services/api/profile.service';
+
+import { queryKeys } from '@/src/lib/queryKeys';
+import { fetchFollowers, fetchFollowing } from '@/src/services/api/follow.service';
 
 interface FollowerListProps {
   username: string;
@@ -17,7 +19,7 @@ interface FollowerListProps {
 const FollowerList = ({ username, currentUserId, view }: FollowerListProps) => {
   const authHeaders = useAuthHeaders();
   const { data: network = [], isLoading, error } = useQuery({
-    queryKey: ['network', username, view],
+    queryKey: queryKeys.network.list(username,view),
     queryFn: () => {
       if (view === 'followers') {
         return fetchFollowers(username, authHeaders);

@@ -2,14 +2,13 @@
 "use server"
 
 import { auth } from "@/auth";
+import { getApiBaseUrl } from "@/src/constants/api.routes";
 
 export async function serverFetch(
   url: string,
   options: RequestInit = {}
 ) {
   const session = await auth();
-
-  console.log('this is the user in the function ----------------->' , session?.user)
 
   if (!session?.user?.accessToken) {
     throw new Error("Unauthorized: No access token available");
@@ -21,7 +20,7 @@ export async function serverFetch(
     "Content-Type": "application/json",
   };
 
-  const res = await fetch(`${process.env.LOCAL_APIGATEWAY_URL}${url}`, {
+  const res = await fetch(`${getApiBaseUrl()}${url}`, {
     ...options,
     headers,
   });
