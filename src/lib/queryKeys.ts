@@ -41,9 +41,11 @@ export const queryKeys = {
     // Comments
     comments: {
       all: (postId: string) => ["engagement", "comments", "all", postId] as const,
+      preview: (postId: string) => ["engagement", "comments", "preview", postId] as const,
       list: (postId: string, limit: number, offset: number) => ["engagement", "comments", "list", postId, limit, offset] as const,
       count: (postId: string) => ["engagement", "comments", "count", postId] as const,
       detail: (commentId: string) => ["engagement", "comments", "detail", commentId] as const,
+      replies: (commentId: string) => ["engagement", "comments", "replies", commentId] as const,
     },
     
     // Shares

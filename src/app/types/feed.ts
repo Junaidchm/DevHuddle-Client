@@ -236,6 +236,8 @@ export interface Comment {
   content: string;
   parentCommentId?: string | null;
   likesCount: number;
+  isLiked?: boolean; // Whether current user has liked this comment
+  isAuthor?: boolean; // Whether this comment/reply is from the post author
   createdAt: string;
   updatedAt: string;
   editedAt?: string | null;
@@ -245,7 +247,7 @@ export interface Comment {
     username: string;
     avatar: string;
   };
-  replies?: Comment[];
+  replies?: Comment[]; // LinkedIn-style: Flat replies only, no nested replies
   commentMentions?: Mention[];
 }
 

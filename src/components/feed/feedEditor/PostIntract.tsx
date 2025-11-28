@@ -3,13 +3,12 @@
 import { Comment, Edit, Like, Share } from "@/src/constents/svg";
 import React, { useState, useMemo } from "react";
 import { NewPost, PostEngagement } from "@/src/app/types/feed";
-// import { CommentSection } from "./CommentSection";
+import CommentSection from "./CommentSection";
+import { CommentPreview } from "./CommentPreview";
 // import { ShareDialog } from "./ShareDialog";
 // import { ReportDialog } from "./ReportDialog";
 import { useLikeMutation } from "../mutations/useLikeMutation";
-import { useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/src/lib/queryKeys";
-import { InfiniteData } from "@tanstack/react-query";
+import { useQueryClient, InfiniteData } from "@tanstack/react-query";
 import { PostsPage } from "@/src/app/types/feed";
 
 // SocialActionButton component
@@ -44,31 +43,6 @@ export const SocialActionButton: React.FC<SocialActionButtonProps> = ({
     {count !== undefined && (
       <span className="font-medium">{count > 0 ? count : ""}</span>
     )}
-  </button>
-);
-
-// SocialIconButton component
-interface SocialIconButtonProps {
-  icon: React.ReactNode;
-  onClick?: () => void;
-  className?: string;
-  isActive?: boolean;
-}
-
-export const SocialIconButton: React.FC<SocialIconButtonProps> = ({
-  icon,
-  onClick,
-  className = "",
-  isActive = false,
-}) => (
-  <button
-    className={`bg-transparent border-none p-1.5 cursor-pointer transition-all duration-200 ease-in-out rounded hover:bg-gray-100 ${
-      isActive ? "text-blue-600" : "text-gray-600 hover:text-blue-600"
-    } ${className}`}
-    onClick={onClick}
-    aria-label="Share post"
-  >
-    {icon}
   </button>
 );
 
@@ -109,12 +83,12 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
 
     // Default fallback
     return {
-      likesCount: 0,
-      commentsCount: 0,
-      sharesCount: 0,
-      isLiked: false,
-      isShared: false,
-    };
+    likesCount: 0,
+    commentsCount: 0,
+    sharesCount: 0,
+    isLiked: false,
+    isShared: false,
+  };
   }, [post, queryClient]);
 
   const handleLike = () => {
@@ -156,7 +130,22 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
 
   return (
     <>
-      <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+      <div className="border-t border-slate-100 pt-3">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500 pb-3">
+          <span>
+            <strong>{engagement.likesCount}</strong> likes
+          </span>
+          <span>•</span>
+          <span>
+            <strong>{engagement.commentsCount}</strong> comments
+          </span>
+          <span>•</span>
+          <span>
+            <strong>{engagement.sharesCount}</strong> shares
+          </span>
+        </div>
+
+        <div className="flex justify-between items-center">
         <div className="flex gap-4">
           <SocialActionButton
             icon={LikeIcon}
@@ -164,7 +153,7 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
             onClick={handleLike}
             isActive={engagement.isLiked}
             className={likeMutation.isPending ? "opacity-50 cursor-wait" : ""}
-            disabled={likeMutation.isPending}
+              disabled={likeMutation.isPending}
           />
           <SocialActionButton
             icon={Comment}
@@ -174,20 +163,33 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
           />
         </div>
         <div className="flex gap-2">
-          <SocialIconButton
+            <SocialActionButton
             icon={Share}
+              count={engagement.sharesCount}
             onClick={handleShare}
             isActive={engagement.isShared}
           />
+          </div>
         </div>
       </div>
 
-      {/* {showComments && post.id && (
+      {/* Comment Preview (LinkedIn-style: show first comment by default) */}
+      {!showComments && post.id && (
+        <CommentPreview
+          postId={post.id}
+          postAuthorId={post.userId}
+          onLoadMore={() => setShowComments(true)}
+        />
+      )}
+
+      {/* Full Comment Section (when expanded) */}
+      {showComments && post.id && (
         <CommentSection
           postId={post.id}
+          postAuthorId={post.userId}
           onClose={() => setShowComments(false)}
         />
-      )} */}
+      )}
 
       {/* Share Dialog */}
       {/* {showShareDialog && post.id && (

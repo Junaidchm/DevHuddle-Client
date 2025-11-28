@@ -83,15 +83,22 @@ export const API_ROUTES = {
       `${API_VERSION}/engagement/comments/${commentId}/likes`,
     COMMENT_LIKE_COUNT: (commentId: string) =>
       `${API_VERSION}/engagement/comments/${commentId}/likes/count`,
+    COMMENT_LIKE_STATUS: (commentId: string) =>
+      `${API_VERSION}/engagement/comments/${commentId}/likes/status`,
     // Comments
     POST_COMMENTS: (postId: string) =>
       `${API_VERSION}/engagement/posts/${postId}/comments`,
+    COMMENT_PREVIEW: (postId: string) =>
+      `${API_VERSION}/engagement/posts/${postId}/comments/preview`,
     COMMENT_UPDATE: (commentId: string) =>
       `${API_VERSION}/engagement/comments/${commentId}`,
     COMMENT_DELETE: (commentId: string) =>
       `${API_VERSION}/engagement/comments/${commentId}`,
     COMMENT_DETAIL: (commentId: string) =>
       `${API_VERSION}/engagement/comments/${commentId}`,
+    // In ENGAGEMENT section, add:
+    POST_COMMENT_COUNT: (postId: string) =>
+      `${API_VERSION}/engagement/posts/${postId}/comments/count`,
     // Shares
     POST_SHARE: (postId: string) =>
       `${API_VERSION}/engagement/posts/${postId}/share`,
@@ -109,6 +116,8 @@ export const API_ROUTES = {
       `${API_VERSION}/engagement/posts/${postId}/mentions`,
     COMMENT_MENTIONS: (commentId: string) =>
       `${API_VERSION}/engagement/comments/${commentId}/mentions`,
+    COMMENT_REPLIES: (commentId: string) =>
+      `${API_VERSION}/engagement/comments/${commentId}/replies`,
   },
 } as const;
 

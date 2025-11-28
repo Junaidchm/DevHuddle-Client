@@ -53,6 +53,8 @@ export function useLikeMutation() {
               posts: page.posts.map((post) => {
                 if (post.id === postId) {
                   const currentLikes = post?.engagement?.likesCount || 0;
+                  const currentIsLiked = post?.engagement?.isLiked || false;
+                  
                   return {
                     ...post,
                     engagement: {
@@ -61,6 +63,10 @@ export function useLikeMutation() {
                         ? Math.max(0, currentLikes - 1)
                         : currentLikes + 1,
                       isLiked: !isLiked,
+                      // Preserve other engagement fields
+                      commentsCount: post?.engagement?.commentsCount || 0,
+                      sharesCount: post?.engagement?.sharesCount || 0,
+                      isShared: post?.engagement?.isShared || false,
                     } as PostEngagement,
                   };
                 }
@@ -73,7 +79,7 @@ export function useLikeMutation() {
 
       // Update like status query
       queryClient.setQueryData(
-        queryKeys.engagement.postLikes.status(postId, ""), // userId not needed for cache
+        queryKeys.engagement.postLikes.status(postId, ""),
         { success: true, isLiked: !isLiked }
       );
 
@@ -107,17 +113,24 @@ export function useLikeMutation() {
       );
     },
     onSuccess: (data, variables) => {
-      // Invalidate to refetch fresh data
+      // Invalidate to refetch fresh data (but keep optimistic update visible)
+      queryClient.invalidateQueries({
+        queryKey: ["post-feed"],
+        refetchType: "none", // Don't refetch immediately, just mark as stale
+      });
+      
       queryClient.invalidateQueries({
         queryKey: queryKeys.engagement.postLikes.count(variables.postId),
       });
+      
       queryClient.invalidateQueries({
         queryKey: queryKeys.engagement.postLikes.status(variables.postId, ""),
       });
 
-      toast.success(
-        variables.isLiked ? "Post unliked" : "Post liked"
-      );
+      // Don't show toast on success (optional - remove if you want to keep it)
+      // toast.success(
+      //   variables.isLiked ? "Post unliked" : "Post liked"
+      // );
     },
   });
 }

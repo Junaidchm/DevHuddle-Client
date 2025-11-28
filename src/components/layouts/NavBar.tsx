@@ -7,10 +7,10 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { PROFILE_DEFAULT_URL } from "@/src/constents";
 import UserSearch from "@/src/components/UserSearch";
-import { useWebSocketNotifications } from "@/src/customHooks/useWebSocketNotifications"; 
+// WebSocket is now managed at root level via WebSocketProvider
+// No need to import or call hook here
 
 export default function NavBar() {
-  useWebSocketNotifications();
   const { data: session } = useSession();
   const profileImageUrl = usePresignedProfileImage();
   

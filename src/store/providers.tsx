@@ -14,6 +14,7 @@ import { extractRouterConfig } from "uploadthing/server";
 import { fileRouter } from "../app/api/uploadthing/core";
 import { SessionProvider } from "next-auth/react";
 import SessionProviderWrapper from "./SessionProviderWrapper";
+import { WebSocketProvider } from "../contexts/WebSocketContext";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // ⚡ Important: keep QueryClient stable across renders
@@ -29,8 +30,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <SessionProviderWrapper>
             <NextSSRPlugin routerConfig={extractRouterConfig(fileRouter)} />
             <QueryClientProvider client={queryClient}>
-              {children}
-              <ReactQueryDevtools initialIsOpen={false} />
+              <WebSocketProvider>
+                {children}
+                <ReactQueryDevtools initialIsOpen={false} />
+              </WebSocketProvider>
             </QueryClientProvider>
           </SessionProviderWrapper>
         </SessionProvider>
