@@ -1,4 +1,4 @@
-import { serverFetchSilent } from "../../lib/auth";
+import { serverFetchSilent } from "../../lib/serverFetch";
 
 export async function GET(req: Request) {
   try {

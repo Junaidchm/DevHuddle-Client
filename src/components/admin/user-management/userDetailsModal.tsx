@@ -3,8 +3,10 @@
 import { PROFILE_DEFAULT_URL } from "@/src/constents";
 import usePresignedProfileImageForAdmin from "@/src/customHooks/useShowImageForAdmin";
 import { fetchUserFullDetails } from "@/src/services/api/admin.service";
+import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 import { useQuery } from "@tanstack/react-query";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import Link from "next/link";
 
 interface UserDetailsModalProps {
   userId: string;
@@ -15,9 +17,11 @@ export default function UserDetailsModal({
   userId,
   onClose,
 }: UserDetailsModalProps) {
+  const authHeaders = useAuthHeaders();
   const { data, error, isLoading } = useQuery({
-    queryKey: ["user", userId],
-    queryFn: () => fetchUserFullDetails(userId),
+    queryKey: ["user", userId, authHeaders],
+    queryFn: () => fetchUserFullDetails(userId, authHeaders),
+    enabled: !!authHeaders.Authorization,
     staleTime: 30000,
   });
  
@@ -108,6 +112,29 @@ export default function UserDetailsModal({
                   id="userBio"
                 >
                   {data?.data?.bio}
+                </div>
+              </div>
+              <div className="mb-4">
+                <label className="block font-medium mb-2 text-sm">
+                  Admin Actions
+                </label>
+                <div className="flex gap-3">
+                  <Link
+                    href={`/admin/users/${userId}/reported-content`}
+                    onClick={() => onClose(null)}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm transition-colors"
+                  >
+                    <i className="fas fa-flag mr-2"></i>
+                    View Reported Content
+                  </Link>
+                  <Link
+                    href={`/admin/users/${userId}/reports`}
+                    onClick={() => onClose(null)}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm transition-colors"
+                  >
+                    <i className="fas fa-history mr-2"></i>
+                    View Reports History
+                  </Link>
                 </div>
               </div>
               {/* <div className="mb-4">

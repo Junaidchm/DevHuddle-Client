@@ -42,7 +42,16 @@ export function anotheruseSubmitPostMutation({
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: submitPost,
+    // ✅ BUG FIX: Transform NewPost to submitPost input format
+    mutationFn: async (newPost: NewPost) => {
+      // Extract only the fields needed for submitPost
+      return await submitPost({
+        content: newPost.content,
+        mediaIds: newPost.mediaIds || [],
+        visibility: newPost.visibility || "PUBLIC",
+        commentControl: newPost.commentControl || "ANYONE",
+      });
+    },
     retry: 1,
     onMutate: async (newPost: NewPost) => {
      
@@ -84,37 +93,66 @@ export function anotheruseSubmitPostMutation({
       return { previousData };
     },
     onError: (error, _variables, context) => {
-      // Rollback to previous data
-      const feedKey = ["feed", "for-you"];
+      // ✅ BUG FIX: Use correct query key that matches feed query
+      const feedKey = ["post-feed", "for-you"];
       if (context?.previousData) {
         queryClient.setQueryData(feedKey, context.previousData);
       }
-      console.error("Post creation error:", error);
-     
+      // ✅ FIXED P0-11: Removed console.error, use proper error handling
       setIsPosting(false);
-      toast.error("Failed to post. Please try again.");
+      
+      // Handle structured error responses
+      if (error && typeof error === 'object' && 'message' in error) {
+        toast.error(error.message as string || "Failed to post. Please try again.");
+      } else {
+        toast.error("Failed to post. Please try again.");
+      }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      // ✅ BUG FIX: Handle structured response from submitPost
+      if (result && typeof result === 'object' && 'success' in result) {
+        if (!result.success) {
+          // Server returned error
+          setIsPosting(false);
+          const errorMessage = result.message || result.error || "Failed to create post";
+          toast.error(errorMessage);
+          
+          // Handle validation errors
+          if (result.errors) {
+            const errorMessages = Object.values(result.errors)
+              .flat()
+              .filter(Boolean)
+              .join(", ");
+            if (errorMessages) {
+              toast.error(`Validation error: ${errorMessages}`);
+            }
+          }
+          return;
+        }
+      }
+
+      // ✅ BUG FIX: Use correct query key that matches feed query
+      const feedKey = ["post-feed", "for-you"];
      
-      const feedKey = ["feed", "for-you"];
-     
+      // ✅ BUG FIX: Always invalidate and refetch feed after successful post creation
+      // This ensures new post appears on reload
       queryClient.invalidateQueries({
         queryKey: feedKey,
-        predicate: (query) => !query.state.data, // Only fetch empty queries
       });
 
       // Show success and reset UI
       setShowSuccess(true);
-      toast.success("Post created");
-      // setTimeout(() => {
-        setShowSuccess(false);
-        onClose();
-        setPostContent("");
-        setSelectedMedia([]);
-        setPoll(null);
-        setAudienceType(AudienceType.PUBLIC);
-        setCommentControl(CommentControl.ANYONE);
-      // }, 2000);
+      toast.success("Post created successfully!");
+      
+      // Reset UI state
+      setShowSuccess(false);
+      onClose();
+      setPostContent("");
+      setSelectedMedia([]);
+      setPoll(null);
+      setAudienceType(AudienceType.PUBLIC);
+      setCommentControl(CommentControl.ANYONE);
+      setIsPosting(false);
     },
   });
 

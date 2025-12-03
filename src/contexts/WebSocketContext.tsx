@@ -318,11 +318,19 @@ class WebSocketManager {
 
     switch (message.type) {
       case "new_notification":
+        // ✅ FIXED: Force refetch immediately instead of just invalidating
         this.queryClient.invalidateQueries({
           queryKey: ["notifications", this.userId],
+          refetchType: "active", // Only refetch active queries
         });
         this.queryClient.invalidateQueries({
           queryKey: ["unread-count", this.userId],
+          refetchType: "active",
+        });
+        
+        // ✅ FIXED: Also refetch if notifications page is open
+        this.queryClient.refetchQueries({
+          queryKey: ["notifications", this.userId],
         });
         break;
 
@@ -331,6 +339,7 @@ class WebSocketManager {
           message.data &&
           typeof message.data.unreadCount === "number"
         ) {
+          // ✅ FIXED: Update cache immediately
           this.queryClient.setQueryData(
             ["unread-count", this.userId],
             {

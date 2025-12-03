@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useContext } from "react";
+import React, { useState, useRef, useContext, useEffect } from "react";
 import {
   X,
   Image,
@@ -27,9 +27,11 @@ import { RootState } from "@/src/store/store";
 import toast from "react-hot-toast";
 import { getPresignedUrl } from "@/src/app/lib/general/getPresignedUrl";
 import { uploadToS3 } from "@/src/app/lib/general/uploadToS3WithProgressTracking";
-import { QueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { submitPost } from "./actions/submitPost";
+import { updatePost } from "./actions/updatePost";
 import { anotheruseSubmitPostMutation } from "../mutations/useSubmitPostMutation";
+import { useEditPost } from "./Hooks/useEditPost";
 import { PROFILE_DEFAULT_URL } from "@/src/constents";
 import useMediaUpload from "./Hooks/useMediaUpload";
 import { useSession } from "next-auth/react";
@@ -49,12 +51,14 @@ const LazyVideoEditorModal = dynamic(() => import("./VideoEdit"), {
 interface CreatePostModalProps {
   isOpen: boolean;
   onClose: () => void;
-  profileImage: string;
+  profileImage?: string;
+  postToEdit?: NewPost; // ✅ Added: Optional post to edit
 }
 
 export default function CreatePostModal({
   isOpen,
   onClose,
+  postToEdit, // ✅ Added: Optional post to edit
 }: CreatePostModalProps) {
   const [postContent, setPostContent] = useState("");
   const [poll, setPoll] = useState<Poll | null>(null);
@@ -66,7 +70,8 @@ export default function CreatePostModal({
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState("");
 
-  const queryClient = new QueryClient();
+  // ✅ FIXED P0-10: Use shared QueryClient from provider instead of creating new instance
+  const queryClient = useQueryClient();
 
   const {
     type,
@@ -80,7 +85,13 @@ export default function CreatePostModal({
 
   const { reset: resetMediaUploads } = useMediaUpload();
 
-  const mutation = anotheruseSubmitPostMutation({
+  // ✅ Added: Determine if we're editing or creating
+  const isEditing = !!postToEdit;
+
+  // ✅ Added: Edit mutation hook
+  const editMutation = useEditPost();
+
+  const createMutation = anotheruseSubmitPostMutation({
     setShowSuccess,
     setError,
     setIsPosting,
@@ -94,6 +105,69 @@ export default function CreatePostModal({
 
   const user = useGetUserData();
 
+  // ✅ Added: Track initialization to prevent infinite loops
+  const previousIsOpen = useRef(false);
+  const previousPostId = useRef<string | undefined>(undefined);
+
+  // ✅ Added: Pre-fill form when editing (fixed infinite loop)
+  useEffect(() => {
+    // Only initialize when modal transitions from closed to open
+    const justOpened = !previousIsOpen.current && isOpen;
+    const postChanged = previousPostId.current !== postToEdit?.id;
+
+    if (!justOpened && !postChanged) {
+      previousIsOpen.current = isOpen;
+      return;
+    }
+
+    // Skip if modal is closed
+    if (!isOpen) {
+      previousIsOpen.current = false;
+      previousPostId.current = undefined;
+      return;
+    }
+
+    // Initialize form based on edit or create mode
+    if (postToEdit?.id) {
+      // Editing: Pre-fill with post data
+      setPostContent(postToEdit.content || "");
+      
+      if (postToEdit.visibility) {
+        settingAudienceType(postToEdit.visibility as AudienceType);
+      }
+      if (postToEdit.commentControl) {
+        settingCommentControl(postToEdit.commentControl as CommentControl);
+      }
+
+      if (postToEdit.attachments && postToEdit.attachments.length > 0) {
+        const existingMedia: Media[] = postToEdit.attachments.map((att) => ({
+          id: att.id,
+          name: att.url.split("/").pop() || "media",
+          type: att.type === "IMAGE" ? "image/jpeg" : "video/mp4",
+          url: att.url,
+          mediaId: att.id,
+        }));
+        setMedia(existingMedia);
+      } else {
+        setMedia([]);
+      }
+
+      previousPostId.current = postToEdit.id;
+    } else {
+      // Creating: Reset form
+      setPostContent("");
+      setMedia([]);
+      setPoll(null);
+      settingAudienceType(AudienceType.PUBLIC);
+      settingCommentControl(CommentControl.ANYONE);
+
+      previousPostId.current = undefined;
+    }
+
+    previousIsOpen.current = isOpen;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, postToEdit?.id]); // Only depend on isOpen and postToEdit.id
+
   async function onSubmit() {
     if (!postContent.trim() && media.length == 0 && !poll) {
       toast.error("Please add content, media, or a poll.");
@@ -103,31 +177,84 @@ export default function CreatePostModal({
     setIsPosting(true);
     setError("");
 
-    const postid = crypto.randomUUID();
-
     try {
-      const newPostProps: NewPost = {
+      // ✅ BUG FIX: Extract mediaIds properly and validate
+      const mediaIds = media
+        .map((m) => m.mediaId)
+        .filter((id): id is string => Boolean(id));
+
+      // Validate that all new media has been uploaded (has mediaId)
+      // Existing media from postToEdit already has mediaId
+      const uploadingMedia = media.filter((m) => !m.mediaId);
+      if (uploadingMedia.length > 0) {
+        toast.error("Please wait for media to finish uploading before posting.");
+        setIsPosting(false);
+        return;
+      }
+
+      // ✅ Added: Handle edit mode
+      if (isEditing && postToEdit?.id) {
+        // Get existing attachment IDs from postToEdit
+        const existingAttachmentIds = postToEdit.attachments?.map((att) => att.id) || [];
+        
+        // Find newly added media (has mediaId but not in existing attachments)
+        const newMediaIds = mediaIds.filter(
+          (id) => !existingAttachmentIds.includes(id)
+        );
+        
+        // Find removed media (was in existing attachments but not in current media)
+        const removedAttachmentIds = existingAttachmentIds.filter(
+          (existingId) => !mediaIds.includes(existingId)
+        );
+
+        // Update post using edit mutation
+        await editMutation.mutateAsync({
+          postId: postToEdit.id,
+          data: {
+            content: postContent.trim() || undefined,
+            addAttachmentIds: newMediaIds.length > 0 ? newMediaIds : undefined,
+            removeAttachmentIds: removedAttachmentIds.length > 0 ? removedAttachmentIds : undefined,
+          },
+        });
+
+        // Reset and close
+        resetMediaUploads();
+        setMedia([]);
+        setPostContent("");
+        onClose();
+        toast.success("Post updated successfully!");
+        setIsPosting(false);
+        return;
+      }
+
+      // ✅ Create new post (existing logic)
+      const tempPostId = `temp-${Date.now()}-${Math.random()}`;
+
+      const optimisticPost: NewPost = {
         content: postContent,
-        mediaIds: media.map((a) => a.mediaId).filter(Boolean) as string[],
+        mediaIds: mediaIds,
         createdAt: String(new Date().toISOString()),
         user: {
           avatar: user?.image as string,
           name: user?.name as string,
           username: user?.username,
         },
-        id: postid,
+        id: tempPostId,
         userId: user?.id as string,
+        visibility: audienceType,
+        commentControl: commentControl,
         attachments: media.map((file) => {
           return {
-            id: crypto.randomUUID(),
+            id: `temp-${Date.now()}-${Math.random()}`,
             createdAt: String(new Date().toISOString()),
-            postId: postid,
+            postId: tempPostId,
             type: file.type.startsWith("image") ? "IMAGE" : "VIDEO",
             url: file.url as string,
           };
         }),
       };
-      mutation.mutate(newPostProps, {
+
+      createMutation.mutate(optimisticPost, {
         onSuccess: () => {
           resetMediaUploads();
           setMedia([]);
@@ -135,12 +262,13 @@ export default function CreatePostModal({
       });
     } catch (err: any) {
       toast.error("Error submitting post please try again ");
+      setIsPosting(false);
     }
   }
 
   if (!isOpen) return null;
 
-  console.log("this modal is working multiple times");
+  // ✅ FIXED P0-11: Removed console.log from production code
 
   return (
     <>
@@ -162,7 +290,7 @@ export default function CreatePostModal({
                   aria-label="Select post audience"
                 >
                   <span>
-                    Post to{" "}
+                    {isEditing ? "Edit" : "Post"} to{" "}
                     {audienceType === "PUBLIC" ? "Anyone" : "Connections only"}
                   </span>
                   <svg
@@ -199,39 +327,56 @@ export default function CreatePostModal({
             />
             {media.length > 0 && (
               <div className="mt-4 space-y-2 max-h-48 overflow-y-auto">
-                {media.map((media: Media) => (
-                  <div
-                    key={media.id}
-                    className="relative bg-gray-50 rounded-lg p-3 flex items-center justify-between"
-                  >
-                    <div className="flex items-center space-x-3">
-                      {media.type === "image" ? (
-                        <img
-                          src={media.url}
-                          alt={media.name}
-                          className="w-12 h-12 object-cover rounded"
-                        />
-                      ) : (
-                        <video
-                          src={media.url}
-                          className="w-12 h-12 object-cover rounded"
-                        />
-                      )}
-                      <div>
-                        <div className="font-medium text-sm">{media.name}</div>
-                        {/* <div className="text-xs text-gray-600">
-                      {media.}
-                    </div> */}
-                      </div>
-                    </div>
-                    <button
-                      className="p-1 hover:bg-gray-200 rounded-full"
-                      aria-label={`Remove ${media.name}`}
+                {media.map((mediaItem: Media) => {
+                  // ✅ BUG FIX: Check media type correctly (file.type or media.type)
+                  const isImage = mediaItem.type?.includes("image") || 
+                                 mediaItem.type === "image" ||
+                                 (mediaItem.file && mediaItem.file.type.startsWith("image"));
+                  
+                  return (
+                    <div
+                      key={mediaItem.id}
+                      className="relative bg-gray-50 rounded-lg p-3 flex items-center justify-between"
                     >
-                      <X size={16} className="text-gray-600" />
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex items-center space-x-3">
+                        {isImage ? (
+                          <img
+                            src={mediaItem.url}
+                            alt={mediaItem.name}
+                            className="w-12 h-12 object-cover rounded"
+                          />
+                        ) : (
+                          <video
+                            src={mediaItem.url}
+                            className="w-12 h-12 object-cover rounded"
+                          />
+                        )}
+                        <div>
+                          <div className="font-medium text-sm">{mediaItem.name}</div>
+                          {mediaItem.mediaId ? (
+                            <div className="text-xs text-green-600">✓ Uploaded</div>
+                          ) : (
+                            <div className="text-xs text-yellow-600">
+                              ⏳ {mediaItem.url ? "Processing..." : "Uploading..."}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {/* ✅ BUG FIX: Add remove functionality */}
+                      <button
+                        onClick={() => {
+                          // Remove media from context
+                          const updatedMedia = media.filter((m) => m.id !== mediaItem.id);
+                          setMedia(updatedMedia);
+                        }}
+                        className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                        aria-label={`Remove ${mediaItem.name}`}
+                      >
+                        <X size={16} className="text-gray-600" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
             {poll && (
@@ -271,7 +416,8 @@ export default function CreatePostModal({
                 <Image size={20} className="text-gray-600" />
               </button>
               <button
-                // onClick={() => videoInputRef.current?.click()}
+                // ✅ BUG FIX: Add onClick handler to open video editor modal
+                onClick={() => setShowVideoEditor(true)}
                 className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 aria-label="Add videos"
               >
@@ -284,7 +430,8 @@ export default function CreatePostModal({
                 <Smile size={20} className="text-gray-600" />
               </button>
               <button
-                onClick={() => setShowPhotoEditor(true)}
+                // ✅ BUG FIX: Poll button should open poll modal, not photo editor
+                onClick={() => setShowPollModal(true)}
                 className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-gray-50 rounded-lg transition-colors duration-200 ease-in-out cursor-pointer"
                 aria-label="Add poll"
               >
@@ -321,7 +468,9 @@ export default function CreatePostModal({
               }`}
               aria-label="Submit post"
             >
-              {isPosting ? "Posting..." : "Post"}
+              {isPosting 
+                ? (isEditing ? "Saving..." : "Posting...") 
+                : (isEditing ? "Save" : "Post")}
             </button>
           </div>
         </div>
@@ -340,6 +489,20 @@ export default function CreatePostModal({
         <LazyPhotoEditorModal
           isOpen={showPhotoEditor}
           onClose={() => setShowPhotoEditor(false)}
+        />
+      )}
+      {/* ✅ BUG FIX: Add video editor modal */}
+      {showVideoEditor && (
+        <LazyVideoEditorModal
+          isOpen={showVideoEditor}
+          onClose={() => setShowVideoEditor(false)}
+        />
+      )}
+      {/* ✅ BUG FIX: Add poll modal */}
+      {showPollModal && (
+        <LazyPollModal
+          isOpen={showPollModal}
+          onClose={() => setShowPollModal(false)}
         />
       )}
       {showSuccess && (

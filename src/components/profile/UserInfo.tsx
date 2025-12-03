@@ -9,9 +9,10 @@ interface UserInfoProps {
   timezone: string;
   joined: string;
   isVerified: boolean;
+  company?: string | null;
 }
 
-const UserInfo = ({ name, username, role, bio, location, timezone, joined, isVerified }: UserInfoProps) => {
+const UserInfo = ({ name, username, role, bio, location, timezone, joined, isVerified, company }: UserInfoProps) => {
   return (
     <div className="pt-14">
       <div className="flex items-center gap-3 mb-2">
@@ -26,10 +27,20 @@ const UserInfo = ({ name, username, role, bio, location, timezone, joined, isVer
           </div>
         )}
       </div>
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
         <span className="text-base text-slate-500 font-medium">@{username}</span>
-        <span className="inline-block w-1 h-1 rounded-full bg-slate-300"></span>
-        <span className="text-sm text-slate-500">{role}</span>
+        {role && (
+          <>
+            <span className="inline-block w-1 h-1 rounded-full bg-slate-300"></span>
+            <span className="text-sm text-slate-500">{role}</span>
+          </>
+        )}
+        {company && (
+          <>
+            <span className="inline-block w-1 h-1 rounded-full bg-slate-300"></span>
+            <span className="text-sm text-slate-500">{company}</span>
+          </>
+        )}
       </div>
       <p className="m-0 mb-4 text-[0.938rem] text-slate-600 max-w-[550px] leading-6">{bio}</p>
       <div className="flex items-center gap-6 flex-wrap">

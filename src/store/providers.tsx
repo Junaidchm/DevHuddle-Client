@@ -16,9 +16,11 @@ import { SessionProvider } from "next-auth/react";
 import SessionProviderWrapper from "./SessionProviderWrapper";
 import { WebSocketProvider } from "../contexts/WebSocketContext";
 
+import { createQueryClient } from "@/src/lib/query-client";
+
 export function Providers({ children }: { children: React.ReactNode }) {
-  // ⚡ Important: keep QueryClient stable across renders
-  const [queryClient] = useState(() => new QueryClient());
+  // ⚡ Important: keep QueryClient stable across renders with production defaults
+  const [queryClient] = useState(() => createQueryClient());
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>

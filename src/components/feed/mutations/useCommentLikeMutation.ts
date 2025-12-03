@@ -14,7 +14,7 @@ import { queryKeys } from "@/src/lib/queryKeys";
  * 
  * Features:
  * - Optimistic updates for instant UI feedback
- * - Recursive cache updates for nested replies
+ * - Flat cache updates (main comments + one level of replies)
  * - Automatic cache invalidation
  * - Idempotency key support
  * - Error handling with rollback
@@ -23,20 +23,24 @@ export function useCommentLikeMutation() {
   const queryClient = useQueryClient();
   const authHeaders = useAuthHeaders();
 
-  // Helper: Recursively update comment in tree
-  const updateCommentInTree = (
+  // Helper: Update comment in flat structure (main comments + one level of replies)
+  const updateCommentFlat = (
     comments: Comment[],
     commentId: string,
     updateFn: (comment: Comment) => Comment
   ): Comment[] => {
     return comments.map((comment) => {
+      // Check if this is the main comment
       if (comment.id === commentId) {
         return updateFn(comment);
       }
+      // Check replies (one level only - LinkedIn-style flat structure)
       if (comment.replies && comment.replies.length > 0) {
         return {
           ...comment,
-          replies: updateCommentInTree(comment.replies, commentId, updateFn),
+          replies: comment.replies.map((reply) =>
+            reply.id === commentId ? updateFn(reply) : reply
+          ),
         };
       }
       return comment;
@@ -125,7 +129,7 @@ export function useCommentLikeMutation() {
         }
       );
 
-      // Optimistically update comment in all comment queries (recursively)
+      // Optimistically update comment in all comment queries (flat structure)
       queryClient.setQueriesData<
         InfiniteData<{ data: Comment[]; pagination: any }>
       >(
@@ -137,7 +141,7 @@ export function useCommentLikeMutation() {
             ...oldData,
             pages: oldData.pages.map((page) => ({
               ...page,
-              data: updateCommentInTree(page.data, commentId, (comment) => ({
+              data: updateCommentFlat(page.data, commentId, (comment) => ({
                 ...comment,
                 likesCount: isLiked
                   ? Math.max(0, comment.likesCount - 1)
@@ -193,22 +197,24 @@ export function useCommentLikeMutation() {
           : "Failed to like comment. Please try again."
       );
     },
-    onSuccess: (data, variables) => {
-      // Invalidate to refetch fresh data (but keep optimistic update visible)
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.engagement.comments.all(variables.postId),
-        refetchType: "none",
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.engagement.comments.preview(variables.postId),
-        refetchType: "none",
-      });
-
-      queryClient.invalidateQueries({
+    onSuccess: async (data, variables) => {
+      // The backend has successfully updated the denormalized likesCount in the database
+      // Our optimistic update is correct and matches the backend state
+      // 
+      // IMPORTANT: We do NOT invalidate the comments query because:
+      // 1. The optimistic update is already correct
+      // 2. Invalidating would mark it as stale and trigger refetches that might overwrite our update
+      // 3. When comments are naturally refetched (window focus, etc.), the backend will return the correct count
+      // 4. The denormalized counter ensures the backend always has the correct count
+      //
+      // We only invalidate the separate like count and status queries to keep them in sync
+      // These are independent queries that might be used elsewhere in the app
+      
+      await queryClient.invalidateQueries({
         queryKey: queryKeys.engagement.commentLikes.count(variables.commentId),
       });
 
-      queryClient.invalidateQueries({
+      await queryClient.invalidateQueries({
         queryKey: queryKeys.engagement.commentLikes.status(
           variables.commentId,
           ""

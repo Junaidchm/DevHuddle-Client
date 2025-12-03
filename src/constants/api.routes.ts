@@ -10,18 +10,18 @@ const API_VERSION = "/api/v1";
 
 export const API_ROUTES = {
   AUTH: {
-    // gRPC routes (no version prefix, handled by authRouter at /auth)
-    LOGIN: "/auth/login",
-    SIGNUP: "/auth/signup",
-    LOGOUT: "/auth/logout",
-    REFRESH: "/auth/refresh",
-    ME: "/auth/me",
-    PROFILE: "/auth/profile",
-    VERIFY_OTP: "/auth/verify-otp",
-    RESEND_OTP: "/auth/resend",
-    PASSWORD_RESET: "/auth/password-reset",
-    PASSWORD_RESET_CONFIRM: "/auth/password-reset/confirm",
-    GENERATE_PRESIGNED_URL: "/auth/generate-presigned-url",
+    // HTTP routes (proxied through API Gateway at /api/v1/auth)
+    LOGIN: `${API_VERSION}/auth/login`,
+    SIGNUP: `${API_VERSION}/auth/signup`,
+    LOGOUT: `${API_VERSION}/auth/logout`,
+    REFRESH: `${API_VERSION}/auth/refresh`,
+    ME: `${API_VERSION}/auth/me`,
+    PROFILE: `${API_VERSION}/auth/profile`,
+    VERIFY_OTP: `${API_VERSION}/auth/verify-otp`,
+    RESEND_OTP: `${API_VERSION}/auth/resend`,
+    PASSWORD_RESET: `${API_VERSION}/auth/password-reset`,
+    PASSWORD_RESET_CONFIRM: `${API_VERSION}/auth/password-reset/confirm`,
+    GENERATE_PRESIGNED_URL: `${API_VERSION}/auth/generate-presigned-url`,
   },
 
   USERS: {
@@ -43,9 +43,32 @@ export const API_ROUTES = {
   },
 
   ADMIN: {
+    // User Management (Auth Service)
     USERS: `${API_VERSION}/auth/admin/users`,
     USER_BY_ID: (id: string) => `${API_VERSION}/auth/admin/user/${id}`,
     TOGGLE_USER: (id: string) => `${API_VERSION}/auth/admin/users/${id}/toogle`,
+    USER_REPORTED_CONTENT: (userId: string) => `${API_VERSION}/admin/users/${userId}/reported-content`,
+    USER_REPORTS: (userId: string) => `${API_VERSION}/admin/users/${userId}/reports`,
+    // Reports Management (Post Service)
+    REPORTS: `${API_VERSION}/admin/reports`,
+    REPORT_BY_ID: (id: string) => `${API_VERSION}/admin/reports/${id}`,
+    REPORT_ACTION: (id: string) => `${API_VERSION}/admin/reports/${id}/action`,
+    REPORTS_BULK_ACTION: `${API_VERSION}/admin/reports/bulk-action`,
+    // Posts Management (Post Service)
+    POSTS: `${API_VERSION}/admin/posts`,
+    POSTS_REPORTED: `${API_VERSION}/admin/posts/reported`,
+    POST_BY_ID: (id: string) => `${API_VERSION}/admin/posts/${id}`,
+    POST_HIDE: (id: string) => `${API_VERSION}/admin/posts/${id}/hide`,
+    POST_DELETE: (id: string) => `${API_VERSION}/admin/posts/${id}`,
+    // Comments Management (Post Service)
+    COMMENTS: `${API_VERSION}/admin/comments`,
+    COMMENTS_REPORTED: `${API_VERSION}/admin/comments/reported`,
+    COMMENT_BY_ID: (id: string) => `${API_VERSION}/admin/comments/${id}`,
+    COMMENT_DELETE: (id: string) => `${API_VERSION}/admin/comments/${id}`,
+    // Analytics (Post Service)
+    ANALYTICS_DASHBOARD: `${API_VERSION}/admin/analytics/dashboard`,
+    ANALYTICS_REPORTS_BY_REASON: `${API_VERSION}/admin/analytics/reports-by-reason`,
+    ANALYTICS_REPORTS_BY_SEVERITY: `${API_VERSION}/admin/analytics/reports-by-severity`,
   },
 
   NOTIFICATIONS: {
@@ -63,6 +86,10 @@ export const API_ROUTES = {
     SUBMIT: "/feed/submit",
     DELETE: "/feed/delete",
     MEDIA: "/feed/media",
+    EDIT_POST: (postId: string) => `${API_VERSION}/feed/posts/${postId}`,
+    POST_VERSIONS: (postId: string) => `${API_VERSION}/feed/posts/${postId}/versions`,
+    RESTORE_VERSION: (postId: string, versionNumber: number) =>
+      `${API_VERSION}/feed/posts/${postId}/versions/${versionNumber}/restore`,
   },
 
   ENGAGEMENT: {
@@ -99,13 +126,10 @@ export const API_ROUTES = {
     // In ENGAGEMENT section, add:
     POST_COMMENT_COUNT: (postId: string) =>
       `${API_VERSION}/engagement/posts/${postId}/comments/count`,
-    // Shares
-    POST_SHARE: (postId: string) =>
-      `${API_VERSION}/engagement/posts/${postId}/share`,
-    POST_SHARE_STATUS: (postId: string) =>
-      `${API_VERSION}/engagement/posts/${postId}/share/status`,
-    POST_SHARE_COUNT: (postId: string) =>
-      `${API_VERSION}/engagement/posts/${postId}/share/count`,
+    // Send Post
+    GET_CONNECTIONS: `${API_VERSION}/engagement/connections`,
+    SEND_POST: (postId: string) =>
+      `${API_VERSION}/engagement/posts/${postId}/send`,
     // Reports
     POST_REPORT: (postId: string) =>
       `${API_VERSION}/engagement/posts/${postId}/report`,
@@ -118,26 +142,56 @@ export const API_ROUTES = {
       `${API_VERSION}/engagement/comments/${commentId}/mentions`,
     COMMENT_REPLIES: (commentId: string) =>
       `${API_VERSION}/engagement/comments/${commentId}/replies`,
+    // Post Share Link
+    POST_SHARE_LINK: (postId: string) =>
+      `${API_VERSION}/engagement/posts/${postId}/share-link`,
+  },
+
+  PROJECTS: {
+    BASE: `${API_VERSION}/projects`,
+    LIST: `${API_VERSION}/projects`,
+    CREATE: `${API_VERSION}/projects`,
+    GET: (projectId: string) => `${API_VERSION}/projects/${projectId}`,
+    UPDATE: (projectId: string) => `${API_VERSION}/projects/${projectId}`,
+    DELETE: (projectId: string) => `${API_VERSION}/projects/${projectId}`,
+    PUBLISH: (projectId: string) => `${API_VERSION}/projects/${projectId}/publish`,
+    TRENDING: `${API_VERSION}/projects/trending`,
+    TOP: `${API_VERSION}/projects/top`,
+    SEARCH: `${API_VERSION}/projects/search`,
+    MEDIA_UPLOAD: `${API_VERSION}/projects/media`,
+    LIKE: (projectId: string) => `${API_VERSION}/projects/${projectId}/like`,
+    UNLIKE: (projectId: string) => `${API_VERSION}/projects/${projectId}/like`,
+    SHARE: (projectId: string) => `${API_VERSION}/projects/${projectId}/share`,
+    REPORT: (projectId: string) => `${API_VERSION}/projects/${projectId}/report`,
+    VIEW: (projectId: string) => `${API_VERSION}/projects/${projectId}/view`,
   },
 } as const;
 
 /**
  * Get the API base URL based on environment
  * Handles both server-side and client-side scenarios
+ * 
+ * ✅ FIXED: Properly handles server-side middleware context
  */
 export const getApiBaseUrl = (): string => {
+  // Server-side (Next.js server components, server actions, middleware)
   if (typeof window === "undefined") {
-    // Server-side (Next.js server components, server actions)
-    return (
+    const url = 
       process.env.LOCAL_APIGATEWAY_URL ||
       process.env.API_GATEWAY ||
-      "http://localhost:8080"
-    );
+      process.env.NEXT_PUBLIC_API_URL ||
+      "http://localhost:8080";
+    
+    // Ensure URL doesn't end with slash
+    return url.endsWith("/") ? url.slice(0, -1) : url;
   }
+  
   // Client-side (browser)
-  return (
+  const url = 
     process.env.NEXT_PUBLIC_API_URL ||
     process.env.LOCAL_APIGATEWAY_URL ||
-    "http://localhost:8080"
-  );
+    "http://localhost:8080";
+  
+  // Ensure URL doesn't end with slash
+  return url.endsWith("/") ? url.slice(0, -1) : url;
 };

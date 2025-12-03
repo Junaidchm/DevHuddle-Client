@@ -7,6 +7,7 @@ import {
   deleteComment,
 } from "@/src/services/api/engagement.service";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
+import { useSession } from "next-auth/react";
 import { InfiniteData } from "@tanstack/react-query";
 import { Comment, PostsPage, PostEngagement } from "@/src/app/types/feed";
 import toast from "react-hot-toast";
@@ -19,6 +20,7 @@ import { queryKeys } from "@/src/lib/queryKeys";
 export function useCreateCommentMutation() {
   const queryClient = useQueryClient();
   const authHeaders = useAuthHeaders();
+  const { data: session } = useSession();
 
   return useMutation({
     mutationFn: async ({
@@ -119,6 +121,15 @@ export function useCreateCommentMutation() {
         queryKey: ["post-feed"],
         refetchType: "none",
       });
+
+      // ✅ FIXED: Invalidate notifications to ensure new comment notifications appear instantly
+      // (WebSocket should handle this, but this is a backup)
+      if (session?.user?.id) {
+        queryClient.invalidateQueries({
+          queryKey: ["notifications", session.user.id],
+          refetchType: "none", // Don't refetch immediately, let WebSocket handle it
+        });
+      }
     },
   });
 }
@@ -154,27 +165,31 @@ export function useUpdateCommentMutation() {
         InfiniteData<{ data: Comment[]; pagination: any }>
       >(queryKeys.engagement.comments.all(postId));
 
-      // Helper: Recursively update comment in tree
-      const updateCommentInTree = (
+      // Helper: Update comment in flat structure (main comments + one level of replies)
+      const updateCommentFlat = (
         comments: Comment[],
         targetId: string,
         updateFn: (comment: Comment) => Comment
       ): Comment[] => {
         return comments.map((comment) => {
+          // Check if this is the main comment
           if (comment.id === targetId) {
             return updateFn(comment);
           }
+          // Check replies (one level only - LinkedIn-style flat structure)
           if (comment.replies && comment.replies.length > 0) {
             return {
               ...comment,
-              replies: updateCommentInTree(comment.replies, targetId, updateFn),
+              replies: comment.replies.map((reply) =>
+                reply.id === targetId ? updateFn(reply) : reply
+              ),
             };
           }
           return comment;
         });
       };
 
-      // Optimistically update comment in the specific post's comment query (recursively)
+      // Optimistically update comment in the specific post's comment query (flat structure)
       queryClient.setQueriesData<InfiniteData<{ data: Comment[]; pagination: any }>>(
         { queryKey: queryKeys.engagement.comments.all(postId) },
         (oldData) => {
@@ -184,7 +199,7 @@ export function useUpdateCommentMutation() {
             ...oldData,
             pages: oldData.pages.map((page) => ({
               ...page,
-              data: updateCommentInTree(page.data, commentId, (comment) => ({
+              data: updateCommentFlat(page.data, commentId, (comment) => ({
                 ...comment,
                 content,
                 editedAt: new Date().toISOString(),
@@ -239,25 +254,26 @@ export function useDeleteCommentMutation() {
         InfiniteData<{ data: Comment[]; pagination: any }>
       >(queryKeys.engagement.comments.all(postId));
 
-      // Helper: Recursively remove comment from tree
-      const removeCommentFromTree = (
+      // Helper: Remove comment from flat structure (main comments + one level of replies)
+      const removeCommentFlat = (
         comments: Comment[],
         targetId: string
       ): Comment[] => {
         return comments
           .filter((comment) => comment.id !== targetId)
           .map((comment) => {
+            // Remove from replies if it's a reply (one level only - LinkedIn-style flat structure)
             if (comment.replies && comment.replies.length > 0) {
               return {
                 ...comment,
-                replies: removeCommentFromTree(comment.replies, targetId),
+                replies: comment.replies.filter((reply) => reply.id !== targetId),
               };
             }
             return comment;
           });
       };
 
-      // Optimistically remove comment from list (recursively)
+      // Optimistically remove comment from list (flat structure)
       queryClient.setQueriesData<InfiniteData<{ data: Comment[]; pagination: any }>>(
         { queryKey: queryKeys.engagement.comments.all(postId) },
         (oldData) => {
@@ -267,7 +283,7 @@ export function useDeleteCommentMutation() {
             ...oldData,
             pages: oldData.pages.map((page) => ({
               ...page,
-              data: removeCommentFromTree(page.data, commentId),
+              data: removeCommentFlat(page.data, commentId),
             })),
           };
         }

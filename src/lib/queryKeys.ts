@@ -59,5 +59,10 @@ export const queryKeys = {
       post: (postId: string) => ["engagement", "mentions", "post", postId] as const,
       comment: (commentId: string) => ["engagement", "mentions", "comment", commentId] as const,
     },
+    
+    // Connections (for sending posts)
+    connections: {
+      all: (userId?: string) => ["engagement", "connections", ...(userId ? [userId] : [])] as const,
+    },
   },
 };

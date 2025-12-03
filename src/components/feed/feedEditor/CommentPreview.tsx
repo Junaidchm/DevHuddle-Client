@@ -70,7 +70,9 @@ export const CommentPreview: React.FC<CommentPreviewProps> = ({
                 <span className="font-semibold text-sm text-gray-900">
                   {comment.user?.name || "Unknown User"}
                 </span>
-                {postAuthorId && comment.userId === postAuthorId && <AuthorBadge />}
+                {postAuthorId && comment.userId === postAuthorId && (
+                  <AuthorBadge />
+                )}
                 <span className="text-xs text-gray-500">
                   {formatRelativeDate(new Date(comment.createdAt))}
                   {comment.editedAt && " • Edited"}
@@ -96,7 +98,9 @@ export const CommentPreview: React.FC<CommentPreviewProps> = ({
                   comment.isLiked
                     ? "text-blue-600 fill-blue-600"
                     : "text-gray-600 hover:text-blue-600"
-                } ${likeMutation.isPending ? "opacity-50 cursor-not-allowed" : ""}`}
+                } ${
+                  likeMutation.isPending ? "opacity-50 cursor-not-allowed" : ""
+                }`}
               >
                 <Heart
                   className={`w-3 h-3 ${comment.isLiked ? "fill-current" : ""}`}
@@ -127,4 +131,3 @@ export const CommentPreview: React.FC<CommentPreviewProps> = ({
     </div>
   );
 };
-

@@ -3,7 +3,7 @@ import NotificationsClient from "./NotificationsClient";
 
 export default function NotificationsPage() {
   return (
-    <main className="container mx-auto max-w-4xl py-8 px-4">
+    <main className="container mx-auto max-w-3xl py-6 px-4 sm:px-6 lg:px-8">
       <NotificationsClient />
     </main>
   );

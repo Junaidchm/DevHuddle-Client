@@ -43,16 +43,34 @@ axiosInstance.interceptors.response.use(
   },
   async (error) => {
     // Handle authentication errors
+    // ✅ FIX: Only redirect on 401 if it's NOT a report endpoint
+    // Report endpoints may return 401 for rate limiting or other reasons
+    // that shouldn't trigger a full session logout
     if (error.response?.status === 401) {
+      const url = error.config?.url || "";
+      const isReportEndpoint = url.includes("/report");
+      
+      // For report endpoints, show error but don't redirect
+      if (isReportEndpoint) {
+        // Let the error propagate to the component for handling
+        return Promise.reject(error);
+      }
+      
+      // For other endpoints, handle session expiration
       // NextAuth automatically refreshes tokens via JWT callback
       // If we get here, refresh failed or session is invalid
+      
+      // Check if we're on an admin route to redirect to correct sign-in page
+      const isAdminRoute = window.location.pathname.startsWith("/admin");
+      const redirectUrl = isAdminRoute ? "/admin/signIn" : "/signIn";
+      
       toast.error("Session expired. Please log in again.");
       
       // Clear any cached data
       localStorage.clear();
       
-      // Redirect to sign in
-      window.location.href = "/signIn";
+      // Redirect to appropriate sign-in page
+      window.location.href = redirectUrl;
     }
 
     return Promise.reject(error);

@@ -5,6 +5,7 @@ import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/src/store/store";
 import { usePathname, useRouter } from "next/navigation";
 import { useAdminRedirectIfNotAuthenticated } from "@/src/customHooks/useAdminAuthenticated";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { SettingsTab } from "../(main)/profile/update/[username]/components";
 
@@ -15,9 +16,21 @@ export default function AdminLayout({
 }) {
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
-  const pathname = usePathname()
+  const pathname = usePathname();
+  const queryClient = useQueryClient();
+  const { isChecking } = useAdminRedirectIfNotAuthenticated("/admin/signIn");
 
-  useAdminRedirectIfNotAuthenticated("/admin/signIn");
+  // Show loading state while checking authentication
+  if (isChecking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <i className="fas fa-spinner fa-spin text-4xl text-indigo-600 mb-4"></i>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (  
     <>
@@ -43,9 +56,11 @@ export default function AdminLayout({
               </h3>
               <ul>
                 <li className="relative">
-                  <a
-                    href="admin-dashboard.html"
-                    className="flex items-center gap-3 px-6 py-3 text-gray-400 transition-all duration-300 hover:text-gray-50 hover:bg-white/10 bg-white/10 text-gray-50"
+                  <Link
+                    href="/admin/dashboard"
+                    className={`flex items-center gap-3 px-6 py-3 text-gray-400 transition-all duration-300 hover:text-gray-50 hover:bg-white/10 ${
+                      pathname === "/admin/dashboard" ? "bg-white/10 text-gray-50" : ""
+                    }`}
                   >
                     <span className="text-xl w-6 flex justify-center">
                       <i className="fas fa-chart-line"></i>
@@ -53,8 +68,10 @@ export default function AdminLayout({
                     <span className="transition-opacity duration-300 whitespace-nowrap">
                       Overview
                     </span>
-                    <span className="absolute left-0 top-0 h-full w-1 bg-indigo-600"></span>
-                  </a>
+                    {pathname === "/admin/dashboard" && (
+                      <span className="absolute left-0 top-0 h-full w-1 bg-indigo-600"></span>
+                    )}
+                  </Link>
                 </li>
                 <li className="relative">
                   <a
@@ -80,7 +97,9 @@ export default function AdminLayout({
                 <li className="relative">
                   <Link
                     href="/admin/users"
-                    className="flex items-center gap-3 px-6 py-3 text-gray-400 transition-all duration-300 hover:text-gray-50 hover:bg-white/10"
+                    className={`flex items-center gap-3 px-6 py-3 text-gray-400 transition-all duration-300 hover:text-gray-50 hover:bg-white/10 ${
+                      pathname?.startsWith("/admin/users") ? "bg-white/10 text-gray-50" : ""
+                    }`}
                   >
                     <span className="text-xl w-6 flex justify-center">
                       <i className="fas fa-users"></i>
@@ -88,6 +107,9 @@ export default function AdminLayout({
                     <span className="transition-opacity duration-300 whitespace-nowrap">
                       Users
                     </span>
+                    {pathname?.startsWith("/admin/users") && (
+                      <span className="absolute left-0 top-0 h-full w-1 bg-indigo-600"></span>
+                    )}
                   </Link>
                 </li>
                 <li className="relative">
@@ -164,9 +186,11 @@ export default function AdminLayout({
                   </a>
                 </li>
                 <li className="relative">
-                  <a
-                    href="admin-reports.html"
-                    className="flex items-center gap-3 px-6 py-3 text-gray-400 transition-all duration-300 hover:text-gray-50 hover:bg-white/10"
+                  <Link
+                    href="/admin/reports"
+                    className={`flex items-center gap-3 px-6 py-3 text-gray-400 transition-all duration-300 hover:text-gray-50 hover:bg-white/10 ${
+                      pathname?.startsWith("/admin/reports") ? "bg-white/10 text-gray-50" : ""
+                    }`}
                   >
                     <span className="text-xl w-6 flex justify-center">
                       <i className="fas fa-flag"></i>
@@ -174,7 +198,37 @@ export default function AdminLayout({
                     <span className="transition-opacity duration-300 whitespace-nowrap">
                       Reports
                     </span>
-                  </a>
+                  </Link>
+                </li>
+                <li className="relative">
+                  <Link
+                    href="/admin/posts"
+                    className={`flex items-center gap-3 px-6 py-3 text-gray-400 transition-all duration-300 hover:text-gray-50 hover:bg-white/10 ${
+                      pathname?.startsWith("/admin/posts") ? "bg-white/10 text-gray-50" : ""
+                    }`}
+                  >
+                    <span className="text-xl w-6 flex justify-center">
+                      <i className="fas fa-file-alt"></i>
+                    </span>
+                    <span className="transition-opacity duration-300 whitespace-nowrap">
+                      Posts
+                    </span>
+                  </Link>
+                </li>
+                <li className="relative">
+                  <Link
+                    href="/admin/comments"
+                    className={`flex items-center gap-3 px-6 py-3 text-gray-400 transition-all duration-300 hover:text-gray-50 hover:bg-white/10 ${
+                      pathname?.startsWith("/admin/comments") ? "bg-white/10 text-gray-50" : ""
+                    }`}
+                  >
+                    <span className="text-xl w-6 flex justify-center">
+                      <i className="fas fa-comments"></i>
+                    </span>
+                    <span className="transition-opacity duration-300 whitespace-nowrap">
+                      Comments
+                    </span>
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -270,7 +324,7 @@ export default function AdminLayout({
                 text="Logout"
                 isActive={false}
                 onclick={() =>
-                  showLogoutConfirmation(dispatch, router, "/admin/signIn")
+                  showLogoutConfirmation("/admin/signIn")
                 }
               />
 

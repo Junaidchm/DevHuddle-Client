@@ -161,6 +161,8 @@ export interface NewPost {
   userId: string;
   createdAt: string;
   user: { name: string; username?: string; avatar: string } | null;
+  visibility?: Visibility; // ✅ Added: Post visibility setting
+  commentControl?: CommentControl; // ✅ Added: Comment control setting
   attachments: {
     id: string;
     postId: string;
@@ -213,9 +215,7 @@ export interface ImageData {
 export interface PostEngagement {
   likesCount: number;
   commentsCount: number;
-  sharesCount: number;
   isLiked: boolean;
-  isShared: boolean;
 }
 
 /**
@@ -281,26 +281,16 @@ export interface Mention {
 }
 
 /**
- * Share type enum
+ * Connection/User for sending posts
  */
-export type ShareType = "RESHARE" | "QUOTE";
-
-/**
- * Share data structure
- */
-export interface Share {
+export interface Connection {
   id: string;
-  postId: string;
-  userId: string;
-  shareType: ShareType;
-  caption?: string | null;
-  createdAt: string;
-  user?: {
-    id: string;
-    name: string;
-    username: string;
-    avatar: string;
-  };
+  name: string;
+  username: string;
+  profilePicture?: string | null;
+  jobTitle?: string | null;
+  company?: string | null;
+  headline?: string | null;
 }
 
 /**
@@ -353,20 +343,15 @@ export interface LikeCountResponse {
 }
 
 /**
- * Share response
+ * Send post response
  */
-export interface ShareResponse {
+export interface SendPostResponse {
   success: boolean;
   message: string;
-  data: Share;
-}
-
-/**
- * Share status response
- */
-export interface ShareStatusResponse {
-  success: boolean;
-  hasShared: boolean;
+  data: {
+    sentTo: string[];
+    message?: string;
+  };
 }
 
 /**
@@ -401,11 +386,11 @@ export interface UpdateCommentRequest {
 }
 
 /**
- * Share request
+ * Send post request
  */
-export interface ShareRequest {
-  shareType: ShareType;
-  caption?: string;
+export interface SendPostRequest {
+  recipientIds: string[];
+  message?: string;
 }
 
 /**

@@ -57,7 +57,7 @@ export default  function PostComposer({ userId}: PostComposerProps) {
             <button
               onClick={() => {
                 setIsPhotoModalOpen(true);
-                setIsCreatePostModalOpen(true);
+                setIsCreatePostModalOpen(true); // Also open CreatePostModal to show uploaded images
               }}
               className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-gray-50 rounded-lg transition-colors duration-200 ease-in-out cursor-pointer"
               aria-label="Add photo"
@@ -68,10 +68,10 @@ export default  function PostComposer({ userId}: PostComposerProps) {
             <button
               onClick={() => {
                 setVideoModalOpen(true);
-                setIsCreatePostModalOpen(true);
+                setIsCreatePostModalOpen(true); // Also open CreatePostModal to show uploaded videos
               }}
               className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-gray-50 rounded-lg transition-colors duration-200 ease-in-out cursor-pointer"
-              aria-label="Add event"
+              aria-label="Add video"
             >
               <Video size={20} className="text-red-500 flex-shrink-0" />
               <span className="hidden sm:inline">Video</span>
@@ -103,16 +103,22 @@ export default  function PostComposer({ userId}: PostComposerProps) {
         {isCreatePostModalOpen && (
           <LazyCreatePostModal
             isOpen={isCreatePostModalOpen}
-            onClose={() => setIsCreatePostModalOpen(false)}
+            onClose={() => {
+              setIsCreatePostModalOpen(false);
+              setIsPhotoModalOpen(false); // Close photo modal if open
+              setVideoModalOpen(false); // Close video modal if open
+            }}
             profileImage={profileImage!}
           />
         )}
-        {/* {isPhotoModalOpen && (
-        <LazyPhotoEditorModal
-          isOpen={isPhotoModalOpen}
-          onClose={() => setIsPhotoModalOpen(false)}
-        />
-      )} */}
+        {/* ✅ FIXED: Uncommented PhotoEditorModal - opens when clicking Photo icon */}
+        {isPhotoModalOpen && (
+          <LazyPhotoEditorModal
+            isOpen={isPhotoModalOpen}
+            onClose={() => setIsPhotoModalOpen(false)}
+          />
+        )}
+        {/* ✅ FIXED: VideoEditorModal - opens when clicking Video icon */}
         {isVideoModalOpen && (
           <LazyVideoEditorModal
             isOpen={isVideoModalOpen}

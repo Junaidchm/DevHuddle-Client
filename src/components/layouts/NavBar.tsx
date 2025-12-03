@@ -38,11 +38,12 @@ export default function NavBar() {
             label="Community Feed"
             isActive={true}
           />
+          <NavLink href="/projects" label="Projects" isActive={false} />
           <NavLink href="/domain-hubs" label="Domain Hubs" isActive={false} />
           <NavLink href="/events" label="Events" isActive={false} />
           <NavLink href="/portfolios" label="Portfolios" isActive={false} />
           <NavLink
-            href="/submit-project"
+            href="/projects/create"
             label="Submit Project"
             isActive={false}
           />

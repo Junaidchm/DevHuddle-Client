@@ -47,10 +47,14 @@ export const markAsRead = async (
   userId: string,
   headers: AuthHeaders
 ): Promise<void> => {
+  // ✅ FIXED: Increase timeout for markAsRead to handle cache invalidation
   await axiosInstance.patch(
     API_ROUTES.NOTIFICATIONS.MARK_READ(notificationId),
     { recipientId: userId },
-    { headers }
+    { 
+      headers,
+      timeout: 30000, // 30 seconds instead of default 10 seconds
+    }
   );
 };
 
@@ -58,10 +62,14 @@ export const markAllAsRead = async (
   userId: string,
   headers: AuthHeaders
 ): Promise<void> => {
+  // ✅ FIXED: Increase timeout for markAllAsRead to handle cache invalidation
   await axiosInstance.post(
     API_ROUTES.NOTIFICATIONS.MARK_ALL_READ(userId),
     {},
-    { headers }
+    { 
+      headers,
+      timeout: 30000, // 30 seconds instead of default 10 seconds
+    }
   );
 };
 

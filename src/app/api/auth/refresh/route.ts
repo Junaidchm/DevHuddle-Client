@@ -16,8 +16,8 @@ export async function GET(request: Request) {
   }
 
   // Call API Gateway
-  const response = await fetch(`${API_URL}/auth/refresh`, {
-    method: "GET",
+  const response = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+    method: "POST",
     headers: { Cookie: `refresh_token=${refreshToken}` },
   });
 

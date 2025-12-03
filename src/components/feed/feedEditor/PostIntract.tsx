@@ -1,15 +1,21 @@
 "use client";
 
-import { Comment, Edit, Like, Share } from "@/src/constents/svg";
+import { Comment, Edit as EditIcon, Like } from "@/src/constents/svg";
 import React, { useState, useMemo } from "react";
 import { NewPost, PostEngagement } from "@/src/app/types/feed";
 import CommentSection from "./CommentSection";
 import { CommentPreview } from "./CommentPreview";
-// import { ShareDialog } from "./ShareDialog";
-// import { ReportDialog } from "./ReportDialog";
+import SendPostModal from "./SendPostModal";
+import ReportPostModal from "./ReportPostModal";
+import CreatePostModal from "./CreatePostModal";
+import { MediaProvider } from "@/src/contexts/MediaContext";
 import { useLikeMutation } from "../mutations/useLikeMutation";
 import { useQueryClient, InfiniteData } from "@tanstack/react-query";
 import { PostsPage } from "@/src/app/types/feed";
+import { useCopyPostLink } from "./Hooks/useCopyPostLink";
+import { MoreHorizontal, Link2, Flag, Edit, Send } from "lucide-react";
+import toast from "react-hot-toast";
+import useGetUserData from "@/src/customHooks/useGetUserData";
 
 // SocialActionButton component
 interface SocialActionButtonProps {
@@ -53,11 +59,19 @@ interface PostIntractProps {
 
 export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
   const [showComments, setShowComments] = useState(false);
-  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showSendDialog, setShowSendDialog] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showPostMenu, setShowPostMenu] = useState(false);
 
   const likeMutation = useLikeMutation();
+  const copyLinkMutation = useCopyPostLink();
   const queryClient = useQueryClient();
+  const user = useGetUserData();
+  
+  // Get current user ID
+  const currentUserId = user?.id || "";
+  const isOwnPost = post.userId === currentUserId;
 
   // Get engagement data from post, with reactive cache updates
   const engagement: PostEngagement = useMemo(() => {
@@ -85,9 +99,7 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
     return {
     likesCount: 0,
     commentsCount: 0,
-    sharesCount: 0,
     isLiked: false,
-    isShared: false,
   };
   }, [post, queryClient]);
 
@@ -107,8 +119,31 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
     setShowComments(!showComments);
   };
 
-  const handleShare = () => {
-    setShowShareDialog(true);
+  const handleSend = () => {
+    setShowSendDialog(true);
+  };
+
+  const handleCopyLink = async () => {
+    if (!post.id) return;
+    try {
+      await copyLinkMutation.mutateAsync({
+        postId: post.id,
+        generateShort: true,
+      });
+      setShowPostMenu(false);
+    } catch (error) {
+      // Error handled by hook
+    }
+  };
+
+  const handleReport = () => {
+    setShowReportDialog(true);
+    setShowPostMenu(false);
+  };
+
+  const handleEdit = () => {
+    setShowEditDialog(true);
+    setShowPostMenu(false);
   };
 
   // Like icon with filled state
@@ -139,10 +174,6 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
           <span>
             <strong>{engagement.commentsCount}</strong> comments
           </span>
-          <span>•</span>
-          <span>
-            <strong>{engagement.sharesCount}</strong> shares
-          </span>
         </div>
 
         <div className="flex justify-between items-center">
@@ -162,13 +193,51 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
             isActive={showComments}
           />
         </div>
-        <div className="flex gap-2">
-            <SocialActionButton
-            icon={Share}
-              count={engagement.sharesCount}
-            onClick={handleShare}
-            isActive={engagement.isShared}
+        <div className="flex gap-2 items-center">
+          <SocialActionButton
+            icon={<Send className="w-5 h-5" />}
+            onClick={handleSend}
           />
+          {/* Post Menu */}
+          <div className="relative">
+            <button
+              onClick={() => setShowPostMenu(!showPostMenu)}
+              className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label="More options"
+            >
+              <MoreHorizontal className="w-5 h-5 text-gray-600" />
+            </button>
+            {showPostMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+                <button
+                  onClick={handleCopyLink}
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                  disabled={copyLinkMutation.isPending}
+                >
+                  <Link2 className="w-4 h-4" />
+                  {copyLinkMutation.isPending ? "Copying..." : "Copy link"}
+                </button>
+                {isOwnPost && (
+                  <button
+                    onClick={handleEdit}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Edit post
+                  </button>
+                )}
+                {!isOwnPost && (
+                  <button
+                    onClick={handleReport}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 text-red-600"
+                  >
+                    <Flag className="w-4 h-4" />
+                    Report post
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
           </div>
         </div>
       </div>
@@ -191,24 +260,44 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
         />
       )}
 
-      {/* Share Dialog */}
-      {/* {showShareDialog && post.id && (
-        <ShareDialog
+      {/* Send Dialog */}
+      {showSendDialog && post.id && (
+        <SendPostModal
+          isOpen={showSendDialog}
+          onClose={() => setShowSendDialog(false)}
           postId={post.id}
-          open={showShareDialog}
-          onClose={() => setShowShareDialog(false)}
+          post={post}
         />
-      )} */}
+      )}
 
-      {/* Report Dialog (can be triggered from post menu) */}
-      {/* {showReportDialog && post.id && (
-        <ReportDialog
-          targetType="POST"
-          targetId={post.id}
-          open={showReportDialog}
+      {/* Report Dialog */}
+      {showReportDialog && post.id && (
+        <ReportPostModal
+          isOpen={showReportDialog}
           onClose={() => setShowReportDialog(false)}
+          postId={post.id}
+          targetType="POST"
         />
-      )} */}
+      )}
+
+      {/* ✅ FIXED: Use CreatePostModal for editing - reuses same UI */}
+      {showEditDialog && post && (
+        <MediaProvider>
+          <CreatePostModal
+            isOpen={showEditDialog}
+            onClose={() => setShowEditDialog(false)}
+            postToEdit={post}
+          />
+        </MediaProvider>
+      )}
+
+      {/* Close menu when clicking outside */}
+      {showPostMenu && (
+        <div
+          className="fixed inset-0 z-0"
+          onClick={() => setShowPostMenu(false)}
+        />
+      )}
     </>
   );
 };

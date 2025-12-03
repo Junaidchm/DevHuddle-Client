@@ -31,3 +31,27 @@ export async function serverFetch(
 
   return await res.json();
 }
+
+/**
+ * Server fetch without authentication (for cron jobs, webhooks, etc.)
+ */
+export async function serverFetchSilent(
+  url: string,
+  options: RequestInit = {}
+) {
+  const headers = {
+    ...options.headers,
+    "Content-Type": "application/json",
+  };
+
+  const res = await fetch(`${getApiBaseUrl()}${url}`, {
+    ...options,
+    headers,
+  });
+
+  if (!res.ok) {
+    throw new Error(`Request failed with status ${res.status}`);
+  }
+
+  return res;
+}

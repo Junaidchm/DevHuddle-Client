@@ -1,6 +1,6 @@
 "use server";
 
-import { serverFetchSilent } from "@/src/app/lib/auth";
+import { serverFetchSilent } from "@/src/app/lib/serverFetch";
 import { serverFetch } from "@/src/app/lib/serverFetch";
 import { API_ROUTES } from "@/src/constants/api.routes";
 

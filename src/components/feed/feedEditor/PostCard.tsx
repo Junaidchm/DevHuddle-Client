@@ -6,6 +6,7 @@ import { formatRelativeDate } from "@/src/utils/formateRelativeDate";
 import DeletePostDialog from "./DeletePostModal";
 import Image from "next/image";
 import useGetUserData from "@/src/customHooks/useGetUserData";
+import { useCopyPostLink } from "./Hooks/useCopyPostLink";
 
 interface PostProp {
   post: NewPost;
@@ -21,6 +22,127 @@ type:string;
 url: string,
 createdAt: string
 }
+
+// ✅ Video Player Component
+const VideoPlayer = ({ attachments }: { attachments: Attachment[] }) => {
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Filter only VIDEO type attachments
+  const videoAttachments = attachments.filter(
+    (attachment) => attachment.type === "VIDEO"
+  );
+
+  if (!videoAttachments || videoAttachments.length === 0) return null;
+
+  const nextVideo = () => {
+    setCurrentVideoIndex((prev) =>
+      prev === videoAttachments.length - 1 ? 0 : prev + 1
+    );
+  };
+
+  const prevVideo = () => {
+    setCurrentVideoIndex((prev) =>
+      prev === 0 ? videoAttachments.length - 1 : prev - 1
+    );
+  };
+
+  const goToVideo = (index: number) => {
+    setCurrentVideoIndex(index);
+  };
+
+  return (
+    <div className="relative w-full bg-gray-900 rounded-lg overflow-hidden">
+      {/* Main Video Display - Responsive container that adapts to video aspect ratio */}
+      <div className="relative w-full flex items-center justify-center" style={{ minHeight: '200px', maxHeight: '700px' }}>
+        {/* Video Container */}
+        <video
+          ref={videoRef}
+          src={videoAttachments[currentVideoIndex].url}
+          controls
+          className="w-full h-auto max-h-[700px] object-contain block"
+          style={{
+            maxWidth: '100%',
+            height: 'auto',
+          }}
+          onLoadStart={() => {
+            if (videoRef.current) {
+              videoRef.current.currentTime = 0;
+            }
+          }}
+        />
+
+        {/* Navigation Arrows - Only show if more than 1 video */}
+        {videoAttachments.length > 1 && (
+          <>
+            {/* Previous Arrow */}
+            <button
+              onClick={prevVideo}
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all duration-200 z-10"
+              aria-label="Previous video"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="15,18 9,12 15,6" />
+              </svg>
+            </button>
+
+            {/* Next Arrow */}
+            <button
+              onClick={nextVideo}
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all duration-200 z-10"
+              aria-label="Next video"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="9,18 15,12 9,6" />
+              </svg>
+            </button>
+
+            {/* Video Counter */}
+            <div className="absolute top-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full z-10">
+              {currentVideoIndex + 1} / {videoAttachments.length}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Dot Indicators - Only show if more than 1 video */}
+      {videoAttachments.length > 1 && (
+        <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
+          {videoAttachments.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => goToVideo(index)}
+              className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                index === currentVideoIndex
+                  ? "bg-white"
+                  : "bg-white bg-opacity-50 hover:bg-opacity-75"
+              }`}
+              aria-label={`Go to video ${index + 1}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const ImageCarousel = ({ attachments }: { attachments: Attachment[] }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -49,16 +171,19 @@ const ImageCarousel = ({ attachments }: { attachments: Attachment[] }) => {
   };
 
   return (
-    <div className="relative w-full h-80 bg-gray-100 rounded-lg overflow-hidden">
-      {/* Main Image Display */}
-      <div className="relative w-full h-full">
-        <Image
-          src={imageAttachments[currentImageIndex].url} // /a/... URL
+    <div className="relative w-full bg-gray-100 rounded-lg overflow-hidden">
+      {/* Main Image Display - Responsive container that adapts to image aspect ratio */}
+      <div className="relative w-full flex items-center justify-center" style={{ minHeight: '200px', maxHeight: '700px' }}>
+        {/* Image Container */}
+        <img
+          src={imageAttachments[currentImageIndex].url}
           alt={`Post image ${currentImageIndex + 1}`}
-          width={800} // ✅ Required: Fixed width
-          height={400} // ✅ Required: Fixed height (2:1 aspect ratio)
-          className="w-full h-full object-cover"
-          priority={currentImageIndex === 0} // ✅ Optional: Load first image eagerly
+          className="w-full h-auto max-h-[700px] object-contain block"
+          style={{
+            maxWidth: '100%',
+            height: 'auto',
+          }}
+          loading={currentImageIndex === 0 ? 'eager' : 'lazy'}
         />
 
         {/* Navigation Arrows - Only show if more than 1 image */}
@@ -67,7 +192,7 @@ const ImageCarousel = ({ attachments }: { attachments: Attachment[] }) => {
             {/* Previous Arrow */}
             <button
               onClick={prevImage}
-              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-2 transition-all duration-200 z-10"
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all duration-200 z-10"
               aria-label="Previous image"
             >
               <svg
@@ -87,7 +212,7 @@ const ImageCarousel = ({ attachments }: { attachments: Attachment[] }) => {
             {/* Next Arrow */}
             <button
               onClick={nextImage}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-2 transition-all duration-200 z-10"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all duration-200 z-10"
               aria-label="Next image"
             >
               <svg
@@ -105,7 +230,7 @@ const ImageCarousel = ({ attachments }: { attachments: Attachment[] }) => {
             </button>
 
             {/* Image Counter */}
-            <div className="absolute top-3 right-3 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded-full z-10">
+            <div className="absolute top-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full z-10">
               {currentImageIndex + 1} / {imageAttachments.length}
             </div>
           </>
@@ -130,6 +255,52 @@ const ImageCarousel = ({ attachments }: { attachments: Attachment[] }) => {
         </div>
       )}
     </div>
+  );
+};
+
+// ✅ Copy Link Button Component (LinkedIn-style)
+const CopyLinkButton = ({ postId, onClose }: { postId: string; onClose: () => void }) => {
+  const copyLinkMutation = useCopyPostLink();
+
+  const handleCopyLink = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!postId) return;
+    
+    try {
+      await copyLinkMutation.mutateAsync({
+        postId,
+        generateShort: true,
+      });
+      onClose(); // Close menu after successful copy
+    } catch (error) {
+      // Error handled by hook
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCopyLink}
+      disabled={copyLinkMutation.isPending}
+      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="mr-3"
+      >
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.71" />
+      </svg>
+      {copyLinkMutation.isPending ? "Copying..." : "Copy link to post"}
+    </button>
   );
 };
 
@@ -211,10 +382,14 @@ export default function PostCard({ post, onDeletePost,userid }: PostProp) {
             {post.content}
           </p>
 
-          {/* Image Carousel Section */}
+          {/* Media Attachments Section (Images and Videos) */}
           {post.attachments && post.attachments.length > 0 && (
-            <div className="mb-4">
+            <div className="mb-4 space-y-4">
+              {/* Render Images */}
               <ImageCarousel attachments={post.attachments} />
+              
+              {/* Render Videos */}
+              <VideoPlayer attachments={post.attachments} />
             </div>
           )}
 
@@ -283,26 +458,7 @@ export default function PostCard({ post, onDeletePost,userid }: PostProp) {
             </button>
 
             {/* Copy link */}
-            <button
-              onClick={() => setShowMenu(false)}
-              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="mr-3"
-              >
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.71" />
-              </svg>
-              Copy link to post
-            </button>
+            <CopyLinkButton postId={post.id} onClose={() => setShowMenu(false)} />
 
             <div className="border-t border-gray-200 my-1"></div>
 

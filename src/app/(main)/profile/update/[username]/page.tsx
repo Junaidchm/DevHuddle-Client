@@ -34,6 +34,7 @@ import showLogoutConfirmation from "@/src/utils/showLogoutConfirmation";
 import { userUpdate } from "@/src/types/auth";
 import usePresignedProfileImage from "@/src/customHooks/usePresignedProfileImage";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
+import SkillsInput from "@/src/components/profile/SkillsInput";
 
 export default function ProfilePage() {
   const authHeaders = useAuthHeaders();
@@ -83,6 +84,10 @@ export default function ProfilePage() {
       email: "",
       location: "",
       bio: "",
+      skills: [],
+      jobTitle: "",
+      company: "",
+      yearsOfExperience: "",
       profileImage: undefined,
     },
   });
@@ -95,6 +100,10 @@ export default function ProfilePage() {
         email: profileData.email || "",
         location: profileData.location || "",
         bio: profileData.bio || "",
+        skills: profileData.skills || [],
+        jobTitle: profileData.jobTitle || "",
+        company: profileData.company || "",
+        yearsOfExperience: profileData.yearsOfExperience || "",
         profileImage: profileData.profilePicture || undefined,
       };
       reset(initialFormData);
@@ -112,6 +121,10 @@ export default function ProfilePage() {
       watchFields.username !== originalData.username ||
       watchFields.location !== originalData.location ||
       watchFields.bio !== originalData.bio ||
+      JSON.stringify(watchFields.skills || []) !== JSON.stringify(originalData.skills || []) ||
+      watchFields.jobTitle !== originalData.jobTitle ||
+      watchFields.company !== originalData.company ||
+      watchFields.yearsOfExperience !== originalData.yearsOfExperience ||
       watchFields.profileImage !== originalData.profileImage
     );
   }, [watchFields, originalData]);
@@ -124,6 +137,10 @@ export default function ProfilePage() {
         username: data.username || "",
         location: data.location || "",
         bio: data.bio || "",
+        skills: data.skills || [],
+        jobTitle: data.jobTitle || "",
+        company: data.company || "",
+        yearsOfExperience: data.yearsOfExperience || "",
       };
       let profilePictureKey: string | undefined;
       if (data.profileImage instanceof File) {
@@ -137,7 +154,21 @@ export default function ProfilePage() {
         dispatch(setProfilePicture(profilePictureKey));
       }
       toast.success("Profile updated successfully!");
+      // Invalidate all profile queries
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+      // Invalidate profile by username queries - invalidate both old and new usernames
+      if (originalData?.username) {
+        queryClient.invalidateQueries({ 
+          queryKey: ["profiles", "detail", originalData.username] 
+        });
+      }
+      if (data.username && data.username !== originalData?.username) {
+        queryClient.invalidateQueries({ 
+          queryKey: ["profiles", "detail", data.username] 
+        });
+        // Redirect to updated profile page if username changed
+        router.push(`/profile/${data.username}`);
+      }
     } catch (err: any) {
       toast.error("Failed to update profile.");
     }
@@ -175,7 +206,7 @@ export default function ProfilePage() {
               text="Logout"
               isActive={false}
               onclick={() =>
-                showLogoutConfirmation(dispatch, router, "/signIn")
+                showLogoutConfirmation("/signIn")
               }
             />
           </div>
@@ -246,6 +277,44 @@ export default function ProfilePage() {
                   helpText="Brief description about yourself. Markdown is supported."
                   {...register("bio")}
                   error={errors.bio?.message}
+                />
+              </Card>
+
+              <Card title="Professional Information" icon="fas fa-briefcase">
+                <FormInput
+                  id="jobTitle"
+                  label="Job Title"
+                  type="text"
+                  {...register("jobTitle")}
+                  error={errors.jobTitle?.message}
+                  placeholder="e.g., Senior Software Engineer"
+                />
+                <FormInput
+                  id="company"
+                  label="Company"
+                  type="text"
+                  {...register("company")}
+                  error={errors.company?.message}
+                  placeholder="e.g., Tech Corp"
+                />
+                <FormInput
+                  id="yearsOfExperience"
+                  label="Years of Experience"
+                  type="text"
+                  {...register("yearsOfExperience")}
+                  error={errors.yearsOfExperience?.message}
+                  placeholder="e.g., 5 years"
+                />
+                <Controller
+                  name="skills"
+                  control={control}
+                  render={({ field }) => (
+                    <SkillsInput
+                      value={field.value || []}
+                      onChange={field.onChange}
+                      error={errors.skills?.message}
+                    />
+                  )}
                 />
               </Card>
 

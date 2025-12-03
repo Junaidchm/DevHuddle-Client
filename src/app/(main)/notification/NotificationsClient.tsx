@@ -17,18 +17,7 @@ import {
   SettingsSheet,
 } from "@/src/components/notification";
 import { MappedNotification, NotificationType } from "@/src/components/notification/types";
-import { PROFILE_DEFAULT_URL } from "@/src/constents";
-
-const NOTIFICATION_TYPE_MAP: Record<string, NotificationType> = {
-  FOLLOW: "follow",
-  MENTION: "mention",
-  COMMENT: "comment",
-  LIKE: "like",
-  COLLAB: "collab",
-  EVENT: "event",
-  MESSAGE: "message",
-  SUPPORT: "support",
-};
+import { mapNotificationToLinkedInStyle } from "@/src/components/notification/notificationMapper";
 
 export default function NotificationsClient() {
   const { data: session } = useSession();
@@ -57,18 +46,12 @@ export default function NotificationsClient() {
     [data]
   );
 
+  // Map notifications to LinkedIn-style format
   const mappedNotifications: MappedNotification[] = useMemo(() => {
-    return flatNotifications.map((n) => ({
-      id: n.id,
-      type: NOTIFICATION_TYPE_MAP[n.type] || "support",
-      isRead: !!n.readAt || !!n.read,
-      avatarUrl: n.summary?.actors?.[0]?.profilePicture || PROFILE_DEFAULT_URL,
-      title: (n.summary?.actors || []).map(a  => a.name).join(", ") || "System Notification",
-      time: new Date(n.createdAt),
-      message: n.summary?.text || "New notification",
-    }));
+    return flatNotifications.map(mapNotificationToLinkedInStyle);
   }, [flatNotifications]);
 
+  // Client-side filtering (LinkedIn-style)
   const filteredNotifications = useMemo(() => {
     if (activeFilter === "all") return mappedNotifications;
     return mappedNotifications.filter((n) => n.type === activeFilter);

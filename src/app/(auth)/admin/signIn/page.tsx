@@ -6,15 +6,11 @@ import {
   PrimaryButton,
 } from "@/src/components/layouts/auth";
 import useAdminRedirectIfAuthenticated from "@/src/customHooks/useAdminAuthenticated";
-import useRedirectIfAuthenticated from "@/src/customHooks/useRedirectIfAuthenticated";
-import { loginUser } from "@/src/store/actions/authActions";
-import { AppDispatch, RootState } from "@/src/store/store";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
-import { useSelector } from "react-redux";
-import { useDispatch } from "react-redux";
+import { signIn, signOut, getSession } from "next-auth/react";
 import { z } from "zod";
 
 const signInSchema = z.object({
@@ -27,14 +23,7 @@ const signInSchema = z.object({
 type SignInSchema = z.infer<typeof signInSchema>;
 
 export default function AdminSignIn() {
-
   const router = useRouter();
-  const dispatch = useDispatch<AppDispatch>();
-  const user = useSelector((state: RootState) => state.user.user);
-  const { loading, error, success } = useSelector(
-    (state: RootState) => state.user
-  );
-
 
   useAdminRedirectIfAuthenticated('/admin/dashboard')
 
@@ -49,22 +38,64 @@ export default function AdminSignIn() {
 
   const onSubmit = async (data: SignInSchema) => {
     try {
-      const loggedInUser = await dispatch(loginUser(data)).unwrap(); // <- payload here
+      // Use NextAuth signIn for admin authentication
+      const result = await signIn("credentials", {
+        redirect: false,
+        email: data.email,
+        password: data.password,
+        callbackUrl: "/admin/dashboard",
+      }) as { error?: string; ok?: boolean; url?: string | null };
 
-      console.log(
-        "user : data",
-        loggedInUser?.role,
-        loggedInUser?.role === "superAdmin"
-      );
+      if (result?.error) {
+        // Error message from NextAuth authorize callback
+        toast.error(result.error || "Login failed", { position: "bottom-center" });
+        return;
+      }
 
-      if (loggedInUser.role === "superAdmin") {
-        toast.success("Login successful", { position: "top-center" });
-        router.push("/admin/dashboard");
-      } else {
-        toast.error("You don’t have admin privileges", {
+      if (!result?.ok) {
+        toast.error("Login failed. Please try again.", { position: "bottom-center" });
+        return;
+      }
+
+      // ✅ FIXED: Properly wait for session to be available
+      // Poll for session with timeout instead of arbitrary setTimeout
+      let session = null;
+      const maxAttempts = 10;
+      const pollInterval = 100;
+      
+      for (let i = 0; i < maxAttempts; i++) {
+        session = await getSession();
+        if (session?.user?.accessToken) {
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+      }
+
+      if (!session?.user) {
+        toast.error("Session not available. Please try again.", {
           position: "bottom-center",
         });
+        return;
       }
+
+      if (session.user.role !== "superAdmin") {
+        // User doesn't have admin privileges, sign them out
+        await signOut({ redirect: false });
+        toast.error("You don't have admin privileges. Access denied.", {
+          position: "bottom-center",
+        });
+        return;
+      }
+
+      // ✅ FIXED: Clear React Query cache before redirect to prevent stale data
+      // Use window.location for hard reload to ensure fresh SSR state
+      toast.success("Login successful", { position: "top-center" });
+      
+      // Small delay to ensure toast is visible, then redirect
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Use hard reload to ensure session is available on page load
+      window.location.href = "/admin/dashboard";
     } catch (error: any) {
       const errorMessage =
         error?.message || error || "Something went wrong during login";

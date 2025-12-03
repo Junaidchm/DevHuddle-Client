@@ -114,7 +114,10 @@ export const likeComment = async (
     );
     return res.data;
   } catch (error: any) {
-    const errorMessage = error.response?.data?.message || error.message || "Failed to like comment";
+    const errorMessage =
+      error.response?.data?.message ||
+      error.message ||
+      "Failed to like comment";
     console.error("Like comment error:", {
       commentId,
       status: error.response?.status,
@@ -139,7 +142,10 @@ export const unlikeComment = async (
     );
     return res.data;
   } catch (error: any) {
-    const errorMessage = error.response?.data?.message || error.message || "Failed to unlike comment";
+    const errorMessage =
+      error.response?.data?.message ||
+      error.message ||
+      "Failed to unlike comment";
     console.error("Unlike comment error:", {
       commentId,
       status: error.response?.status,
@@ -286,7 +292,10 @@ export const deleteComment = async (
 export const getCommentPreview = async (
   postId: string,
   headers: Record<string, string>
-): Promise<{ success: boolean; data: { comment: Comment | null; totalCount: number; hasMore: boolean } }> => {
+): Promise<{
+  success: boolean;
+  data: { comment: Comment | null; totalCount: number; hasMore: boolean };
+}> => {
   try {
     const res = await axiosInstance.get(
       API_ROUTES.ENGAGEMENT.COMMENT_PREVIEW(postId),
@@ -359,6 +368,279 @@ export const getCommentReplies = async (
   } catch (error: any) {
     throw new Error(
       error.response?.data?.message || "Failed to get comment replies"
+    );
+  }
+};
+
+// ========== REPORT OPERATIONS ==========
+
+/**
+ * Report a post
+ */
+export const reportPost = async (
+  postId: string,
+  reason: string,
+  headers: Record<string, string>,
+  description?: string,
+  idempotencyKey?: string
+): Promise<{ success: boolean; message: string; data: any }> => {
+  try {
+    const res = await axiosInstance.post(
+      API_ROUTES.ENGAGEMENT.POST_REPORT(postId),
+      {
+        reason,
+        description,
+      },
+      {
+        headers: {
+          ...headers,
+          ...(idempotencyKey && { "Idempotency-Key": idempotencyKey }),
+        },
+      }
+    );
+    return res.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to report post");
+  }
+};
+
+/**
+ * Report a comment
+ */
+export const reportComment = async (
+  commentId: string,
+  reason: string,
+  headers: Record<string, string>,
+  description?: string,
+  idempotencyKey?: string
+): Promise<{ success: boolean; message: string; data: any }> => {
+  try {
+    const res = await axiosInstance.post(
+      API_ROUTES.ENGAGEMENT.COMMENT_REPORT(commentId),
+      {
+        reason,
+        description,
+      },
+      {
+        headers: {
+          ...headers,
+          ...(idempotencyKey && { "Idempotency-Key": idempotencyKey }),
+        },
+      }
+    );
+    return res.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to report comment"
+    );
+  }
+};
+
+// ========== SEND POST OPERATIONS ==========
+
+/**
+ * Get user connections (people the user follows)
+ * Used for Send Post modal
+ */
+export const getConnections = async (
+  headers: Record<string, string>
+): Promise<{
+  success: boolean;
+  data: Array<{
+    id: string;
+    name: string;
+    username: string;
+    avatar?: string | null;
+    profilePicture?: string | null;
+    jobTitle?: string | null;
+    company?: string | null;
+    headline?: string | null;
+  }>;
+}> => {
+  try {
+    const res = await axiosInstance.get(API_ROUTES.ENGAGEMENT.GET_CONNECTIONS, {
+      headers,
+    });
+    return res.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to get connections"
+    );
+  }
+};
+
+/**
+ * Send a post to selected connections
+ * LinkedIn-style: sends post as a message/notification
+ */
+export const sendPost = async (
+  postId: string,
+  recipientIds: string[],
+  message: string | undefined,
+  headers: Record<string, string>,
+  idempotencyKey?: string
+): Promise<{
+  success: boolean;
+  message: string;
+  data: {
+    sentTo: string[];
+    message?: string;
+  };
+}> => {
+  try {
+    const res = await axiosInstance.post(
+      API_ROUTES.ENGAGEMENT.SEND_POST(postId),
+      {
+        recipientIds,
+        message,
+      },
+      {
+        headers: {
+          ...headers,
+          ...(idempotencyKey && { "Idempotency-Key": idempotencyKey }),
+        },
+      }
+    );
+    return res.data;
+  } catch (error: any) {
+    // Extract detailed error information
+    const errorMessage = 
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message ||
+      "Failed to send post";
+    
+    console.error("[sendPost] API Error:", {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: errorMessage,
+    });
+    
+    // Create error with detailed message
+    const detailedError = new Error(errorMessage);
+    (detailedError as any).response = error.response;
+    (detailedError as any).status = error.response?.status;
+    throw detailedError;
+  }
+};
+
+// ========== POST EDITING OPERATIONS ==========
+
+/**
+ * Edit a post
+ */
+export const editPost = async (
+  postId: string,
+  data: {
+    content?: string;
+    addAttachmentIds?: string[];
+    removeAttachmentIds?: string[];
+  },
+  headers: Record<string, string>,
+  idempotencyKey?: string
+): Promise<{ success: boolean; post: any; newVersionNumber: number }> => {
+  try {
+    const res = await axiosInstance.patch(
+      API_ROUTES.FEED.EDIT_POST(postId),
+      data,
+      {
+        headers: {
+          ...headers,
+          ...(idempotencyKey && { "Idempotency-Key": idempotencyKey }),
+        },
+      }
+    );
+    return res.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to edit post");
+  }
+};
+
+/**
+ * Get post versions
+ */
+export const getPostVersions = async (
+  postId: string,
+  headers: Record<string, string>
+): Promise<{
+  success: boolean;
+  versions: Array<{
+    id: string;
+    postId: string;
+    versionNumber: number;
+    content: string;
+    attachmentIds: string[];
+    editedAt: string;
+    editedById: string;
+  }>;
+}> => {
+  try {
+    const res = await axiosInstance.get(API_ROUTES.FEED.POST_VERSIONS(postId), {
+      headers,
+    });
+    return res.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to get post versions"
+    );
+  }
+};
+
+/**
+ * Restore a post version
+ */
+export const restorePostVersion = async (
+  postId: string,
+  versionNumber: number,
+  headers: Record<string, string>,
+  idempotencyKey?: string
+): Promise<{ success: boolean; post: any }> => {
+  try {
+    const res = await axiosInstance.post(
+      API_ROUTES.FEED.RESTORE_VERSION(postId, versionNumber),
+      {},
+      {
+        headers: {
+          ...headers,
+          ...(idempotencyKey && { "Idempotency-Key": idempotencyKey }),
+        },
+      }
+    );
+    return res.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to restore post version"
+    );
+  }
+};
+
+// ========== SHARE LINK OPERATIONS ==========
+
+/**
+ * Get post share link (canonical URL and optional short URL)
+ */
+export const getPostShareLink = async (
+  postId: string,
+  headers: Record<string, string>,
+  options?: { generateShort?: boolean }
+): Promise<{
+  success: boolean;
+  data: {
+    canonicalUrl: string;
+    shortUrl?: string;
+  };
+}> => {
+  try {
+    const queryParams = options?.generateShort ? "?generateShort=true" : "";
+    const res = await axiosInstance.get(
+      `${API_ROUTES.ENGAGEMENT.POST_SHARE_LINK(postId)}${queryParams}`,
+      { headers }
+    );
+    return res.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to get post share link"
     );
   }
 };

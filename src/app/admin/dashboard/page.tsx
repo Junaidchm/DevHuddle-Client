@@ -2,14 +2,55 @@
 
 import React from "react";
 import { SettingsTab } from "../../(app)/profile/update/[username]/components";
-import showLogoutConfirmation from "@/src/utils/showLogoutConfirmation";
 import { useAdminRedirectIfNotAuthenticated } from "@/src/customHooks/useAdminAuthenticated";
+import { useQuery } from "@tanstack/react-query";
+import { getDashboardStats } from "@/src/services/api/admin-panel.service";
+import { useSession } from "next-auth/react";
+import { useApiClient } from "@/src/lib/api-client";
+import Link from "next/link";
 
 
 const AdminDashboard: React.FC = () => {
+  const { isChecking } = useAdminRedirectIfNotAuthenticated("/admin/signIn");
+  const { data: session, status } = useSession();
+  const apiClient = useApiClient({ requireAuth: true });
+  
+  // ✅ FIXED: Stable query key using userId/role instead of token
+  const userId = session?.user?.id;
+  const userRole = session?.user?.role;
 
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["admin-dashboard-stats", userId, userRole],
+    queryFn: () => getDashboardStats(apiClient.getHeaders()),
+    refetchInterval: 30000, // Refetch every 30 seconds
+    enabled: status !== "loading" && !!userId && userRole === "superAdmin" && apiClient.isReady,
+  });
 
-  useAdminRedirectIfNotAuthenticated("/admin/signIn")
+  // Default stats structure for loading/error states
+  const stats = data?.data || {
+    users: { total: 0, active: 0, blocked: 0, newToday: 0, newThisWeek: 0, newThisMonth: 0 },
+    posts: { total: 0, reported: 0, hidden: 0, deleted: 0, createdToday: 0, createdThisWeek: 0, createdThisMonth: 0 },
+    comments: { total: 0, reported: 0, deleted: 0, createdToday: 0 },
+    reports: { total: 0, pending: 0, open: 0, investigating: 0, resolved: 0, critical: 0, high: 0, createdToday: 0, createdThisWeek: 0 },
+    engagement: { totalLikes: 0, totalComments: 0, totalShares: 0 },
+  };
+
+  // Show error state if query fails
+  if (error && !isLoading) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <i className="fas fa-exclamation-circle text-red-600"></i>
+            <p className="text-red-800 font-medium">Error loading dashboard</p>
+          </div>
+          <p className="text-red-700 text-sm">
+            {(error as any)?.response?.data?.message || "Failed to load dashboard statistics"}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -49,7 +90,7 @@ const AdminDashboard: React.FC = () => {
                   <h3 className="font-semibold text-[0.95rem] mb-1">
                     Flagged Content
                   </h3>
-                  <p className="text-gray-500 text-sm">8 items need review</p>
+                  <p className="text-gray-500 text-sm">{stats.reports.pending} items need review</p>
                 </div>
                 <span className="text-gray-400 text-xs whitespace-nowrap">
                   2 hours ago
@@ -86,23 +127,23 @@ const AdminDashboard: React.FC = () => {
                   <i className="fas fa-users text-xl text-indigo-600 opacity-80"></i>
                 </div>
                 <div className="text-4xl font-bold mb-2 text-gray-900">
-                  12,493
+                  {isLoading ? "..." : stats.users.total.toLocaleString()}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-emerald-500 mb-4">
                   <i className="fas fa-arrow-up"></i>
-                  <span>12% from last month</span>
+                  <span>{stats.users.newThisMonth} new this month</span>
                 </div>
                 <canvas
                   className="absolute bottom-0 left-0 w-full h-[50px] opacity-20 transition-opacity duration-300 hover:opacity-50"
                   id="users-sparkline"
                 ></canvas>
-                <a
-                  href="#"
-                  className="mt-auto flex items-center justify-end gap-2 text-indigo-600 font-medium text-sm pt-4 border-t border-gray-200"
+                <Link
+                  href="/admin/users"
+                  className="mt-auto flex items-center justify-end gap-2 text-indigo-600 font-medium text-sm pt-4 border-t border-gray-200 hover:text-indigo-700"
                 >
                   <span>View Details</span>
                   <i className="fas fa-arrow-right"></i>
-                </a>
+                </Link>
               </div>
 
               {/* Hubs Card */}
@@ -113,126 +154,85 @@ const AdminDashboard: React.FC = () => {
                   </h3>
                   <i className="fas fa-layer-group text-xl text-indigo-600 opacity-80"></i>
                 </div>
-                <div className="text-4xl font-bold mb-2 text-gray-900">87</div>
+                <div className="text-4xl font-bold mb-2 text-gray-900">
+                  {isLoading ? "..." : stats.posts.total.toLocaleString()}
+                </div>
                 <div className="flex items-center gap-2 text-sm text-emerald-500 mb-4">
                   <i className="fas fa-arrow-up"></i>
-                  <span>5% from last month</span>
+                  <span>{stats.posts.createdThisMonth} created this month</span>
                 </div>
-                <canvas
-                  className="absolute bottom-0 left-0 w-full h-[50px] opacity-20 transition-opacity duration-300 hover:opacity-50"
-                  id="hubs-sparkline"
-                ></canvas>
-                <a
-                  href="#"
+                <Link
+                  href="/admin/posts"
                   className="mt-auto flex items-center justify-end gap-2 text-indigo-600 font-medium text-sm pt-4 border-t border-gray-200"
                 >
                   <span>View Details</span>
                   <i className="fas fa-arrow-right"></i>
-                </a>
+                </Link>
               </div>
 
-              {/* Events Card */}
+              {/* Comments Card */}
               <div className="bg-white rounded-2xl p-6 shadow relative overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-semibold text-base text-gray-500">
-                    Active Events
+                    Total Comments
                   </h3>
-                  <i className="fas fa-calendar-alt text-xl text-indigo-600 opacity-80"></i>
+                  <i className="fas fa-comments text-xl text-indigo-600 opacity-80"></i>
                 </div>
-                <div className="text-4xl font-bold mb-2 text-gray-900">29</div>
+                <div className="text-4xl font-bold mb-2 text-gray-900">
+                  {isLoading ? "..." : stats.comments.total.toLocaleString()}
+                </div>
                 <div className="flex items-center gap-2 text-sm text-emerald-500 mb-4">
                   <i className="fas fa-arrow-up"></i>
-                  <span>18% from last month</span>
+                  <span>{stats.comments.createdToday} created today</span>
                 </div>
-                <canvas
-                  className="absolute bottom-0 left-0 w-full h-[50px] opacity-20 transition-opacity duration-300 hover:opacity-50"
-                  id="events-sparkline"
-                ></canvas>
-                <a
-                  href="#"
+                <Link
+                  href="/admin/comments"
                   className="mt-auto flex items-center justify-end gap-2 text-indigo-600 font-medium text-sm pt-4 border-t border-gray-200"
                 >
                   <span>View Details</span>
                   <i className="fas fa-arrow-right"></i>
-                </a>
+                </Link>
               </div>
 
-              {/* Ideas Card */}
+              {/* Engagement Card */}
               <div className="bg-white rounded-2xl p-6 shadow relative overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-semibold text-base text-gray-500">
-                    Ideas Submitted
+                    Total Engagement
                   </h3>
-                  <i className="fas fa-lightbulb text-xl text-indigo-600 opacity-80"></i>
+                  <i className="fas fa-heart text-xl text-indigo-600 opacity-80"></i>
                 </div>
-                <div className="text-4xl font-bold mb-2 text-gray-900">164</div>
+                <div className="text-4xl font-bold mb-2 text-gray-900">
+                  {isLoading ? "..." : stats.engagement.totalLikes.toLocaleString()}
+                </div>
                 <div className="flex items-center gap-2 text-sm text-emerald-500 mb-4">
                   <i className="fas fa-arrow-up"></i>
-                  <span>7% from last month</span>
+                  <span>{stats.engagement.totalShares} shares</span>
                 </div>
-                <canvas
-                  className="absolute bottom-0 left-0 w-full h-[50px] opacity-20 transition-opacity duration-300 hover:opacity-50"
-                  id="ideas-sparkline"
-                ></canvas>
-                <a
-                  href="#"
-                  className="mt-auto flex items-center justify-end gap-2 text-indigo-600 font-medium text-sm pt-4 border-t border-gray-200"
-                >
-                  <span>View Details</span>
-                  <i className="fas fa-arrow-right"></i>
-                </a>
               </div>
 
-              {/* Sessions Card */}
+              {/* Reports Card */}
               <div className="bg-white rounded-2xl p-6 shadow relative overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-semibold text-base text-gray-500">
-                    Room Sessions
-                  </h3>
-                  <i className="fas fa-video text-xl text-indigo-600 opacity-80"></i>
-                </div>
-                <div className="text-4xl font-bold mb-2 text-gray-900">382</div>
-                <div className="flex items-center gap-2 text-sm text-red-500 mb-4">
-                  <i className="fas fa-arrow-down"></i>
-                  <span>3% from last month</span>
-                </div>
-                <canvas
-                  className="absolute bottom-0 left-0 w-full h-[50px] opacity-20 transition-opacity duration-300 hover:opacity-50"
-                  id="sessions-sparkline"
-                ></canvas>
-                <a
-                  href="#"
-                  className="mt-auto flex items-center justify-end gap-2 text-indigo-600 font-medium text-sm pt-4 border-t border-gray-200"
-                >
-                  <span>View Details</span>
-                  <i className="fas fa-arrow-right"></i>
-                </a>
-              </div>
-
-              {/* Moderations Card */}
-              <div className="bg-white rounded-2xl p-6 shadow relative overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-base text-gray-500">
-                    Pending Moderations
+                    Pending Reports
                   </h3>
                   <i className="fas fa-flag text-xl text-indigo-600 opacity-80"></i>
                 </div>
-                <div className="text-4xl font-bold mb-2 text-gray-900">18</div>
+                <div className="text-4xl font-bold mb-2 text-gray-900">
+                  {isLoading ? "..." : stats.reports.pending}
+                </div>
                 <div className="flex items-center gap-2 text-sm text-red-500 mb-4">
                   <i className="fas fa-arrow-up"></i>
-                  <span>42% from last month</span>
+                  <span>{stats.reports.critical} critical</span>
                 </div>
-                <canvas
-                  className="absolute bottom-0 left-0 w-full h-[50px] opacity-20 transition-opacity duration-300 hover:opacity-50"
-                  id="moderations-sparkline"
-                ></canvas>
-                <a
-                  href="#"
+                <Link
+                  href="/admin/reports"
                   className="mt-auto flex items-center justify-end gap-2 text-indigo-600 font-medium text-sm pt-4 border-t border-gray-200"
                 >
                   <span>View Details</span>
                   <i className="fas fa-arrow-right"></i>
-                </a>
+                </Link>
               </div>
             </div>
 
@@ -256,13 +256,13 @@ const AdminDashboard: React.FC = () => {
                   <i className="fas fa-calendar-plus w-5 text-center"></i>
                   <span>Create Event</span>
                 </a>
-                <a
-                  href="#"
+                <Link
+                  href="/admin/reports"
                   className="flex items-center gap-3 p-4 rounded-xl font-medium transition-all duration-300 border border-red-500 text-white bg-red-500 hover:bg-red-600"
                 >
                   <i className="fas fa-flag w-5 text-center"></i>
                   <span>Review Flags</span>
-                </a>
+                </Link>
                 <a
                   href="#"
                   className="flex items-center gap-3 p-4 rounded-xl font-medium transition-all duration-300 border border-gray-200 text-gray-900 hover:translate-x-1"

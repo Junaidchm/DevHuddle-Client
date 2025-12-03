@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { likePost, unlikePost } from "@/src/services/api/engagement.service";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
+import { useSession } from "next-auth/react";
 import { InfiniteData } from "@tanstack/react-query";
 import { PostsPage, NewPost, PostEngagement } from "@/src/app/types/feed";
 import toast from "react-hot-toast";
@@ -21,6 +22,7 @@ import { queryKeys } from "@/src/lib/queryKeys";
 export function useLikeMutation() {
   const queryClient = useQueryClient();
   const authHeaders = useAuthHeaders();
+  const { data: session } = useSession();
 
   return useMutation({
     mutationFn: async ({ postId, isLiked }: { postId: string; isLiked: boolean }) => {
@@ -126,6 +128,15 @@ export function useLikeMutation() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.engagement.postLikes.status(variables.postId, ""),
       });
+
+      // ✅ FIXED: Invalidate notifications to ensure new like notifications appear instantly
+      // (WebSocket should handle this, but this is a backup)
+      if (session?.user?.id) {
+        queryClient.invalidateQueries({
+          queryKey: ["notifications", session.user.id],
+          refetchType: "none", // Don't refetch immediately, let WebSocket handle it
+        });
+      }
 
       // Don't show toast on success (optional - remove if you want to keep it)
       // toast.success(

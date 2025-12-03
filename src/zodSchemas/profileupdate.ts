@@ -60,6 +60,21 @@ const profileSchema = z.object({
       message: "Bio cannot contain control characters",
     })
     .optional(),
+  skills: z
+    .array(z.string().min(1, "Skill cannot be empty").max(50, "Skill must be at most 50 characters"))
+    .max(20, "Maximum 20 skills allowed")
+    .optional(),
+  jobTitle: z
+    .string()
+    .max(100, "Job title must be at most 100 characters")
+    .optional(),
+  company: z
+    .string()
+    .max(100, "Company must be at most 100 characters")
+    .optional(),
+  yearsOfExperience: z
+    .string()
+    .optional(),
   profileImage: z.any().optional(),
 });
 

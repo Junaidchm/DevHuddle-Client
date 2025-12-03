@@ -43,48 +43,72 @@ export default function useMediaUpload() {
     },
     onUploadProgress: setUploadProgress,
     onClientUploadComplete(res) {
-      const images = res
-        .map((r) => {
-          const originalAttachment = attachmentsRef.current.find(
-            (a) => a.file.name === r.name
-          );
-          const originalFile = originalAttachment?.file;
-
-          if (!originalFile) {
-            return null;
+      try {
+        // ✅ FIX: Validate serverData.mediaId exists before proceeding
+        const validResults = res.filter((r) => {
+          if (!r.serverData?.mediaId) {
+            console.error("Upload result missing mediaId:", r);
+            toast.error(`Upload completed but mediaId missing for ${r.name}`);
+            return false;
           }
-
-          return {
-            id: crypto.randomUUID(),
-            file: originalFile,
-            url: r.ufsUrl,
-            name: r.name,
-            taggedUsers: [],
-            transform: default_ImageTransform,
-            type: originalFile.type,
-            mediaId: r.serverData.mediaId,
-          };
-        })
-        .filter((img) => img !== null) as Media[];
-
-      addMedia(images);
-
-      setAttachments((prev) => {
-        const updatedAttachments = attachmentsRef.current.map((a) => {
-          const uploadResult = res.find((r) => r.name === a.file.name);
-          return uploadResult
-            ? {
-                ...a,
-                mediaId: uploadResult.serverData.mediaId,
-                isUploading: false,
-              }
-            : a;
+          return true;
         });
-        console.log("Attachments after update:", updatedAttachments);
-        return updatedAttachments;
-      });
 
-      console.log("Attachments after setState (async):", attachments);
+        if (validResults.length === 0) {
+          toast.error("Upload completed but no valid media IDs received");
+          return;
+        }
+
+        const images = validResults
+          .map((r) => {
+            const originalAttachment = attachmentsRef.current.find(
+              (a) => a.file.name === r.name
+            );
+            const originalFile = originalAttachment?.file;
+
+            if (!originalFile) {
+              console.warn("Original file not found for upload result:", r.name);
+              return null;
+            }
+
+            return {
+              id: crypto.randomUUID(),
+              file: originalFile,
+              url: r.ufsUrl,
+              name: r.name,
+              taggedUsers: [],
+              transform: default_ImageTransform,
+              type: originalFile.type,
+              mediaId: r.serverData.mediaId, // ✅ This is now guaranteed to exist
+            };
+          })
+          .filter((img) => img !== null) as Media[];
+
+        // ✅ FIX: Update MediaContext with uploaded media (this persists across modal close/open)
+        if (images.length > 0) {
+          addMedia(images);
+          toast.success(`Successfully uploaded ${images.length} file${images.length > 1 ? 's' : ''}`);
+        }
+
+        // ✅ FIX: Update local attachments state
+        setAttachments((prev) => {
+          const updatedAttachments = attachmentsRef.current.map((a) => {
+            const uploadResult = validResults.find((r) => r.name === a.file.name);
+            return uploadResult
+              ? {
+                  ...a,
+                  mediaId: uploadResult.serverData.mediaId,
+                  isUploading: false,
+                }
+              : a;
+          });
+          attachmentsRef.current = updatedAttachments; // ✅ Update ref too
+          return updatedAttachments;
+        });
+      } catch (error: any) {
+        console.error("Error in onClientUploadComplete:", error);
+        toast.error("Error processing upload completion");
+      }
     },
     onUploadError(e) {
       setAttachments((prev) => prev.filter((a) => !a.isUploading));

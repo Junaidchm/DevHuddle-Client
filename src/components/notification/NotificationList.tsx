@@ -1,11 +1,9 @@
 "use client";
 
-
 import { NotificationRow } from "./NotificationRow";
 import { NotificationEmpty } from "./NotificationEmpty";
 import { NotificationFooter } from "./NotificationFooter";
 import { MappedNotification } from "./types";
-import { Card } from "@/components/ui/card";
 
 interface NotificationListProps {
   notifications: MappedNotification[];
@@ -24,12 +22,18 @@ export const NotificationList = ({
     return <NotificationEmpty />;
   }
 
+  // LinkedIn-style: separate cards, no grouping
   return (
-    <Card>
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
       {notifications.map((notification, index) => (
-        <NotificationRow key={notification.id} notification={notification} onMarkAsRead={onMarkAsRead} isLast={index === notifications.length - 1} />
+        <NotificationRow 
+          key={notification.id} 
+          notification={notification} 
+          onMarkAsRead={onMarkAsRead} 
+          isLast={index === notifications.length - 1} 
+        />
       ))}
       <NotificationFooter {...footerProps} />
-    </Card>
+    </div>
   );
 };

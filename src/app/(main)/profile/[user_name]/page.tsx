@@ -7,6 +7,7 @@ import {
 import ProfileHeader from "@/src/components/profile/ProfileHeader";
 import FollowersSection from "@/src/components/profile/FollowersSection";
 import ProfileNav from "@/src/components/profile/ProfileNav";
+import SkillsSection from "@/src/components/profile/SkillsSection";
 import { auth } from "@/auth";
 import { notFound } from "next/navigation";
 import { UserProfile } from "@/src/types/user.type";
@@ -42,13 +43,14 @@ export default async function ProfilePage({
     <HydrationBoundary state={dehydrate(queryClient)}>
       <ProfileHeader
         username={profile_user.username}
-        initialProfile={profile_user} // This prop is now only for initial hydration
+        initialProfile={profile_user}
         currentUserId={currentUserId}
       />
       <main className="max-w-7xl mx-auto my-8 p-0 md:px-6">
         <ProfileNav />
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 mb-8">
           <div>
+            <SkillsSection skills={profile_user.skills || []} />
             <FollowersSection
               username={profile_user.username}
               currentUserId={currentUserId}

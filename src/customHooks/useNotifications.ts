@@ -25,9 +25,12 @@ export function useNotificationsInfinite() {
       getNotificationsPage(userId!, pageParam as number, PAGE_SIZE, authHeaders),
     getNextPageParam: (lastPage, allPages) =>
       lastPage.hasMore ? allPages.length : undefined,
-    initialPageParam: 0, // ADD THIS LINE
+    initialPageParam: 0,
     enabled: !!userId && !!authHeaders.Authorization,
-    staleTime: 5 * 60 * 1000,
+    // ✅ FIXED: Reduced staleTime to 0 to allow immediate refetch on WebSocket updates
+    staleTime: 0,
+    // ✅ FIXED: Set refetchOnWindowFocus to true for instant updates
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -40,7 +43,9 @@ export function useUnreadCount() {
     queryKey: ["unread-count", userId],
     queryFn: () => getUnreadCount(userId!, authHeaders),
     enabled: !!userId && !!authHeaders.Authorization,
-    staleTime: 5 * 60 * 1000,
+    // ✅ FIXED: Reduced staleTime to 0 for instant updates
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 }
 

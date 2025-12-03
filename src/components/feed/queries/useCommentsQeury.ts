@@ -34,7 +34,9 @@ export function useCommentsInfiniteQuery(postId: string) {
     },
     initialPageParam: 0,
     enabled: !!postId && !!authHeaders.Authorization,
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 0, // Always refetch when component mounts to ensure fresh data
+    refetchOnMount: true, // Refetch when component mounts
+    refetchOnWindowFocus: false, // Don't refetch on window focus to avoid conflicts
   });
 }
 

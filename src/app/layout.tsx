@@ -25,7 +25,18 @@ export default function RootLayout({
       </head>
       <body>
     
-       <Toaster position="top-center" />
+       <Toaster 
+         position="top-center" 
+         containerStyle={{
+           zIndex: 10001, // Higher than modal (9999)
+         }}
+         toastOptions={{
+           duration: 4000,
+           style: {
+             zIndex: 10001,
+           },
+         }}
+       />
        <Providers>{children}</Providers>
        {/* {children} */}
 

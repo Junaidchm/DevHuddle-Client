@@ -69,14 +69,38 @@ export const MediaProvider = ({ children }: { children: ReactNode }) => {
 
   const addMedia = (media: Media[]) => {
     setMediaState((pre) => {
-      const updatedMedia = [...pre, ...media];
-      return updatedMedia;
+      // ✅ FIX: Merge by mediaId/URL to avoid duplicates and preserve existing media
+      const existingMediaIds = new Set(pre.map((m) => m.mediaId).filter(Boolean));
+      const existingUrls = new Set(pre.map((m) => m.url).filter(Boolean));
+      
+      const newMedia = media.filter((m) => {
+        // Skip if already exists by mediaId
+        if (m.mediaId && existingMediaIds.has(m.mediaId)) {
+          return false;
+        }
+        // Skip if already exists by URL
+        if (m.url && existingUrls.has(m.url)) {
+          return false;
+        }
+        return true;
+      });
+
+      // ✅ FIX: If media with same URL exists but no mediaId, update it with the new mediaId
+      const updatedMedia = pre.map((existing) => {
+        const matchingNew = media.find((m) => m.url === existing.url && !existing.mediaId && m.mediaId);
+        if (matchingNew) {
+          return { ...existing, mediaId: matchingNew.mediaId };
+        }
+        return existing;
+      });
+
+      return [...updatedMedia, ...newMedia];
     });
   };
 
   const setMedia = (newMedia: Media[]) => {
     setMediaState(newMedia);
-    console.log('the media is set now ===================================', newMedia)
+    // ✅ FIXED P0-11: Removed console.log from production code
   };
 
   const clearMedia = () => {

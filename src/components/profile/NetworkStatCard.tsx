@@ -5,7 +5,7 @@ interface NetworkStatCardProps {
   icon: React.ReactNode;
   bgColor: string;
   iconColor: string;
-  footer: React.ReactNode;
+  footer?: React.ReactNode;
 }
 
 const NetworkStatCard = ({ title, value, icon, bgColor, iconColor, footer }: NetworkStatCardProps) => {
@@ -20,7 +20,7 @@ const NetworkStatCard = ({ title, value, icon, bgColor, iconColor, footer }: Net
           {icon}
         </div>
       </div>
-      <div className="mt-4 text-xs text-slate-500">{footer}</div>
+      {footer && <div className="mt-4 text-xs text-slate-500">{footer}</div>}
     </div>
   );
 };

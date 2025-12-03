@@ -2,17 +2,16 @@
 "use client";
 
 import toast from "react-hot-toast";
-import { AppDispatch } from "@/src/store/store";
-import {  logoutUser } from "@/src/services/api/auth.service"; // your API call
-import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
-import { logoutUserAction } from "../store/slices/userSlice";
-import { QueryClient } from "@tanstack/react-query";
 import { signOut } from "next-auth/react";
 
-export default function showLogoutConfirmation(dispatch: AppDispatch, router: ReturnType<typeof useRouter>,url:string) {
-
-  const queryClient = new QueryClient()
+/**
+ * ✅ FIXED: Logout confirmation
+ * 
+ * Simplified to only use NextAuth signOut - no Redux or QueryClient needed
+ * 
+ * @param redirectUrl - URL to redirect to after logout (default: "/admin/signIn")
+ */
+export default function showLogoutConfirmation(redirectUrl: string = "/admin/signIn") {
 
   toast(
     (t) => (
@@ -23,25 +22,24 @@ export default function showLogoutConfirmation(dispatch: AppDispatch, router: Re
             onClick={async () => {
               toast.dismiss(t.id);
               try {
-                // queryClient.clear()
-                // // await logoutUser();
-                // // dispatch(logoutUserAction());
-                // signOut()
-                // localStorage.clear()
-                // toast.success("Logged out successfully!");
-                // router.push(url);
-                // ✅ logout from NextAuth (cookies cleared)
+                // ✅ FIXED: Logout flow using NextAuth
+                // signOut will clear cookies and session
+                // Use window.location for hard reload to ensure clean state
+                
                 await signOut({ redirect: false });
 
-                // ✅ if you keep custom user data in Redux/localStorage
-                // dispatch(logoutUserAction());
+                // Clear localStorage
                 localStorage.clear();
 
                 toast.success("Logged out successfully!");
 
-                // ✅ navigate manually
-                router.push(url);
+                // ✅ Use window.location for hard reload to ensure clean state
+                // Small delay to show toast
+                setTimeout(() => {
+                  window.location.href = redirectUrl;
+                }, 300);
               } catch (err) {
+                console.error("Logout error:", err);
                 toast.error("Logout failed");
               }
             }}

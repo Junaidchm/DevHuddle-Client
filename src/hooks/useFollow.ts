@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { followUser, unfollowUser } from "../services/api/follow.service";
 import { useAuthHeaders } from "../customHooks/useAuthHeaders";
+import { useSession } from "next-auth/react";
 import { queryKeys } from "../lib/queryKeys";
 import { UserProfile } from "../types/user.type";
 import toast from "react-hot-toast";
@@ -19,6 +20,7 @@ interface UseFollowOptions {
 export function useFollow() {
   const authHeaders = useAuthHeaders();
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
 
   const invalidateQueries = () => {
     console.log('invalidating queries ---------------------------------> ')
@@ -26,6 +28,15 @@ export function useFollow() {
     queryClient.invalidateQueries({ queryKey: queryKeys.profiles.all });
     queryClient.invalidateQueries({ queryKey: queryKeys.network.all });
     queryClient.invalidateQueries({ queryKey: queryKeys.suggestions.all });
+    
+    // ✅ FIXED: Invalidate notifications to ensure new follow notifications appear instantly
+    // (WebSocket should handle this, but this is a backup)
+    if (session?.user?.id) {
+      queryClient.invalidateQueries({
+        queryKey: ["notifications", session.user.id],
+        refetchType: "none", // Don't refetch immediately, let WebSocket handle it
+      });
+    }
   };
 
   const followMutation = useMutation({

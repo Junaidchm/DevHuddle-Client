@@ -3,6 +3,8 @@
 import StatCard from "@/src/components/admin/user-management/StatCard";
 import { useAdminRedirectIfNotAuthenticated } from "@/src/customHooks/useAdminAuthenticated";
 import { getAllUsers, toogleUserBlock } from "@/src/services/api/admin.service";
+import { useApiClient } from "@/src/lib/api-client";
+import { useSession } from "next-auth/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { User } from "../../types";
@@ -24,7 +26,7 @@ const UserDetailsModal = dynamic(
 );
 
 export default function UserList() {
-  // useAdminRedirectIfNotAuthenticated("/admin/signIn");
+  const { isChecking } = useAdminRedirectIfNotAuthenticated("/admin/signIn");
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(5);
@@ -35,21 +37,32 @@ export default function UserList() {
   const [blockUnblock, setBlockUnblock] = useState<number>(-1);
   const queryClient = useQueryClient();
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const apiClient = useApiClient({ requireAuth: true });
 
   const debouncedSearch = useDebounce(search, 2000);
+  const { data: session, status: sessionStatus } = useSession();
+  
+  // ✅ FIXED: Stable query key using userId/role instead of token
+  const userId = session?.user?.id;
+  const userRole = session?.user?.role;
 
-  const { data, error, isLoading, } = useQuery({
-    queryKey: ["users", page, limit, status, debouncedSearch, date],
+  const { data, error, isLoading } = useQuery({
+    queryKey: ["users", page, limit, status, debouncedSearch, date, userId, userRole],
     queryFn: () => {
-      return getAllUsers({
-        page,
-        limit,
-        search: debouncedSearch,
-        status,
-        date,
-      });
+      return getAllUsers(
+        {
+          page,
+          limit,
+          search: debouncedSearch,
+          status,
+          date,
+        },
+        apiClient.getHeaders()
+      );
     },
-    staleTime: 30000, 
+    enabled: sessionStatus !== "loading" && !!userId && userRole === "superAdmin" && apiClient.isReady,
+    staleTime: 30000,
+    retry: 1, // Only retry once to avoid infinite loops
   });
 
   const handleClearFilter = () => {
@@ -66,10 +79,13 @@ export default function UserList() {
   const endIndex = Math.min(startIndex + limit - 1, totalUsers);
 
   const blockUnblockMutation = useMutation({
-    mutationFn: toogleUserBlock,
+    mutationFn: (userId: string) => toogleUserBlock(userId, apiClient.getHeaders()),
     onSuccess: () => {
       toast.success("User status updated");
       queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Failed to update user status");
     },
   });
 
@@ -81,51 +97,66 @@ export default function UserList() {
     setBlockUnblock((pre) => (pre === index ? -1 : index));
   };
 
+  // Show loading state while checking authentication
+  if (isChecking) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <i className="fas fa-spinner fa-spin text-4xl text-indigo-600 mb-4"></i>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="p-6 w-full h-full">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <StatCard
-            icon="fa-users"
-            iconColor="text-indigo-600"
-            iconBgColor="bg-[rgba(79,70,229,0.1)]"
-            title="Total Users"
-            value={"1234"}
-            trendColor="text-green-600"
-            trend="12% from last month"
-            trendIcon="fa-arrow-up"
-          />
-          <StatCard
-            icon="fa-user-plus"
-            iconColor="text-cyan-500"
-            iconBgColor="bg-[rgba(6,182,212,0.1)]"
-            title="New Users"
-            value={"487"}
-            trendColor="text-green-600"
-            trend="8% from last month"
-            trendIcon="fa-arrow-up"
-          />
-          <StatCard
-            icon="fa-user-check"
-            iconColor="text-green-500"
-            iconBgColor="bg-[rgba(16,185,129,0.1)]"
-            title="Active Users"
-            value={"9,342"}
-            trendColor="text-green-600"
-            trend="5% from last month"
-            trendIcon="fa-arrow-up"
-          />
-          <StatCard
-            icon="fa-user-slash"
-            iconColor="text-red-500"
-            iconBgColor="bg-[rgba(239,68,68,0.1)]"
-            title="Inactive Users"
-            value={"214"}
-            trendColor="text-red-500"
-            trend="3% from last month"
-            trendIcon="fa-arrow-down"
-          />
-        </div>
+        {/* Stats Cards - Using real data from API */}
+        {data?.data && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <StatCard
+              icon="fa-users"
+              iconColor="text-indigo-600"
+              iconBgColor="bg-[rgba(79,70,229,0.1)]"
+              title="Total Users"
+              value={data.data.total?.toString() || "0"}
+              trendColor="text-gray-500"
+              trend=""
+              trendIcon=""
+            />
+            <StatCard
+              icon="fa-user-check"
+              iconColor="text-green-500"
+              iconBgColor="bg-[rgba(16,185,129,0.1)]"
+              title="Active Users"
+              value={data.data.users?.filter((u: User) => !u.isBlocked).length?.toString() || "0"}
+              trendColor="text-gray-500"
+              trend=""
+              trendIcon=""
+            />
+            <StatCard
+              icon="fa-user-slash"
+              iconColor="text-red-500"
+              iconBgColor="bg-[rgba(239,68,68,0.1)]"
+              title="Blocked Users"
+              value={data.data.users?.filter((u: User) => u.isBlocked).length?.toString() || "0"}
+              trendColor="text-gray-500"
+              trend=""
+              trendIcon=""
+            />
+            <StatCard
+              icon="fa-user-shield"
+              iconColor="text-purple-500"
+              iconBgColor="bg-[rgba(147,51,234,0.1)]"
+              title="Admins"
+              value={data.data.users?.filter((u: User) => u.role === "superAdmin").length?.toString() || "0"}
+              trendColor="text-gray-500"
+              trend=""
+              trendIcon=""
+            />
+          </div>
+        )}
 
         <Card>
           <CardHeader title="Users List">
@@ -196,7 +227,27 @@ export default function UserList() {
                 </tr>
               </thead>
               <tbody>
-                {data?.data?.users?.length > 0 ? (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-gray-500">
+                      <div className="flex items-center justify-center gap-2">
+                        <i className="fas fa-spinner fa-spin"></i>
+                        <span>Loading users...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center">
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4 inline-block">
+                        <p className="text-red-800 font-medium">Error loading users</p>
+                        <p className="text-red-600 text-sm mt-1">
+                          {(error as any)?.response?.data?.message || "Please try again"}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : data?.data?.users?.length > 0 ? (
                   data?.data?.users.map((user: User, index: number) => (
                     <tr
                       key={user.id}
@@ -259,7 +310,7 @@ export default function UserList() {
                         {user.createdAt &&
                           new Date(user.createdAt).toISOString().split("T")[0]}
                       </td>
-                      <td className="p-4 text-sm">21</td>
+                      <td className="p-4 text-sm">-</td>
                       <td className="p-4 text-sm">
                         <div className="flex items-center gap-1 flex-wrap">
                           {/* <button

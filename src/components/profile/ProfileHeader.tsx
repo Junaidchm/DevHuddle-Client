@@ -44,12 +44,13 @@ const ProfileHeader = ({ username, initialProfile, currentUserId }: ProfileHeade
             <UserInfo
               name={profile.name}
               username={profile.username}
-              role={profile.jobTitle || 'Developer'}
+              role={profile.jobTitle || ''}
               bio={profile.bio || 'No bio available.'}
               location={profile.location || 'Unknown Location'}
               timezone={'UTC-8'} // This seems static, can be dynamic later
               joined={joinedDate}
               isVerified={profile.emailVerified || false}
+              company={profile.company}
             />
           </div>
         </div>

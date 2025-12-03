@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import PostCard from "./PostCard";
 import { fetchFeed } from "@/src/services/api/feed.service";
 import InfiniteScorllContainer from "../../layouts/InfiniteScrollContainer";
@@ -11,6 +12,7 @@ import { NewPost } from "@/src/app/types/feed";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 
 export default function FeedContainer({userid}:{userid:string}) {
+  const { data: session, status: sessionStatus } = useSession();
   const authHeaders = useAuthHeaders();
   
   const {
@@ -25,7 +27,7 @@ export default function FeedContainer({userid}:{userid:string}) {
     queryFn: ({ pageParam }) => fetchFeed(pageParam, authHeaders as Record<string, string>),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-    enabled: !!authHeaders.Authorization, // Only fetch when authenticated
+    enabled: sessionStatus !== "loading" && !!authHeaders.Authorization, // Only fetch when session is loaded and authenticated
   });
 
   const posts: NewPost[] = data?.pages.flatMap(

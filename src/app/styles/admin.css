@@ -1,1 +1,6 @@
-@import "tailwindcss";
+/* Admin-specific styles
+ * 
+ * Note: Tailwind CSS is imported in globals.css and available globally.
+ * This file is kept for any future admin-specific custom styles.
+ * All theme configuration is in globals.css.
+ */

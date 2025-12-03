@@ -9,6 +9,9 @@ export type UserProfile = {
   location: string | null;
   bio: string | null;
   jobTitle: string | null;
+  company: string | null;
+  skills: string[];
+  yearsOfExperience: string | null;
   createdAt: string; // Serialized as string from server
   _count: {
     followers: number;

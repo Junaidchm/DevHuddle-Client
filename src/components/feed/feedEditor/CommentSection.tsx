@@ -11,7 +11,14 @@ import {
 import { useCommentLikeMutation } from "../mutations/useCommentLikeMutation";
 import { Comment } from "@/src/app/types/feed";
 import { formatRelativeDate } from "@/src/utils/formateRelativeDate";
-import { Loader2, MoreVertical, Edit2, Trash2, Heart, MessageCircle } from "lucide-react";
+import {
+  Loader2,
+  MoreVertical,
+  Edit2,
+  Trash2,
+  Heart,
+  MessageCircle,
+} from "lucide-react";
 import toast from "react-hot-toast";
 
 interface CommentSectionProps {
@@ -36,7 +43,13 @@ const CommentInput: React.FC<{
   placeholder?: string;
   onSuccess?: () => void;
   onCancel?: () => void;
-}> = ({ postId, parentCommentId, placeholder = "Add a comment...", onSuccess, onCancel }) => {
+}> = ({
+  postId,
+  parentCommentId,
+  placeholder = "Add a comment...",
+  onSuccess,
+  onCancel,
+}) => {
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -213,7 +226,14 @@ const ReplyItem: React.FC<{
   postAuthorId?: string;
   mainCommentId: string; // LinkedIn-style: Always reply to main comment
   mainCommentAuthorName?: string; // For showing "Reply to [Name]..."
-}> = ({ reply, currentUserId, postId, postAuthorId, mainCommentId, mainCommentAuthorName }) => {
+}> = ({
+  reply,
+  currentUserId,
+  postId,
+  postAuthorId,
+  mainCommentId,
+  mainCommentAuthorName,
+}) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showReplyInput, setShowReplyInput] = useState(false);
@@ -472,7 +492,9 @@ const CommentItem: React.FC<{
               <span className="font-semibold text-sm text-gray-900">
                 {comment.user?.name || "Unknown User"}
               </span>
-              {postAuthorId && comment.userId === postAuthorId && <AuthorBadge />}
+              {postAuthorId && comment.userId === postAuthorId && (
+                <AuthorBadge />
+              )}
               <span className="text-xs text-gray-500">
                 {formatRelativeDate(new Date(comment.createdAt))}
                 {comment.editedAt && " • Edited"}
@@ -498,7 +520,9 @@ const CommentItem: React.FC<{
                 comment.isLiked
                   ? "text-blue-600 fill-blue-600"
                   : "text-gray-600 hover:text-blue-600"
-              } ${likeMutation.isPending ? "opacity-50 cursor-not-allowed" : ""}`}
+              } ${
+                likeMutation.isPending ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
               <Heart
                 className={`w-3 h-3 ${comment.isLiked ? "fill-current" : ""}`}
@@ -578,18 +602,29 @@ const CommentItem: React.FC<{
 };
 
 // Main CommentSection Component
-export default function CommentSection({ postId, postAuthorId, onClose }: CommentSectionProps) {
+export default function CommentSection({
+  postId,
+  postAuthorId,
+  onClose,
+}: CommentSectionProps) {
   const { data: session } = useSession();
   const currentUserId = session?.user?.id || "";
   const [showCommentInput, setShowCommentInput] = useState(false);
 
-  const {
-    data,
-    isLoading,
-    isFetchingNextPage,
-    hasNextPage,
-    fetchNextPage,
-  } = useCommentsInfiniteQuery(postId);
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch } =
+    useCommentsInfiniteQuery(postId);
+
+  // Always refetch when component mounts to ensure fresh data
+  // This fixes the issue where cached data might be stale or incomplete
+  // The preview query might have cached only 1 comment, so we need fresh data
+  useEffect(() => {
+    if (postId) {
+      // Force refetch to get fresh data from backend
+      // This ensures we get all comments, not just cached preview data
+      refetch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postId]); // Refetch when postId changes
 
   const allComments = data?.pages.flatMap((page) => page.data) || [];
 
@@ -657,4 +692,3 @@ export default function CommentSection({ postId, postAuthorId, onClose }: Commen
     </div>
   );
 }
-

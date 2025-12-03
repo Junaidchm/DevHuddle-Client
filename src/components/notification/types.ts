@@ -6,7 +6,17 @@ export type NotificationType =
   | "message"
   | "follow"
   | "comment"
-  | "support";
+  | "support"
+  | "reply"
+  | "share"
+  | "live"
+  | "system";
+
+export interface NotificationActor {
+  id?: string;
+  name?: string;
+  profilePicture?: string;
+}
 
 export interface MappedNotification {
   id: string;
@@ -16,4 +26,15 @@ export interface MappedNotification {
   title: string;
   time: Date;
   message: string;
+  // LinkedIn-style fields
+  actors: NotificationActor[];
+  aggregatedCount?: number;
+  entityType?: string;
+  entityId?: string;
+  preview?: {
+    type: "post" | "comment" | "reply";
+    content: string;
+    imageUrl?: string;
+  };
+  actionText: string; // e.g., "liked your post", "commented on your post"
 }

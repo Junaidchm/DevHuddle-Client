@@ -2,17 +2,17 @@
 
 import { useMemo } from "react";
 import { MappedNotification, NotificationType } from "./types";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/src/lib/utils";
 
+// LinkedIn-style filter tabs
 const FILTERS: { id: NotificationType | "all"; label: string }[] = [
   { id: "all", label: "All" },
-  { id: "mention", label: "Mentions" },
   { id: "comment", label: "Comments" },
   { id: "like", label: "Likes" },
+  { id: "mention", label: "Mentions" },
   { id: "follow", label: "Follows" },
-  { id: "collab", label: "Collaboration" },
-  { id: "message", label: "Messages" },
-  { id: "event", label: "Events" },
+  { id: "share", label: "Shares" },
+  { id: "system", label: "System" },
 ];
 
 interface NotificationFiltersProps {
@@ -38,22 +38,35 @@ export const NotificationFilters = ({
   }, [notifications]);
 
   return (
-    <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as any)} className="w-full">
-      <TabsList className="grid w-full grid-cols-4 md:grid-cols-8">
+    <div className="border-b border-gray-200 mb-4">
+      <div className="flex gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {FILTERS.map((filter) => {
           const count = unreadCounts[filter.id] || 0;
+          const isActive = activeFilter === filter.id;
+          
           return (
-            <TabsTrigger key={filter.id} value={filter.id} className="relative">
+            <button
+              key={filter.id}
+              onClick={() => setActiveFilter(filter.id)}
+              className={cn(
+                "relative px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap",
+                "border-b-2 border-transparent",
+                isActive
+                  ? "text-blue-600 border-blue-600 bg-transparent"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50",
+                "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-t-md"
+              )}
+            >
               {filter.label}
               {count > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-xs">
+                <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
                   {count}
                 </span>
               )}
-            </TabsTrigger>
+            </button>
           );
         })}
-      </TabsList>
-    </Tabs>
+      </div>
+    </div>
   );
 };

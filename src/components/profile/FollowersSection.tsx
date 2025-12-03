@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import FollowersHeader from './FollowersHeader';
 import NetworkStats from './NetworkStats';
 import FollowerList from './FollowerList';
-import Pagination from './Pagination';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/src/lib/queryKeys';
 import { fetchProfileByUsernameAction } from '@/src/app/(main)/profile/[user_name]/actions';
@@ -21,29 +20,32 @@ const FollowersSection = ({ username, currentUserId, initialProfile }: Followers
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    // Implement search logic if backend supports it
   };
 
-   const { data: profile = initialProfile } = useQuery({
+  const { data: profile = initialProfile } = useQuery({
     queryKey: queryKeys.profiles.detail(username),
     queryFn: () => fetchProfileByUsernameAction(username),
     initialData: initialProfile,
   });
 
-
   return (
     <section id="followers">
-      <FollowersHeader onSearch={handleSearch} view={view} setView={setView} />
+      <FollowersHeader 
+        onSearch={handleSearch} 
+        view={view} 
+        setView={setView}
+        searchQuery={searchQuery}
+      />
       <NetworkStats
         followers={profile?._count?.followers.toString() || '0'}
         following={profile?._count?.following.toString() || '0'}
-        topDomain="Frontend"
-        followerChange="0" // Placeholder
-        followingChange="0" // Placeholder
-        domainPercentage="65"
       />
-      <FollowerList username={username} currentUserId={currentUserId} view={view} />
-      <Pagination />
+      <FollowerList
+        username={username}
+        currentUserId={currentUserId}
+        view={view}
+        searchQuery={searchQuery}
+      />
     </section>
   );
 };

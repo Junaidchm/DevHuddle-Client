@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
+import { cookies } from "next/headers";
 
 const API_URL = process.env.API_URL || "http://localhost:8000";
 
@@ -17,8 +18,8 @@ export async function get_access_refresh(): Promise<{
 
   console.log("this is the session details -------------------------", session);
   if (session.needsRefresh) {
-    const refreshRes = await fetch(`${API_URL}/api/auth/refresh-token`, {
-      method: "GET",
+    const refreshRes = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+      method: "POST",
       credentials: "include",
     });
 
