@@ -23,6 +23,8 @@ export default function ProjectsPage() {
   const trendingQuery = useTrendingProjectsQuery(
     filter === "trending" ? period : undefined
   );
+
+  console.log('these are the trending project -------------', trendingQuery.data) 
   const topQuery = useTopProjectsQuery(filter === "top" ? period : undefined);
 
   const searchQueryResult = useQuery({

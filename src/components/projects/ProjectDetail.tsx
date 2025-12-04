@@ -21,6 +21,23 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
     project.id
   );
 
+  // Helper function to get author avatar URL
+  const getAuthorAvatarUrl = (avatar: string | undefined): string => {
+    if (!avatar) return "";
+    // If it's already an absolute URL (S3, UploadThing, etc.), return as is
+    if (avatar.startsWith("http://") || avatar.startsWith("https://")) {
+      return avatar;
+    }
+    // If it's a relative path, prepend the image path
+    const imagePath = process.env.NEXT_PUBLIC_IMAGE_PATH || "";
+    // Remove trailing slash from imagePath if present
+    const cleanImagePath = imagePath.endsWith("/") ? imagePath.slice(0, -1) : imagePath;
+    // Remove leading slash from avatar if present
+    const cleanAvatar = avatar.startsWith("/") ? avatar.slice(1) : avatar;
+    // Combine without double slashes
+    return cleanImagePath ? `${cleanImagePath}/${cleanAvatar}` : `/${cleanAvatar}`;
+  };
+
   // Track view on mount
   useEffect(() => {
     trackProjectView(project.id, authHeaders).catch(() => {
@@ -47,11 +64,12 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
           <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
             {project.author.avatar && (
               <Image
-                src={project.author.avatar}
+                src={getAuthorAvatarUrl(project.author.avatar)}
                 alt={project.author.name}
                 width={40}
                 height={40}
                 className="object-cover"
+                unoptimized={project.author.avatar?.includes("uploadthing") || project.author.avatar?.includes("s3")}
               />
             )}
           </div>

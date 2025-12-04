@@ -21,7 +21,7 @@ export function useTopProjectsQuery(period?: string) {
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor || null,
     initialPageParam: null as string | null,
-    enabled: !!authHeaders.Authorization,
+    enabled: true, // Always enabled - these are public routes
     staleTime: 60 * 1000, // 1 minute
   });
 }

@@ -1,15 +1,16 @@
 "use client";
 
+import { use } from "react";
 import { useProjectQuery } from "@/src/components/projects/hooks/useProjectQuery";
 import ProjectDetail from "@/src/components/projects/ProjectDetail";
 import { notFound } from "next/navigation";
 
 interface ProjectDetailPageProps {
-  params: { projectId: string };
+  params: Promise<{ projectId: string }>;
 }
 
 export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
-  const { projectId } = params;
+  const { projectId } = use(params);
   const { data: project, isLoading, error } = useProjectQuery(projectId);
 
   if (isLoading) {

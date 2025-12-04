@@ -12,17 +12,50 @@ interface ProjectCardProps {
 export default function ProjectCard({ project }: ProjectCardProps) {
   const previewMedia = project.media.find((m) => m.isPreview) || project.media[0];
 
+  // Helper function to get absolute image URL
+  const getImageUrl = (url: string | undefined): string => {
+    if (!url) return "";
+    // If it's already an absolute URL, return as is
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      return url;
+    }
+    // If it's a relative path, prepend the image path
+    if (url.startsWith("/")) {
+      return `${process.env.NEXT_PUBLIC_IMAGE_PATH || ""}${url}`;
+    }
+    // Otherwise, assume it's a full URL from UploadThing or S3
+    return url;
+  };
+
+  // Helper function to get author avatar URL
+  const getAuthorAvatarUrl = (avatar: string | undefined): string => {
+    if (!avatar) return "";
+    // If it's already an absolute URL (S3, UploadThing, etc.), return as is
+    if (avatar.startsWith("http://") || avatar.startsWith("https://")) {
+      return avatar;
+    }
+    // If it's a relative path, prepend the image path
+    const imagePath = process.env.NEXT_PUBLIC_IMAGE_PATH || "";
+    // Remove trailing slash from imagePath if present
+    const cleanImagePath = imagePath.endsWith("/") ? imagePath.slice(0, -1) : imagePath;
+    // Remove leading slash from avatar if present
+    const cleanAvatar = avatar.startsWith("/") ? avatar.slice(1) : avatar;
+    // Combine without double slashes
+    return cleanImagePath ? `${cleanImagePath}/${cleanAvatar}` : `/${cleanAvatar}`;
+  };
+
   return (
-    <Link href={`/projects/${project.id}`}>
-      <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+      <Link href={`/projects/${project.id}`} className="block">
         {/* Preview Image */}
         {previewMedia && (
           <div className="relative w-full h-48 bg-gray-100">
             <Image
-              src={previewMedia.thumbnailUrl || previewMedia.url}
+              src={getImageUrl(previewMedia.thumbnailUrl || previewMedia.url)}
               alt={project.title}
               fill
               className="object-cover"
+              unoptimized={previewMedia.url?.includes("uploadthing") || previewMedia.url?.includes("s3")}
             />
           </div>
         )}
@@ -76,16 +109,17 @@ export default function ProjectCard({ project }: ProjectCardProps) {
 
             {/* Demo Link */}
             {project.demoUrl && (
-              <a
-                href={project.demoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  window.open(project.demoUrl, "_blank", "noopener,noreferrer");
+                }}
                 className="flex items-center gap-1 text-blue-600 hover:text-blue-700"
               >
                 <ExternalLink className="w-4 h-4" />
                 <span>Demo</span>
-              </a>
+              </button>
             )}
           </div>
 
@@ -94,11 +128,12 @@ export default function ProjectCard({ project }: ProjectCardProps) {
             <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
               {project.author.avatar && (
                 <Image
-                  src={project.author.avatar}
+                  src={getAuthorAvatarUrl(project.author.avatar)}
                   alt={project.author.name}
                   width={32}
                   height={32}
                   className="object-cover"
+                  unoptimized={project.author.avatar?.includes("uploadthing") || project.author.avatar?.includes("s3")}
                 />
               )}
             </div>
@@ -108,8 +143,8 @@ export default function ProjectCard({ project }: ProjectCardProps) {
             </div>
           </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
 
