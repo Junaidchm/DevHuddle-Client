@@ -125,17 +125,17 @@ export const MediaProvider = ({ children }: { children: ReactNode }) => {
       return pre.map((file) => {
         if (file.id !== fileId) return file;
 
-        if (file.taggedUsers && file.taggedUsers.length > 0) {
-          if (file.taggedUsers.some((u) => u.id === taggedUser.id)) {
-            return file;
-          }
-          return {
-            ...file,
-            taggedUsers: [...file.taggedUsers, taggedUser],
-          };
+        const currentTaggedUsers = file.taggedUsers || [];
+        
+        // Prevent duplicates
+        if (currentTaggedUsers.some((u) => u.id === taggedUser.id)) {
+          return file;
         }
 
-        return file;
+        return {
+          ...file,
+          taggedUsers: [...currentTaggedUsers, taggedUser],
+        };
       });
     });
   };

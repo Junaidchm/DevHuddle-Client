@@ -1,12 +1,16 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { X, Video, Type, Upload } from "lucide-react";
+import { X, Video, Type, Upload, User as UserIcon } from "lucide-react";
 import EditorModal from "./EditorModal";
 import { Media } from "@/src/app/types/feed";
 import { useMedia } from "@/src/contexts/MediaContext";
-import useMediaUpload from "./Hooks/useMediaUpload";
+import { useMediaUpload } from "@/src/hooks/useMediaUpload";
 import toast from "react-hot-toast";
+import { MentionPanel } from "./MentionPanel";
+import { useSession } from "next-auth/react";
+import { useQuery } from "@tanstack/react-query";
+import { searchUsers } from "@/src/services/api/user.service";
 
 interface VideoEditorModalProps {
   isOpen: boolean;
@@ -22,11 +26,9 @@ export default function VideoEditorModal({
   
   // ✅ Integrated: Use upload hook for actual uploads
   const {
-    startUpload,
-    attachments,
+    uploadFiles,
     isUploading,
-    uploadProgress,
-    removeAttachment,
+    progress: uploadProgress,
     reset: resetMediaUploads,
   } = useMediaUpload();
 
@@ -36,8 +38,22 @@ export default function VideoEditorModal({
   const [captionText, setCaptionText] = useState("");
   const [showThumbnailSelector, setShowThumbnailSelector] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // ✅ Tagging State
+  const [showTagPanel, setShowTagPanel] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: session } = useSession();
+
+  // ✅ Fetch Users logic
+  const { data: users = [] } = useQuery({
+    queryKey: ['searchUsers', searchQuery],
+    queryFn: () => searchUsers(searchQuery, { Authorization: `Bearer ${session?.user?.accessToken}` }),
+    enabled: showTagPanel
+  });
 
   // ✅ Sync videos from MediaContext (filter videos only)
   useEffect(() => {
@@ -66,8 +82,8 @@ export default function VideoEditorModal({
         "video/x-msvideo", // .avi
       ].includes(file.type);
       
-      // ✅ Note: UploadThing config shows 8MB limit, but we'll validate for 100MB
-      // The actual limit will be enforced by UploadThing
+      // ✅ Note: Media Service supports up to 100MB for videos
+      // The actual limit is enforced by Media Service
       const isValidSize = file.size <= 100 * 1024 * 1024; // 100MB limit
       
       if (!isValidType) {
@@ -86,7 +102,7 @@ export default function VideoEditorModal({
       return;
     }
 
-    // Check total video count limit (max 1 video per post based on UploadThing config)
+    // Check total video count limit (max 1 video per post)
     if (selectedVideos.length + validFiles.length > 1) {
       setError("Maximum 1 video allowed per post.");
       setTimeout(() => setError(null), 3000);
@@ -99,8 +115,12 @@ export default function VideoEditorModal({
       return;
     }
 
-    // ✅ Start upload using useMediaUpload hook (handles UploadThing)
-    startUpload(validFiles);
+    // ✅ Start upload using useMediaUpload hook (direct upload to R2)
+    const uploadedMedia = await uploadFiles(validFiles);
+    
+    if (uploadedMedia.length > 0) {
+      addMedia(uploadedMedia);
+    }
     
     // Reset input
     if (fileInputRef.current) {
@@ -130,7 +150,7 @@ export default function VideoEditorModal({
       // For now, we'll just close the input
       setShowCaptionInput(false);
       setCaptionText("");
-      toast.info("Video captions feature coming soon");
+      toast("Video captions feature coming soon");
     }
   };
 
@@ -146,11 +166,21 @@ export default function VideoEditorModal({
           ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
           const thumbnail = canvas.toDataURL("image/jpeg");
           
-          // Update video with thumbnail (would need to store in Media type)
-          toast.success("Thumbnail generated! Feature integration coming soon.");
+          // Update video with thumbnail
+          const updatedVideos = selectedVideos.map((v, i) => {
+             if (i === currentVideoIndex) {
+                 return { ...v, thumbnail: thumbnail };
+             }
+             return v;
+          });
+          
+          setMedia(updatedVideos); // Update context
+          
+          toast.success("Thumbnail captured!");
           setShowThumbnailSelector(false);
         }
       } catch (error) {
+        console.error(error);
         toast.error("Failed to generate thumbnail");
       }
     }
@@ -329,6 +359,14 @@ export default function VideoEditorModal({
                 >
                   <X size={20} className="text-red-500" />
                 </button>
+                <button
+                   onClick={() => setShowTagPanel(true)}
+                   className="p-3 hover:bg-gray-100 rounded-full transition-colors duration-200"
+                   disabled={selectedVideos.length === 0 || isUploading}
+                   aria-label="Tag people"
+                >
+                   <UserIcon size={20} className="text-slate-600" />
+                </button>
               </div>
               <button
                 onClick={onClose}
@@ -375,6 +413,21 @@ export default function VideoEditorModal({
             </div>
           </div>
         </div>
+        {/* Helper Panel (Tagging) */}
+        {showTagPanel && (
+           <MentionPanel
+             users={users.map(u => ({
+               id: u.id,
+               name: u.name,
+               avatar: u.profilePicture || "",
+               title: ""
+             }))}
+             searchQuery={searchQuery}
+             onSearchChange={setSearchQuery}
+             currentImageId={selectedVideos[currentVideoIndex]?.id}
+             onClose={() => setShowTagPanel(false)}
+           />
+        )}
       </div>
     </div>
   );

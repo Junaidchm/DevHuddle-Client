@@ -9,9 +9,6 @@ import {
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { PersistGate } from "redux-persist/integration/react";
 import { useState } from "react";
-import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
-import { extractRouterConfig } from "uploadthing/server";
-import { fileRouter } from "../app/api/uploadthing/core";
 import { SessionProvider } from "next-auth/react";
 import SessionProviderWrapper from "./SessionProviderWrapper";
 import { WebSocketProvider } from "../contexts/WebSocketContext";
@@ -25,12 +22,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <SessionProvider
-          refetchInterval={5 * 60} // Refetch session every 5 minutes (only if page is active)
-          refetchOnWindowFocus={false} // Don't refetch on every tab focus
+          refetchInterval={4 * 60} // ✅ FIXED: Refetch session every 4 minutes (token expires in 15 min, refresh at 5 min buffer)
+          refetchOnWindowFocus={true} // ✅ FIXED: Refetch when user returns to tab (helps catch expired sessions)
           refetchWhenOffline={false} // Don't refetch when offline
         >
           <SessionProviderWrapper>
-            <NextSSRPlugin routerConfig={extractRouterConfig(fileRouter)} />
             <QueryClientProvider client={queryClient}>
               <WebSocketProvider>
                 {children}

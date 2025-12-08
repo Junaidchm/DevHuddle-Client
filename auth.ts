@@ -46,7 +46,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
             
             // Extract the exact error message from the backend
-            const errorMessage = errorData?.message || errorData?.error || `Login failed (${res.status})`;
+            // API Gateway sends: { status: number, message: string }
+            // Auth service might send: { message: string } or { error: string }
+            const errorMessage = errorData?.message || 
+                                errorData?.error || 
+                                (typeof errorData === 'string' ? errorData : null) ||
+                                `Login failed (${res.status})`;
             
             // Log for debugging
             console.error("Login error response:", {
@@ -56,6 +61,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               message: errorMessage,
             });
             
+            // Throw error with the exact message from backend
             throw new Error(errorMessage);
           }
 
@@ -118,12 +124,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return token;
       }
 
+      // ✅ FIXED: Refresh token before it expires (5 minutes buffer)
+      // This prevents 401 errors by refreshing proactively
+      const shouldRefresh = token.expiresAt && Date.now() >= ((token.expiresAt as number) - 5 * 60 * 1000);
+      
       // Otherwise try to refresh (only if refreshToken exists)
       if (!token.refreshToken) {
+        console.error("[NextAuth JWT] No refresh token available");
         return null; // No refresh token, sign out
       }
 
+      // Only refresh if token is expired or about to expire
+      if (!shouldRefresh && token.expiresAt && Date.now() < (token.expiresAt as number)) {
+        return token;
+      }
+
       try {
+        console.log("[NextAuth JWT] Attempting to refresh token...");
         const apiBaseUrl = getApiBaseUrl();
         if (!apiBaseUrl) {
           throw new Error("API base URL not configured");
@@ -137,34 +154,44 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             body: JSON.stringify({ refreshToken: token.refreshToken }),
             // Add timeout to prevent hanging (Node 18+)
             ...(typeof AbortSignal !== "undefined" && AbortSignal.timeout
-              ? { signal: AbortSignal.timeout(5000) }
+              ? { signal: AbortSignal.timeout(10000) } // Increased to 10 seconds
               : {}),
           }
         );
 
         if (!res.ok) {
-          throw new Error(`Refresh failed with status ${res.status}`);
+          const errorText = await res.text();
+          console.error("[NextAuth JWT] Refresh failed:", {
+            status: res.status,
+            statusText: res.statusText,
+            error: errorText,
+          });
+          throw new Error(`Refresh failed with status ${res.status}: ${errorText}`);
         }
 
         const data = await res.json();
         
         if (!data?.user?.accessToken) {
+          console.error("[NextAuth JWT] No access token in refresh response:", data);
           throw new Error("No access token in refresh response");
         }
 
+        console.log("[NextAuth JWT] Token refreshed successfully");
         return {
           ...token,
           accessToken: data.user.accessToken,
+          // Update refreshToken if provided (some backends rotate refresh tokens)
+          refreshToken: data.user.refreshToken || token.refreshToken,
           expiresAt: Date.now() + 15 * 60 * 1000, // 15 minutes
         };
       } catch (err) {
-        console.error("Token refresh failed:", err);
+        console.error("[NextAuth JWT] Token refresh failed:", err);
         // Return null to sign the user out and prevent infinite refresh loop
         return null;
       }
     },
 
-    // ✅ Session callback: expose token data to client
+    //  Session callback: expose token data to client
     async session({ session, token }) {
       // If token is null or invalid, return empty session
       if (!token || !token.id) {

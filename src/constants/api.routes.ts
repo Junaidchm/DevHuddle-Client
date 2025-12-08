@@ -92,6 +92,14 @@ export const API_ROUTES = {
       `${API_VERSION}/feed/posts/${postId}/versions/${versionNumber}/restore`,
   },
 
+  MEDIA: {
+    UPLOAD_SESSION: `${API_VERSION}/media/upload-session`,
+    COMPLETE: (mediaId: string) => `${API_VERSION}/media/${mediaId}/complete`,
+    GET: (mediaId: string) => `${API_VERSION}/media/${mediaId}`,
+    DELETE: (mediaId: string) => `${API_VERSION}/media/${mediaId}`,
+    USER_MEDIA: `${API_VERSION}/media/user/media`,
+  },
+
   ENGAGEMENT: {
     BASE: `${API_VERSION}/engagement`,
     // Post Likes

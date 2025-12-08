@@ -118,6 +118,7 @@ export interface Media {
   taggedUsers?: User[];
   transform?: ImageTransform | videoTransform | null;
   mediaId?: string | undefined | null;
+  thumbnail?: string; // ✅ Added thumbnail support
 }
 
 export interface Post {

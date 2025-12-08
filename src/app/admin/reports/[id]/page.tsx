@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getReportById, takeReportAction } from "@/src/services/api/admin-panel.service";
 import { useApiClient } from "@/src/lib/api-client";
 import { useSession } from "next-auth/react";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { useState } from "react";
 
 export default function ReportDetailPage() {
@@ -26,27 +26,84 @@ export default function ReportDetailPage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-report", reportId, userId, userRole],
-    queryFn: () => getReportById(reportId, apiClient.getHeaders()),
+    queryFn: () => {
+      const headers = apiClient.getHeaders();
+      // Only pass headers if Authorization is present
+      const authHeaders: Record<string, string> | undefined = headers.Authorization 
+        ? { Authorization: headers.Authorization } 
+        : undefined;
+      return getReportById(reportId, authHeaders);
+    },
     enabled: status !== "loading" && !!userId && userRole === "superAdmin" && apiClient.isReady,
   });
 
   const actionMutation = useMutation({
-    mutationFn: (data: { action: string; resolution?: string; hideContent?: boolean }) =>
-      takeReportAction(reportId, data as any, apiClient.getHeaders()),
-    onSuccess: () => {
+    mutationFn: (data: { action: string; resolution?: string; hideContent?: boolean }) => {
+      const headers = apiClient.getHeaders();
+      console.log("Taking report action:", { reportId, data, headers });
+      // Only pass headers if Authorization is present
+      const authHeaders: Record<string, string> | undefined = headers.Authorization 
+        ? { Authorization: headers.Authorization } 
+        : undefined;
+      return takeReportAction(reportId, data as any, authHeaders);
+    },
+    onSuccess: (response) => {
+      console.log("Report action success:", response);
       toast.success("Action completed successfully");
       queryClient.invalidateQueries({ queryKey: ["admin-report", reportId] });
       queryClient.invalidateQueries({ queryKey: ["admin-reports"] });
       setShowActionModal(false);
-      router.push("/admin/reports");
+      setResolution("");
+      setActionType(null);
+      // Refresh the page data instead of redirecting
+      router.refresh();
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Failed to take action");
+      console.error("Report action error:", error);
+      
+      // Handle timeout errors specifically
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        toast.error("Request timed out. The action may still be processing. Please refresh the page to check the status.", {
+          duration: 6000,
+        });
+        // Invalidate queries to refresh data
+        queryClient.invalidateQueries({ queryKey: ["admin-report", reportId] });
+        queryClient.invalidateQueries({ queryKey: ["admin-reports"] });
+        return;
+      }
+      
+      // Handle network errors
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        toast.error("Network error. Please check your connection and try again.", {
+          duration: 5000,
+        });
+        return;
+      }
+      
+      // Handle other errors
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to take action";
+      toast.error(errorMessage, {
+        duration: 5000,
+      });
     },
   });
 
   const handleAction = () => {
-    if (!actionType) return;
+    if (!actionType) {
+      toast.error("Please select an action");
+      return;
+    }
+    
+    if (!apiClient.isReady) {
+      toast.error("Please wait, authentication is not ready");
+      return;
+    }
+    
+    if (!apiClient.getHeaders().Authorization) {
+      toast.error("Authentication required. Please log in again.");
+      return;
+    }
+    
     actionMutation.mutate({
       action: actionType,
       resolution: resolution || undefined,
@@ -270,8 +327,14 @@ export default function ReportDetailPage() {
 
       {/* Action Modal */}
       {showActionModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => {
+          if (!actionMutation.isPending) {
+            setShowActionModal(false);
+            setResolution("");
+            setActionType(null);
+          }
+        }}>
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-4">
               {actionType === "APPROVE" && "Approve Report"}
               {actionType === "REMOVE" && "Remove Content"}
@@ -292,18 +355,21 @@ export default function ReportDetailPage() {
             <div className="flex gap-3">
               <button
                 onClick={handleAction}
-                disabled={actionMutation.isPending}
-                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                disabled={actionMutation.isPending || !actionType}
+                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {actionMutation.isPending ? "Processing..." : "Confirm"}
               </button>
               <button
                 onClick={() => {
-                  setShowActionModal(false);
-                  setResolution("");
-                  setActionType(null);
+                  if (!actionMutation.isPending) {
+                    setShowActionModal(false);
+                    setResolution("");
+                    setActionType(null);
+                  }
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                disabled={actionMutation.isPending}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>

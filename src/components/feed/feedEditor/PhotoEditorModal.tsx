@@ -11,12 +11,12 @@ import { EditPanel } from "./EditPanel";
 import { MentionPanel } from "./MentionPanel";
 import ErrorModal from "../../ui/ErrorModal";
 import { useMedia } from "@/src/contexts/MediaContext";
-import { handleImageUpload } from "@/lib/feed/handleImageUpload";
 import { default_ImageTransform, filters } from "@/src/constents/feed";
 import { getImageStyle } from "@/lib/feed/getImageStyle";
-import useMediaUpload from "./Hooks/useMediaUpload";
-
-
+import { useMediaUpload } from "@/src/hooks/useMediaUpload";
+import { useSession } from "next-auth/react";
+import { useQuery } from "@tanstack/react-query";
+import { searchUsers } from "@/src/services/api/user.service";
 
 export default function PhotoEditorModal({
   isOpen,
@@ -31,13 +31,12 @@ export default function PhotoEditorModal({
     setcurrentMediaId
   } = useMedia();
 
-   const {
-    startUpload,
-    attachments,
+  // ✅ New Hook
+  const {
+    uploadFiles,
     isUploading,
-    uploadProgress,
-    removeAttachment,
-    reset: resetMediaUploads,
+    progress: uploadProgress,
+    reset: resetMediaUploads
   } = useMediaUpload();
 
   const [selectedImages, setSelectedImages] = useState<Media[]>([]);
@@ -54,36 +53,17 @@ export default function PhotoEditorModal({
     setSelectedImages(updatedImages);
   }, [media]);
 
-  const mockUsers: UserType[] = [
-    {
-      id: "1",
-      name: "Junaid Chm",
-      title: "Full Stack Developer",
-      avatar: "https://i.pravatar.cc/150?img=1",
-    },
-    {
-      id: "2",
-      name: "Anugrah James",
-      title: "Founder & Software Developer",
-      avatar: "https://i.pravatar.cc/150?img=2",
-    },
-    {
-      id: "3",
-      name: "Akshara Raveendran",
-      title: "Self-Learning Enthusiast",
-      avatar: "https://i.pravatar.cc/150?img=4",
-    },
-    {
-      id: "4",
-      name: "AKHIL MK",
-      title: "Self Taught Developer",
-      avatar: "https://i.pravatar.cc/150?img=5",
-    },
-  ];
+  const { data: session } = useSession();
 
-  const filteredUsers = mockUsers.filter((user) =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // ✅ Fetch Users for Tagging
+  const { data: users = [] } = useQuery({
+    queryKey: ["searchUsers", searchQuery],
+    queryFn: () =>
+      searchUsers(searchQuery, {
+        Authorization: `Bearer ${session?.user?.accessToken}`,
+      }),
+    enabled: rightPanelView === "mention",
+  });
 
   const getCurrentImageTransform = (): ImageTransform => {
     const currentImage = selectedImages[currentImageIndex];
@@ -114,33 +94,12 @@ export default function PhotoEditorModal({
     const newImages = selectedImages.filter((img) => img.id !== imageId);
     setMedia(newImages);
     
-   
     if (currentImageIndex >= newImages.length && newImages.length > 0) {
       setCurrentImageIndex(newImages.length - 1);
     } else if (newImages.length === 0) {
       setCurrentImageIndex(0);
     }
   };
-
-  // const duplicateImage = () => {
-  //   const currentImage = selectedImages[currentImageIndex];
-
-  //   if (currentImage) {
-  //     const duplicatedImage = {
-  //       ...currentImage,
-  //       id: crypto.randomUUID(),
-  //       name: `Copy of ${currentImage.name}`,
-  //     };
-  //     const newImages = [...selectedImages];
-  //     newImages.splice(currentImageIndex + 1, 0, duplicatedImage);
-  //     setSelectedImages(newImages);
-  //     setImageTransforms((prev) => ({
-  //       ...prev,
-  //       [duplicatedImage.id]: { ...prev[currentImage.id] },
-  //     }));
-  //     setCurrentImageIndex(currentImageIndex + 1);
-  //   }
-  // };
 
   const moveImage = (fromIndex: number, toIndex: number) => {
     const newImages = [...selectedImages];
@@ -158,26 +117,8 @@ export default function PhotoEditorModal({
   const applyTransforms = () => {
     setRightPanelView("default");
   };
-  
-  // const resetAllAdjustments = () => {
-  //   updateImageTransform({
-  //     brightness: 50,
-  //     contrast: 50,
-  //     saturation: 50,
-  //     temperature: 50,
-  //     highlights: 50,
-  //     shadows: 50,
-  //   });
-  //   setBrightness(50);
-  //   setContrast(50);
-  //   setSaturation(50);
-  //   setTemperature(50);
-  //   setHighlights(50);
-  //   setShadows(50);
-  // };
 
   const triggerUpload = () => {
-    console.log("input ref triggering ");
     fileInputRef.current?.click();
   };
 
@@ -185,6 +126,34 @@ export default function PhotoEditorModal({
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+  };
+
+  // ✅ New Upload Handler
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    // Check max files limit
+    if (media.length + files.length > 5) {
+       setError("Maximum 5 images allowed.");
+       setTimeout(() => setError(null), 3000);
+       return; 
+    }
+
+    const uploadedMedia = await uploadFiles(files);
+    
+    if (uploadedMedia.length > 0) {
+      addMedia(uploadedMedia);
+      
+      // Select the first new image
+      // Note: addMedia likely updates context async, so we use local result for immediate UI feedback if needed
+      if (selectedImages.length === 0) {
+        setcurrentMediaId(uploadedMedia[0].id);
+        setCurrentImageIndex(0);
+      }
+    }
+    
+    resetInput();
   };
 
   if (!isOpen) return null;
@@ -209,22 +178,11 @@ export default function PhotoEditorModal({
           />
         ) : (
           <ImageUploader
-            onUpload={(e) =>
-              handleImageUpload(
-                e,
-                setError,
-                addMedia,
-                media,
-                setCurrentImageIndex,
-                setcurrentMediaId,
-                startUpload,
-                attachments
-              )
-            }
+            onUpload={handleUpload}
             triggerUpload={triggerUpload}
             resetInput={resetInput}
             fileInputRef={fileInputRef}
-            disabled = {isUploading || attachments.length>=5}
+            disabled = {isUploading || (media?.length || 0) >= 5}
           />
         )}
         <ActionBar
@@ -235,7 +193,6 @@ export default function PhotoEditorModal({
               removeImage(selectedImages[currentImageIndex].id);
           }}
           onAddMore={() => {
-            console.log("on upload more is working fine without any problem ");
             resetInput();
             triggerUpload();
           }}
@@ -250,7 +207,7 @@ export default function PhotoEditorModal({
             <span className="font-medium">Pro tips:</span> Use the edit panel to
             enhance your photos, add alt text for accessibility, and tag people
             to increase engagement. You can reorder images by using the up/down
-            arrows on thumbnails.
+            arrows on thumbnails hello.
           </p>
         </div>
       </div>
@@ -275,7 +232,12 @@ export default function PhotoEditorModal({
       )}
       {rightPanelView === "mention" && (
         <MentionPanel
-          users={mockUsers}
+          users={users.map(u => ({
+             id: u.id,
+             name: u.name,
+             avatar: u.profilePicture || "",
+             title: ""
+          }))}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           currentImageId={selectedImages[currentImageIndex]?.id}

@@ -21,8 +21,6 @@ import { BsGithub } from "react-icons/bs";
 import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
 import { useState } from "react";
-import { useSelector } from "react-redux";
-import { RootState } from "@/src/store/store";
 import { useDispatch } from "react-redux";
 import type { AppDispatch } from "@/src/store/store";
 import { useRouter } from "next/navigation";
@@ -87,7 +85,7 @@ export default function SignUpForm() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] =
     useState<boolean>(false);
-  const { loading } = useSelector((state: RootState) => state.user);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -106,12 +104,15 @@ export default function SignUpForm() {
   const router = useRouter();
 
   const handleGoogleAuth = async () => {
+    setIsGoogleLoading(true);
     try {
       await dispatch(googleAuth()).unwrap();
     } catch (err: any) {
       const errorMessage =
         err?.message || err?.error || "Google authentication failed.";
       toast.error(errorMessage, { position: "top-center" });
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
@@ -308,9 +309,9 @@ export default function SignUpForm() {
           </button>
 
           <OAuthButton
-            disabled={loading}
+            disabled={isGoogleLoading || form.formState.isSubmitting}
             onClick={handleGoogleAuth}
-            label="Continue with Google"
+            label={isGoogleLoading ? "Connecting..." : "Continue with Google"}
             icon={<FcGoogle />}
           />
         </div>

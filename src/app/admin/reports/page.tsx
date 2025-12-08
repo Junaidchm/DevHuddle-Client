@@ -6,7 +6,7 @@ import { getReports, takeReportAction, bulkReportAction } from "@/src/services/a
 import { useApiClient } from "@/src/lib/api-client";
 import { useAdminRedirectIfNotAuthenticated } from "@/src/customHooks/useAdminAuthenticated";
 import { useSession } from "next-auth/react";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import Link from "next/link";
 
 export default function ReportsPage() {
@@ -55,7 +55,29 @@ export default function ReportsPage() {
       setSelectedReports([]);
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Failed to take action");
+      console.error("Report action error:", error);
+      
+      // Handle timeout errors specifically
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        toast.error("Request timed out. The action may still be processing. Please refresh the page.", {
+          duration: 6000,
+        });
+        queryClient.invalidateQueries({ queryKey: ["admin-reports"] });
+        return;
+      }
+      
+      // Handle network errors
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        toast.error("Network error. Please check your connection and try again.", {
+          duration: 5000,
+        });
+        return;
+      }
+      
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to take action";
+      toast.error(errorMessage, {
+        duration: 5000,
+      });
     },
   });
 
@@ -68,7 +90,29 @@ export default function ReportsPage() {
       setSelectedReports([]);
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Failed to perform bulk action");
+      console.error("Bulk report action error:", error);
+      
+      // Handle timeout errors specifically
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        toast.error("Bulk action timed out. Some actions may still be processing. Please refresh the page.", {
+          duration: 6000,
+        });
+        queryClient.invalidateQueries({ queryKey: ["admin-reports"] });
+        return;
+      }
+      
+      // Handle network errors
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        toast.error("Network error. Please check your connection and try again.", {
+          duration: 5000,
+        });
+        return;
+      }
+      
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to perform bulk action";
+      toast.error(errorMessage, {
+        duration: 5000,
+      });
     },
   });
 

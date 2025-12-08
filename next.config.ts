@@ -14,11 +14,6 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'vkszksqfmg.ufs.sh',  // Your app-specific UploadThing subdomain
-        pathname: '/f/**',             // Allow all files under /f/ path
-      },
-      {
-        protocol: 'https',
         hostname: 'devhuddle-bucket-junaid.s3.ap-south-1.amazonaws.com',  // S3 bucket for profile images
         pathname: '/**',                // Allow all paths
       },
@@ -30,6 +25,16 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: '*.s3.*.amazonaws.com',  // Any S3 bucket in any region
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.r2.cloudflarestorage.com',  // Cloudflare R2 for media
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'pub-*.r2.dev',  // Cloudflare R2 public URLs
         pathname: '/**',
       },
     ],

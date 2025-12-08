@@ -26,16 +26,19 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/src/store/store";
 import toast from "react-hot-toast";
 import { getPresignedUrl } from "@/src/app/lib/general/getPresignedUrl";
-import { uploadToS3 } from "@/src/app/lib/general/uploadToS3WithProgressTracking";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { submitPost } from "./actions/submitPost";
 import { updatePost } from "./actions/updatePost";
-import { anotheruseSubmitPostMutation } from "../mutations/useSubmitPostMutation";
+// import { anotheruseSubmitPostMutation } from "../mutations/useSubmitPostMutation"; // Removed
 import { useEditPost } from "./Hooks/useEditPost";
 import { PROFILE_DEFAULT_URL } from "@/src/constents";
-import useMediaUpload from "./Hooks/useMediaUpload";
+import { useMediaUpload } from "@/src/hooks/useMediaUpload";
 import { useSession } from "next-auth/react";
 import useGetUserData from "@/src/customHooks/useGetUserData";
+import { MentionList } from "./MentionList";
+import { getCursorXY } from "@/src/app/lib/general/getCursorXY";
+import { searchUsers, SearchedUser } from "@/src/services/api/user.service";
+import { useQuery } from "@tanstack/react-query";
 
 const LazyPostSettingsModal = dynamic(() => import("./PostSettingsModal"), {
   ssr: false,
@@ -91,17 +94,100 @@ export default function CreatePostModal({
   // ✅ Added: Edit mutation hook
   const editMutation = useEditPost();
 
-  const createMutation = anotheruseSubmitPostMutation({
-    setShowSuccess,
-    setError,
-    setIsPosting,
-    setPostContent,
-    setSelectedMedia: setMedia,
-    setPoll,
-    setAudienceType: settingAudienceType,
-    setCommentControl: settingCommentControl,
-    onClose,
+  // ✅ Refactored: Use React Query mutation for server action
+  const { mutate: submitPostMutation, isPending: isSubmitting } = useMutation({
+    mutationFn: async (data: any) => {
+        const result = await submitPost(data);
+        if (!result.success) throw new Error(result.error || result.message);
+        return result;
+    },
+    onSuccess: () => {
+      resetMediaUploads();
+      setMedia([]);
+      setPostContent("");
+      setPoll(null);
+      setError("");
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+      onClose();
+      toast.success("Post shared successfully!");
+    },
+    onError: (err: Error) => {
+        setError(err.message);
+        toast.error(err.message);
+    }
   });
+
+  const { data: session } = useSession(); // ✅ Use session for auth
+
+  // ✅ Mentions State
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [isMentioning, setIsMentioning] = useState(false);
+  const [mentionPosition, setMentionPosition] = useState({ top: 0, left: 0 });
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // ✅ Fetch Users for Mention
+  const { data: mentionedUsers = [] } = useQuery({
+    queryKey: ["searchUsers", mentionQuery],
+    queryFn: () =>
+      searchUsers(mentionQuery, {
+        Authorization: `Bearer ${session?.user?.accessToken}`,
+      }),
+    enabled: isMentioning && mentionQuery.length > 0,
+  });
+
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    setPostContent(newValue);
+
+    const selectionStart = e.target.selectionStart;
+    const textBeforeCursor = newValue.substring(0, selectionStart);
+    const words = textBeforeCursor.split(/\s+/);
+    const lastWord = words[words.length - 1];
+
+    if (lastWord.startsWith("@")) {
+      const query = lastWord.slice(1);
+      setIsMentioning(true);
+      setMentionQuery(query);
+
+      // Calculate position
+      if (textareaRef.current) {
+        const { x, y } = getCursorXY(textareaRef.current, selectionStart);
+        // Adjust for modal position/scroll
+         const lineHeight = 24; 
+         setMentionPosition({ top: y + lineHeight, left: x });
+      }
+    } else {
+      setIsMentioning(false);
+      setMentionQuery("");
+    }
+  };
+
+  const handleMentionSelect = (user: SearchedUser) => {
+    if (!textareaRef.current) return;
+
+    const selectionStart = textareaRef.current.selectionStart;
+    const textBeforeCursor = postContent.substring(0, selectionStart);
+    const textAfterCursor = postContent.substring(selectionStart);
+
+    const words = textBeforeCursor.split(/\s+/);
+    const lastWord = words[words.length - 1];
+    
+    // Replace @query with @[username](id)
+    const mentionText = `@[${user.username}](${user.id}) `;
+    
+    // Remove the partial mention text (@query)
+    const textWithoutLastWord = textBeforeCursor.slice(0, -lastWord.length);
+    
+    const newContent = textWithoutLastWord + mentionText + textAfterCursor;
+    
+    setPostContent(newContent);
+    setIsMentioning(false);
+    setMentionQuery("");
+    
+    // Reset focus
+    textareaRef.current.focus();
+  };
 
   const user = useGetUserData();
 
@@ -254,12 +340,7 @@ export default function CreatePostModal({
         }),
       };
 
-      createMutation.mutate(optimisticPost, {
-        onSuccess: () => {
-          resetMediaUploads();
-          setMedia([]);
-        },
-      });
+      submitPostMutation(optimisticPost);
     } catch (err: any) {
       toast.error("Error submitting post please try again ");
       setIsPosting(false);
@@ -312,11 +393,12 @@ export default function CreatePostModal({
               <X size={20} className="text-slate-600" />
             </button>
           </div>
-          <div className="p-6 flex-1 overflow-y-auto">
+          <div className="p-6 flex-1 overflow-y-auto relative">
             <textarea
+              ref={textareaRef}
               name="content"
               value={postContent}
-              onChange={(e) => setPostContent(e.target.value)}
+              onChange={handleContentChange}
               placeholder="What do you want to talk about?"
               className="w-full h-48 text-lg placeholder-gray-400 border-none outline-none resize-none font-light"
               style={{
@@ -325,6 +407,13 @@ export default function CreatePostModal({
               }}
               aria-label="Post content input"
             />
+            {isMentioning && (
+              <MentionList
+                users={mentionedUsers}
+                onSelect={handleMentionSelect}
+                position={mentionPosition}
+              />
+            )}
             {media.length > 0 && (
               <div className="mt-4 space-y-2 max-h-48 overflow-y-auto">
                 {media.map((mediaItem: Media) => {

@@ -24,7 +24,7 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
   // Helper function to get author avatar URL
   const getAuthorAvatarUrl = (avatar: string | undefined): string => {
     if (!avatar) return "";
-    // If it's already an absolute URL (S3, UploadThing, etc.), return as is
+    // If it's already an absolute URL (S3, R2, etc.), return as is
     if (avatar.startsWith("http://") || avatar.startsWith("https://")) {
       return avatar;
     }
@@ -69,7 +69,7 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
                 width={40}
                 height={40}
                 className="object-cover"
-                unoptimized={project.author.avatar?.includes("uploadthing") || project.author.avatar?.includes("s3")}
+                unoptimized={project.author.avatar?.includes("s3") || project.author.avatar?.includes("r2")}
               />
             )}
           </div>

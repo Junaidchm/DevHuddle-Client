@@ -2,7 +2,7 @@
 
 // import { useEffect, useState, useRef } from "react";
 // import { PROFILE_DEFAULT_URL } from "../constents";
-import { getPresignedUrlForImage } from "../services/api/auth.service";
+// import { getPresignedUrlForImage } from "../services/api/auth.service";
 // import { useSession } from "next-auth/react";
 // import { useAuthHeaders } from "./useAuthHeaders";
 
@@ -66,34 +66,43 @@ import { getPresignedUrlForImage } from "../services/api/auth.service";
 // src/hooks/usePresignedProfileImage.ts
 
 
-import { useSelector } from "react-redux";
 import { useEffect, useState, useRef } from "react";
-import { RootState } from "../store/store";
 import { PROFILE_DEFAULT_URL } from "../constents";
 import { useSession } from "next-auth/react";
 import { useAuthHeaders } from "./useAuthHeaders";
+import { getPresignedUrlForImage } from "../services/api/auth.service";
 
+/**
+ * ✅ MIGRATED TO NEXTAUTH
+ * Hook to get presigned URL for user's profile picture
+ * Automatically refreshes the URL before it expires
+ */
 export default function usePresignedProfileImage() {
-  const authHeaders = useAuthHeaders()
-  const user = useSelector((state: RootState) => state.user.user);
+  const { data: session } = useSession();
+  const authHeaders = useAuthHeaders();
+  const user = session?.user;
 
+  // Get profile picture from NextAuth session (image field)
+  const profilePicture = user?.image;
   const isProfilePicAvailable =
-    user?.profilePicture && user.profilePicture !== "null";
+    profilePicture && profilePicture !== "null" && profilePicture !== null;
 
   const [profileImageUrl, setProfileImageUrl] = useState(
-    isProfilePicAvailable ? user.profilePicture : PROFILE_DEFAULT_URL
+    isProfilePicAvailable && profilePicture?.startsWith('http') 
+      ? profilePicture 
+      : PROFILE_DEFAULT_URL
   );
 
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchSignedUrl = async () => {
-    if (!isProfilePicAvailable) {
+    if (!isProfilePicAvailable || !authHeaders.Authorization) {
       setProfileImageUrl(PROFILE_DEFAULT_URL);
       return;
     }
 
     try {
-      const { url, expiresAt } = await getPresignedUrlForImage(user.profilePicture!, authHeaders);
+      const { url, expiresAt } = await getPresignedUrlForImage(profilePicture!, authHeaders);
       setProfileImageUrl(url);
 
       if (refreshTimeoutRef.current) {
@@ -110,6 +119,13 @@ export default function usePresignedProfileImage() {
   };
 
   useEffect(() => {
+    // If image is already a full URL (starts with http), use it directly
+    if (isProfilePicAvailable && profilePicture?.startsWith('http')) {
+      setProfileImageUrl(profilePicture);
+      return;
+    }
+
+    // Otherwise, fetch presigned URL
     fetchSignedUrl();
 
     return () => {
@@ -117,7 +133,7 @@ export default function usePresignedProfileImage() {
         clearTimeout(refreshTimeoutRef.current);
       }
     };
-  }, [user?.profilePicture]);
+  }, [profilePicture, authHeaders.Authorization, isProfilePicAvailable]);
 
   return profileImageUrl;
 }

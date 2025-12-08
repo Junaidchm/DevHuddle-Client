@@ -41,10 +41,16 @@ export const takeReportAction = async (
   },
   headers?: Record<string, string>
 ) => {
+  // ✅ FIXED: Increased timeout to 30 seconds for admin report actions
+  // These actions may involve database updates, content hiding, and user suspension
   const response = await axiosInstance.patch(
     API_ROUTES.ADMIN.REPORT_ACTION(reportId),
     data,
-    { headers, withCredentials: true }
+    { 
+      headers, 
+      withCredentials: true,
+      timeout: 30 * 1000, // 30 seconds timeout for admin actions
+    }
   );
   return response.data;
 };
@@ -57,10 +63,16 @@ export const bulkReportAction = async (
   },
   headers?: Record<string, string>
 ) => {
+  // ✅ FIXED: Increased timeout to 60 seconds for bulk actions
+  // Bulk actions process multiple reports and may take longer
   const response = await axiosInstance.post(
     API_ROUTES.ADMIN.REPORTS_BULK_ACTION,
     data,
-    { headers, withCredentials: true }
+    { 
+      headers, 
+      withCredentials: true,
+      timeout: 60 * 1000, // 60 seconds timeout for bulk actions
+    }
   );
   return response.data;
 };

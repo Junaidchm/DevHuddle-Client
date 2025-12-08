@@ -1,7 +1,7 @@
 
 "use client";
 
-import { signIn, useSession } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import {
   ErrorMessage,
   InputField,
@@ -9,16 +9,17 @@ import {
   PrimaryButton,
 } from "@/src/components/layouts/auth";
 import useRedirectIfAuthenticated from "@/src/customHooks/useRedirectIfAuthenticated";
-import { googleAuth, loginUser } from "@/src/store/actions/authActions";
-import { AppDispatch, RootState } from "@/src/store/store";
+import { googleAuth } from "@/src/store/actions/authActions";
+import { AppDispatch } from "@/src/store/store";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useSelector, useDispatch } from "react-redux";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useDispatch } from "react-redux";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 import { FcGoogle } from "react-icons/fc";
 import { z } from "zod";
+import { useEffect, useState } from "react";
 
 const signInSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -32,17 +33,36 @@ type SignInSchema = z.infer<typeof signInSchema>;
 export default function SignIn() {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
-  const { loading } = useSelector((state: RootState) => state.user);
+  const searchParams = useSearchParams();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   useRedirectIfAuthenticated();
 
+  // Check for blocked user error from query params
+  useEffect(() => {
+    const error = searchParams.get("error");
+    const message = searchParams.get("message");
+    
+    if (error === "blocked" && message) {
+      toast.error(decodeURIComponent(message), {
+        duration: 6000,
+        position: "top-center",
+      });
+      // Clean up URL
+      router.replace("/signIn");
+    }
+  }, [searchParams, router]);
+
   const handleGoogleAuth = async () => {
+    setIsGoogleLoading(true);
     try {
       await dispatch(googleAuth()).unwrap();
     } catch (err: any) {
       const errorMessage =
         err?.message || err?.error || "Google authentication failed.";
       toast.error(errorMessage, { position: "top-center" });
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
@@ -141,9 +161,9 @@ export default function SignIn() {
 
         <div className="flex flex-col gap-3 mb-4 sm:mb-6">
           <OAuthButton
-            disabled={loading}
+            disabled={isGoogleLoading}
             onClick={handleGoogleAuth}
-            label="Continue with Google"
+            label={isGoogleLoading ? "Connecting..." : "Continue with Google"}
             icon={<FcGoogle />}
           />
         </div>

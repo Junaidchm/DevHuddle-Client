@@ -23,14 +23,14 @@ export default function ProjectCard({ project }: ProjectCardProps) {
     if (url.startsWith("/")) {
       return `${process.env.NEXT_PUBLIC_IMAGE_PATH || ""}${url}`;
     }
-    // Otherwise, assume it's a full URL from UploadThing or S3
+    // Otherwise, assume it's a full URL from S3 or R2
     return url;
   };
 
   // Helper function to get author avatar URL
   const getAuthorAvatarUrl = (avatar: string | undefined): string => {
     if (!avatar) return "";
-    // If it's already an absolute URL (S3, UploadThing, etc.), return as is
+    // If it's already an absolute URL (S3, R2, etc.), return as is
     if (avatar.startsWith("http://") || avatar.startsWith("https://")) {
       return avatar;
     }
@@ -55,7 +55,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
               alt={project.title}
               fill
               className="object-cover"
-              unoptimized={previewMedia.url?.includes("uploadthing") || previewMedia.url?.includes("s3")}
+              unoptimized={previewMedia.url?.includes("s3") || previewMedia.url?.includes("r2")}
             />
           </div>
         )}
@@ -133,7 +133,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
                   width={32}
                   height={32}
                   className="object-cover"
-                  unoptimized={project.author.avatar?.includes("uploadthing") || project.author.avatar?.includes("s3")}
+                  unoptimized={project.author.avatar?.includes("s3") || project.author.avatar?.includes("r2")}
                 />
               )}
             </div>
