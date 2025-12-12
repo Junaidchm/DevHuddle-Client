@@ -90,7 +90,9 @@ axiosInstance.interceptors.response.use(
       
       // Check if user is blocked (case-insensitive check for "blocked" keyword)
       // Also check for common blocked user message patterns
-      const errorMessageLower = errorMessage.toLowerCase();
+      // Ensure errorMessage is a string before calling toLowerCase
+      const errorMessageString = String(errorMessage || "");
+      const errorMessageLower = errorMessageString.toLowerCase();
       const isBlockedUser = errorMessageLower.includes("blocked") || 
                            errorMessageLower.includes("you are blocked") ||
                            errorMessageLower.includes("your are blocked");
