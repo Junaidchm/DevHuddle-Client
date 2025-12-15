@@ -1,20 +1,21 @@
 import { User } from "@/src/app/types/feed";
-import { useMedia } from "@/src/contexts/MediaContext";
+import React from "react";
+import { PROFILE_DEFAULT_URL } from "@/src/constents";
 
 interface TaggedUsersListProps {
   taggedUsers: User[];
   className?: string;
+  onRemoveTag: (userId: string) => void; // Changed to string to match UUIDs
 }
 
 // TaggedUsersList component
 export const TaggedUsersList: React.FC<TaggedUsersListProps> = ({
   taggedUsers,
   className = "",
+  onRemoveTag,
 }) => {
-  const { removeTaggedUser, currentMediaId } = useMedia();
-
   return (
-    <div className="mt-auto pt-4 border-t border-slate-200">
+    <div className={`mt-auto pt-4 border-t border-slate-200 ${className}`}>
       <h4 className="text-sm font-medium text-slate-700 mb-3">Tagged Users</h4>
       <div className="max-h-[160px] overflow-y-auto pr-2 space-y-2">
         {taggedUsers.length > 0 ? (
@@ -24,7 +25,7 @@ export const TaggedUsersList: React.FC<TaggedUsersListProps> = ({
               className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg"
             >
               <img
-                src={user.avatar}
+                src={user.avatar || PROFILE_DEFAULT_URL}
                 alt={`${user.name}'s avatar`}
                 className="w-6 h-6 rounded-full"
               />
@@ -33,7 +34,7 @@ export const TaggedUsersList: React.FC<TaggedUsersListProps> = ({
               </span>
               <button
                 onClick={() => {
-                  removeTaggedUser(currentMediaId, user.id);
+                  onRemoveTag(user.id);
                 }}
                 className="text-red-500 hover:text-red-700 text-xs"
                 aria-label={`Remove tag ${user.name}`}

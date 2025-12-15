@@ -74,3 +74,33 @@ export const uploadMedia = async (
     throw new Error("Failed to upload media");
   }
 };
+import { NewPost, Visibility, CommentControl } from "@/src/app/types/feed";
+
+export interface CreatePostPayload {
+  content: string;
+  mediaIds: string[];
+  visibility?: Visibility;
+  commentControl?: CommentControl;
+}
+
+export const submitPost = async (postData: CreatePostPayload) => {
+  try {
+    const res = await axiosInstance.post("feed/submit", postData);
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.message || "Failed to create post");
+  }
+};
+
+export const updatePost = async ({ postId, data }: { postId: string; data: any }) => {
+  throw new Error("Post editing is temporarily unavailable (Backend not implemented).");
+};
+
+export const deletePost = async (postId: string) => {
+  try {
+    const res = await axiosInstance.delete(`feed/${postId}`);
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.message || "Failed to delete post");
+  }
+};

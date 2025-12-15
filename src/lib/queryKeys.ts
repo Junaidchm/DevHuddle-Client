@@ -60,9 +60,14 @@ export const queryKeys = {
       comment: (commentId: string) => ["engagement", "mentions", "comment", commentId] as const,
     },
     
-    // Connections (for sending posts)
     connections: {
       all: (userId?: string) => ["engagement", "connections", ...(userId ? [userId] : [])] as const,
     },
+  },
+
+  // User queries
+  users: {
+    search: (query: string) => ["users", "search", query] as const,
+    tagging: (query: string) => ["users", "tagging", query] as const,
   },
 };

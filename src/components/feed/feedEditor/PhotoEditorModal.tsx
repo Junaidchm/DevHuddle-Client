@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ImageTransform, Media, PhotoEditorModalProps, User, User as UserType } from "@/src/app/types/feed";
+import { ImageTransform, Media, PhotoEditorModalProps, User } from "@/src/app/types/feed";
 import EditorModal from "./EditorModal";
 import { ImageUploader } from "./ImageUploader";
 import { ImagePreview } from "./ImagePreview";
@@ -10,112 +10,128 @@ import { ThumbnailGallery } from "./ThumbnailGallery";
 import { EditPanel } from "./EditPanel";
 import { MentionPanel } from "./MentionPanel";
 import ErrorModal from "../../ui/ErrorModal";
-import { useMedia } from "@/src/contexts/MediaContext";
-import { default_ImageTransform, filters } from "@/src/constents/feed";
+import { default_ImageTransform } from "@/src/constents/feed";
 import { getImageStyle } from "@/lib/feed/getImageStyle";
-import { useMediaUpload } from "@/src/hooks/useMediaUpload";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { searchUsers } from "@/src/services/api/user.service";
+import { usePostForm } from "@/src/hooks/feed/usePostForm";
+import { getConnections } from "@/src/services/api/engagement.service";
+import { queryKeys } from "@/src/lib/queryKeys";
 
 export default function PhotoEditorModal({
   isOpen,
   onClose,
-}: PhotoEditorModalProps) {
-
+  initialImageId,
+}: PhotoEditorModalProps & { initialImageId?: string }) {
+  // ✅ Use Centralized Context
   const {
+    media: allMedia,
     addMedia,
-    media,
-    setMedia,
-    setTransform,
-    setcurrentMediaId
-  } = useMedia();
+    removeMedia,
+    updateMediaItem,
+    status: creationStatus,
+    uploadProgress
+  } = usePostForm();
 
-  // ✅ New Hook
-  const {
-    uploadFiles,
-    isUploading,
-    progress: uploadProgress,
-    reset: resetMediaUploads
-  } = useMediaUpload();
+  // Filter for images only and map to Media type
+  const images = allMedia
+    .filter((getItem) => getItem.type === "IMAGE")
+    .map((item) => ({
+      id: item.id,
+      url: item.url,
+      type: "image" as const,
+      transform: item.transform,
+      taggedUsers: item.taggedUsers,
+      name: item.name || "image"
+    }));
 
-  const [selectedImages, setSelectedImages] = useState<Media[]>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [rightPanelView, setRightPanelView] = useState<
     "default" | "edit" | "mention"
   >("default");
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+  // Ensure currentImageIndex is valid when images count changes or initialImageId is set
   useEffect(() => {
-    const updatedImages = (media ?? []).filter((file) => file.type.includes('image'));
-    setSelectedImages(updatedImages);
-  }, [media]);
+    if (images.length === 0) {
+      setCurrentImageIndex(0);
+    } else if (initialImageId) {
+       const index = images.findIndex(img => img.id === initialImageId);
+       if (index !== -1 && index !== currentImageIndex) {
+           setCurrentImageIndex(index);
+       }
+    } else if (currentImageIndex >= images.length) {
+      setCurrentImageIndex(images.length - 1);
+    }
+  }, [images.length, currentImageIndex, initialImageId]);
 
   const { data: session } = useSession();
 
-  // ✅ Fetch Users for Tagging
+  // ✅ Fetch Users for Tagging (Search or Suggestions)
   const { data: users = [] } = useQuery({
-    queryKey: ["searchUsers", searchQuery],
-    queryFn: () =>
-      searchUsers(searchQuery, {
-        Authorization: `Bearer ${session?.user?.accessToken}`,
-      }),
-    enabled: rightPanelView === "mention",
+    queryKey: queryKeys.users.search(searchQuery),
+    queryFn: async () => {
+       const token = session?.user?.accessToken;
+       if (!token) return [];
+       const headers = { Authorization: `Bearer ${token}` };
+
+       if (!searchQuery) {
+         // Fetch connections as default suggestions
+         try {
+           const res = await getConnections(headers);
+           return res.data;
+         } catch (err) {
+           console.error("Failed to fetch connections", err);
+           return [];
+         }
+       } else {
+         // Search users
+         return searchUsers(searchQuery, headers);
+       }
+    },
+    enabled: rightPanelView === "mention" && !!session?.user?.accessToken,
   });
 
-  const getCurrentImageTransform = (): ImageTransform => {
-    const currentImage = selectedImages[currentImageIndex];
-    const currentImageTransform =
-      currentImage && currentImage.transform
-        ? (currentImage.transform as ImageTransform)
-        : default_ImageTransform;
+  const getCurrentImage = () => images[currentImageIndex];
 
-    return currentImageTransform;
+  const getCurrentImageTransform = (): ImageTransform => {
+    const currentImage = getCurrentImage();
+    return currentImage?.transform || default_ImageTransform;
   };
 
   const updateImageTransform = (updates: Partial<ImageTransform>) => {
-    const currentImage = selectedImages[currentImageIndex];
+    const currentImage = getCurrentImage();
     if (currentImage) {
-      setTransform(
-        {
-          ...getCurrentImageTransform(),
-          ...updates,
-        },
-        currentImage.id
-      );
-
-      console.log("this is the updated transform data", currentImage);
+      const newTransform = {
+        ...getCurrentImageTransform(),
+        ...updates,
+        ...getCurrentImage().transform, // ensure we don't lose props? No, logic above was spread newTransform.
+        ...updates
+      } as ImageTransform;
+      
+      // Wait, original logic:
+      /*
+      const newTransform = {
+        ...getCurrentImageTransform(),
+        ...updates,
+      };
+      */
+      
+      updateMediaItem(currentImage.id, { transform: { ...getCurrentImageTransform(), ...updates } });
+      console.log("Updated transform data", { ...getCurrentImageTransform(), ...updates });
     }
   };
 
-  const removeImage = (imageId: string,fileName?:string) => {
-    const newImages = selectedImages.filter((img) => img.id !== imageId);
-    setMedia(newImages);
-    
-    if (currentImageIndex >= newImages.length && newImages.length > 0) {
-      setCurrentImageIndex(newImages.length - 1);
-    } else if (newImages.length === 0) {
-      setCurrentImageIndex(0);
-    }
+  const handleRemoveImage = (imageId: string) => {
+    removeMedia(imageId);
   };
 
   const moveImage = (fromIndex: number, toIndex: number) => {
-    const newImages = [...selectedImages];
-    const [movedImage] = newImages.splice(fromIndex, 1);
-    newImages.splice(toIndex, 0, movedImage);
-    setSelectedImages(newImages);
-    setCurrentImageIndex(toIndex);
-  };
-
-  const selectImage = (index: number) => {
-    setCurrentImageIndex(index);
-    setRightPanelView("default");
-  };
-
-  const applyTransforms = () => {
-    setRightPanelView("default");
+    console.warn("Reordering not yet supported in centralized state");
   };
 
   const triggerUpload = () => {
@@ -128,35 +144,24 @@ export default function PhotoEditorModal({
     }
   };
 
-  // ✅ New Upload Handler
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    // Check max files limit
-    if (media.length + files.length > 5) {
+    if (images.length + files.length > 5) {
        setError("Maximum 5 images allowed.");
        setTimeout(() => setError(null), 3000);
        return; 
     }
 
-    const uploadedMedia = await uploadFiles(files);
-    
-    if (uploadedMedia.length > 0) {
-      addMedia(uploadedMedia);
-      
-      // Select the first new image
-      // Note: addMedia likely updates context async, so we use local result for immediate UI feedback if needed
-      if (selectedImages.length === 0) {
-        setcurrentMediaId(uploadedMedia[0].id);
-        setCurrentImageIndex(0);
-      }
-    }
-    
+    await addMedia(files);
     resetInput();
   };
 
   if (!isOpen) return null;
+
+  const currentImage = getCurrentImage();
+  const isUploading = creationStatus === "UPLOADING";
 
   return (
     <EditorModal
@@ -165,14 +170,14 @@ export default function PhotoEditorModal({
       ariaLabel="Close Photo modal"
     >
       <div className="flex-1 flex flex-col">
-        {selectedImages.length > 0 ? (
+        {images.length > 0 ? (
           <ImagePreview
-            image={selectedImages[currentImageIndex]?.url as string}
-            taggedUsers={selectedImages[currentImageIndex]?.taggedUsers as User[]} 
+            image={currentImage?.url as string}
+            taggedUsers={currentImage?.taggedUsers as User[]} 
             transform={getCurrentImageTransform()}
             getImageStyle={() =>
               getImageStyle(
-                selectedImages[currentImageIndex].transform as ImageTransform
+                (currentImage?.transform || default_ImageTransform) as ImageTransform
               )
             }
           />
@@ -182,21 +187,20 @@ export default function PhotoEditorModal({
             triggerUpload={triggerUpload}
             resetInput={resetInput}
             fileInputRef={fileInputRef}
-            disabled = {isUploading || (media?.length || 0) >= 5}
+            disabled={isUploading || images.length >= 5}
           />
         )}
         <ActionBar
           onEdit={() => setRightPanelView("edit")}
           onTag={() => setRightPanelView("mention")}
           onDelete={() => {
-            selectedImages.length > 0 &&
-              removeImage(selectedImages[currentImageIndex].id);
+            currentImage && handleRemoveImage(currentImage.id);
           }}
           onAddMore={() => {
             resetInput();
             triggerUpload();
           }}
-          imageCount={selectedImages.length}
+          imageCount={images.length}
           onDone={onClose}
           isUploading={isUploading}
           uploadProgress={uploadProgress}
@@ -206,18 +210,17 @@ export default function PhotoEditorModal({
           <p className="text-sm text-blue-700">
             <span className="font-medium">Pro tips:</span> Use the edit panel to
             enhance your photos, add alt text for accessibility, and tag people
-            to increase engagement. You can reorder images by using the up/down
-            arrows on thumbnails hello.
+            to increase engagement.
           </p>
         </div>
       </div>
       {rightPanelView === "default" && (
         <div className="w-32 overflow-y-auto">
           <ThumbnailGallery
-            images={selectedImages}
+            images={images}
             currentIndex={currentImageIndex}
             onSelect={setCurrentImageIndex}
-            onRemove={removeImage}
+            onRemove={handleRemoveImage}
             onMove={moveImage}
           />
         </div>
@@ -225,22 +228,37 @@ export default function PhotoEditorModal({
       {rightPanelView === "edit" && (
         <EditPanel
           transform={getCurrentImageTransform()}
-          onTransformChange={updateImageTransform}
+          onTransformChange={(updates) => updateMediaItem(currentImage.id, { transform: { ...getCurrentImageTransform(), ...updates } })}
           onApply={() => setRightPanelView("default")}
           onClose={() => setRightPanelView("default")}
         />
       )}
       {rightPanelView === "mention" && (
         <MentionPanel
-          users={users.map(u => ({
+          users={(users as any[]).map(u => ({
              id: u.id,
              name: u.name,
-             avatar: u.profilePicture || "",
-             title: ""
+             avatar: u.profilePicture || u.avatar || "",
+             title: u.headline || u.jobTitle || "" 
           }))}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          currentImageId={selectedImages[currentImageIndex]?.id}
+          currentImageId={currentImage?.id}
+          taggedUsers={currentImage?.taggedUsers}
+          onToggleTag={(user) => {
+             if (!currentImage) return;
+             const currentTags = currentImage.taggedUsers || [];
+             const isTagged = currentTags.some(u => u.id === user.id);
+             
+             let newTags;
+             if (isTagged) {
+                newTags = currentTags.filter(u => u.id !== user.id);
+             } else {
+                newTags = [...currentTags, user];
+             }
+             
+             updateMediaItem(currentImage.id, { taggedUsers: newTags });
+          }}
           onClose={() => setRightPanelView("default")}
         />
       )}

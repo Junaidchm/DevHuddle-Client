@@ -2,31 +2,27 @@
 
 import React from 'react';
 import { X } from 'lucide-react';
-import { StateDispatch } from '../../types';
-import { AudienceType, CommendsType } from '@/src/app/types/feed';
+import { usePostForm } from '@/src/hooks/feed/usePostForm';
 
 interface PostSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  audienceType: string;
-  setAudienceType: StateDispatch<AudienceType>;
-  commentControl: string;
-  setCommentControl: StateDispatch<CommendsType>;
 }
-
 
 export default function PostSettingsModal({
   isOpen,
   onClose,
-  audienceType,
-  setAudienceType,
-  commentControl,
-  setCommentControl,
 }: PostSettingsModalProps) {
+  // ✅ Use centralized settings from context
+  const { settings, updateSettings } = usePostForm();
+  
+  // Mapping logic: Context uses uppercase ("PUBLIC", "CONNECTIONS"), UI inputs use lowercase ("anyone", "connections")
+  // Or better yet, update the UI inputs to match the Context values.
+  
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0  flex items-center justify-center z-60 p-4">
+    <div className="fixed inset-0 flex items-center justify-center z-[60] p-4 bg-black/20">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[400px]">
         <div className="flex items-center justify-between p-6 border-b border-slate-200">
           <h2 className="text-lg font-semibold text-slate-800">Post Settings</h2>
@@ -46,9 +42,9 @@ export default function PostSettingsModal({
                 <input
                   type="radio"
                   name="audience"
-                  value="anyone"
-                  checked={audienceType === 'anyone'}
-                  onChange={() => setAudienceType('anyone')}
+                  value="PUBLIC"
+                  checked={settings.visibility === 'PUBLIC'}
+                  onChange={() => updateSettings({ visibility: 'PUBLIC' })}
                   className="text-violet-500 focus:ring-violet-500"
                   aria-label="Post visible to anyone"
                 />
@@ -58,9 +54,9 @@ export default function PostSettingsModal({
                 <input
                   type="radio"
                   name="audience"
-                  value="connections"
-                  checked={audienceType === 'connections'}
-                  onChange={() => setAudienceType('connections')}
+                  value="CONNECTIONS"
+                  checked={settings.visibility === 'CONNECTIONS'}
+                  onChange={() => updateSettings({ visibility: 'CONNECTIONS' })}
                   className="text-violet-500 focus:ring-violet-500"
                   aria-label="Post visible to connections only"
                 />
@@ -75,9 +71,9 @@ export default function PostSettingsModal({
                 <input
                   type="radio"
                   name="comment"
-                  value="anyone"
-                  checked={commentControl === 'anyone'}
-                  onChange={() => setCommentControl('anyone')}
+                  value="ANYONE"
+                  checked={settings.commentControl === 'ANYONE'}
+                  onChange={() => updateSettings({ commentControl: 'ANYONE' })}
                   className="text-violet-500 focus:ring-violet-500"
                   aria-label="Anyone can comment"
                 />
@@ -87,9 +83,9 @@ export default function PostSettingsModal({
                 <input
                   type="radio"
                   name="comment"
-                  value="connections"
-                  checked={commentControl === 'connections'}
-                  onChange={() => setCommentControl('connections')}
+                  value="CONNECTIONS"
+                  checked={settings.commentControl === 'CONNECTIONS'}
+                  onChange={() => updateSettings({ commentControl: 'CONNECTIONS' })}
                   className="text-violet-500 focus:ring-violet-500"
                   aria-label="Connections only can comment"
                 />
@@ -99,9 +95,9 @@ export default function PostSettingsModal({
                 <input
                   type="radio"
                   name="comment"
-                  value="nobody"
-                  checked={commentControl === 'nobody'}
-                  onChange={() => setCommentControl('nobody')}
+                  value="NOBODY"
+                  checked={settings.commentControl === 'NOBODY'}
+                  onChange={() => updateSettings({ commentControl: 'NOBODY' })}
                   className="text-violet-500 focus:ring-violet-500"
                   aria-label="Nobody can comment"
                 />

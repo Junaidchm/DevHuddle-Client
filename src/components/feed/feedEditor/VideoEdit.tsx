@@ -2,37 +2,49 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { X, Video, Type, Upload, User as UserIcon } from "lucide-react";
-import EditorModal from "./EditorModal";
 import { Media } from "@/src/app/types/feed";
-import { useMedia } from "@/src/contexts/MediaContext";
-import { useMediaUpload } from "@/src/hooks/useMediaUpload";
 import toast from "react-hot-toast";
 import { MentionPanel } from "./MentionPanel";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { searchUsers } from "@/src/services/api/user.service";
+import { usePostForm } from "@/src/hooks/feed/usePostForm";
+import { queryKeys } from "@/src/lib/queryKeys";
 
 interface VideoEditorModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialVideoId?: string;
 }
 
 export default function VideoEditorModal({
   isOpen,
   onClose,
+  initialVideoId,
 }: VideoEditorModalProps) {
-  // ✅ Integrated: Use MediaContext for video state
-  const { media, setMedia, addMedia } = useMedia();
-  
-  // ✅ Integrated: Use upload hook for actual uploads
-  const {
-    uploadFiles,
-    isUploading,
-    progress: uploadProgress,
-    reset: resetMediaUploads,
-  } = useMediaUpload();
+  // ✅ Integrated: Use usePostForm for centralized state
+  const { 
+    media: allMedia, 
+    addMedia, 
+    removeMedia, 
+    updateMediaItem, 
+    status, 
+    uploadProgress 
+  } = usePostForm();
 
-  const [selectedVideos, setSelectedVideos] = useState<Media[]>([]);
+  const isUploading = status === "UPLOADING";
+  
+  // Filter videos (map VIDEO -> video)
+  const videos: Media[] = allMedia
+    .filter(item => item.type === "VIDEO")
+    .map(item => ({
+      id: item.id,
+      url: item.url,
+      type: "video" as const,
+      name: item.name || "video",
+      taggedUsers: item.taggedUsers, // ✅ Pass taggedUsers
+    }));
+
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [showCaptionInput, setShowCaptionInput] = useState(false);
   const [captionText, setCaptionText] = useState("");
@@ -48,23 +60,27 @@ export default function VideoEditorModal({
 
   const { data: session } = useSession();
 
+
   // ✅ Fetch Users logic
   const { data: users = [] } = useQuery({
-    queryKey: ['searchUsers', searchQuery],
+    queryKey: queryKeys.users.search(searchQuery),
     queryFn: () => searchUsers(searchQuery, { Authorization: `Bearer ${session?.user?.accessToken}` }),
     enabled: showTagPanel
   });
 
-  // ✅ Sync videos from MediaContext (filter videos only)
+  // ✅ Sync index
   useEffect(() => {
-    const videoMedia = (media ?? []).filter((file) => 
-      file.type?.includes('video') || file.type?.startsWith('video/')
-    );
-    setSelectedVideos(videoMedia);
-    if (videoMedia.length > 0 && currentVideoIndex >= videoMedia.length) {
+    if (videos.length === 0) {
       setCurrentVideoIndex(0);
+    } else if (initialVideoId) {
+        const index = videos.findIndex(v => v.id === initialVideoId);
+        if (index !== -1 && index !== currentVideoIndex) {
+            setCurrentVideoIndex(index);
+        }
+    } else if (currentVideoIndex >= videos.length) {
+      setCurrentVideoIndex(videos.length - 1);
     }
-  }, [media]);
+  }, [videos.length, currentVideoIndex, initialVideoId]);
 
   // ✅ Handle video file selection and validation
   const handleVideoUpload = async (
@@ -82,8 +98,6 @@ export default function VideoEditorModal({
         "video/x-msvideo", // .avi
       ].includes(file.type);
       
-      // ✅ Note: Media Service supports up to 100MB for videos
-      // The actual limit is enforced by Media Service
       const isValidSize = file.size <= 100 * 1024 * 1024; // 100MB limit
       
       if (!isValidType) {
@@ -103,7 +117,7 @@ export default function VideoEditorModal({
     }
 
     // Check total video count limit (max 1 video per post)
-    if (selectedVideos.length + validFiles.length > 1) {
+    if (videos.length + validFiles.length > 1) {
       setError("Maximum 1 video allowed per post.");
       setTimeout(() => setError(null), 3000);
       return;
@@ -115,12 +129,8 @@ export default function VideoEditorModal({
       return;
     }
 
-    // ✅ Start upload using useMediaUpload hook (direct upload to R2)
-    const uploadedMedia = await uploadFiles(validFiles);
-    
-    if (uploadedMedia.length > 0) {
-      addMedia(uploadedMedia);
-    }
+    // ✅ Start upload using addMedia
+    await addMedia(validFiles);
     
     // Reset input
     if (fileInputRef.current) {
@@ -128,16 +138,9 @@ export default function VideoEditorModal({
     }
   };
 
-  // ✅ Remove video from MediaContext
-  const removeVideo = (videoId: string) => {
-    const newVideos = selectedVideos.filter((vid) => vid.id !== videoId);
-    setMedia(newVideos);
-    
-    if (currentVideoIndex >= newVideos.length && newVideos.length > 0) {
-      setCurrentVideoIndex(newVideos.length - 1);
-    } else if (newVideos.length === 0) {
-      setCurrentVideoIndex(0);
-    }
+  // ✅ Remove video
+  const handleRemoveVideo = (videoId: string) => {
+    removeMedia(videoId);
   };
 
   const selectVideo = (index: number) => {
@@ -145,7 +148,7 @@ export default function VideoEditorModal({
   };
 
   const handleCaptionChange = () => {
-    if (selectedVideos[currentVideoIndex]) {
+    if (videos[currentVideoIndex]) {
       // TODO: Add caption support to Media type if needed
       // For now, we'll just close the input
       setShowCaptionInput(false);
@@ -156,7 +159,7 @@ export default function VideoEditorModal({
 
   // ✅ Generate thumbnail from current video frame
   const handleThumbnailSelect = () => {
-    if (videoRef.current && selectedVideos[currentVideoIndex]) {
+    if (videoRef.current && videos[currentVideoIndex]) {
       try {
         const canvas = document.createElement("canvas");
         canvas.width = videoRef.current.videoWidth || 1280;
@@ -166,17 +169,8 @@ export default function VideoEditorModal({
           ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
           const thumbnail = canvas.toDataURL("image/jpeg");
           
-          // Update video with thumbnail
-          const updatedVideos = selectedVideos.map((v, i) => {
-             if (i === currentVideoIndex) {
-                 return { ...v, thumbnail: thumbnail };
-             }
-             return v;
-          });
-          
-          setMedia(updatedVideos); // Update context
-          
-          toast.success("Thumbnail captured!");
+          console.log("Generated thumbnail:", thumbnail.slice(0, 50) + "...");
+          toast.success("Thumbnail captured! (Not persisted yet)");
           setShowThumbnailSelector(false);
         }
       } catch (error) {
@@ -186,14 +180,9 @@ export default function VideoEditorModal({
     }
   };
 
-  // Reset input ref
-  const resetInput = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
   if (!isOpen) return null;
+
+  const currentVideo = videos[currentVideoIndex];
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
@@ -218,11 +207,11 @@ export default function VideoEditorModal({
 
         <div className="p-6 flex gap-6 h-[calc(85vh-120px)]">
           <div className="flex-1 flex flex-col">
-            {selectedVideos.length > 0 ? (
+            {videos.length > 0 ? (
               <div className="relative flex-1 bg-gray-100 rounded-lg overflow-hidden">
                 <video
                   ref={videoRef}
-                  src={selectedVideos[currentVideoIndex]?.url as string}
+                  src={currentVideo?.url as string}
                   controls
                   className="w-full h-full object-contain rounded-lg"
                   onLoadedMetadata={() => {
@@ -296,7 +285,7 @@ export default function VideoEditorModal({
                 <button
                   onClick={() => setShowCaptionInput(true)}
                   className="p-3 hover:bg-gray-100 rounded-full transition-colors duration-200"
-                  disabled={selectedVideos.length === 0 || isUploading}
+                  disabled={videos.length === 0 || isUploading}
                   aria-label="Add captions"
                 >
                   <Type size={20} className="text-slate-600" />
@@ -333,7 +322,7 @@ export default function VideoEditorModal({
                 <button
                   onClick={() => setShowThumbnailSelector(true)}
                   className="p-3 hover:bg-gray-100 rounded-full transition-colors duration-200"
-                  disabled={selectedVideos.length === 0 || isUploading}
+                  disabled={videos.length === 0 || isUploading}
                   aria-label="Select thumbnail"
                 >
                   <Upload size={20} className="text-slate-600" />
@@ -349,12 +338,12 @@ export default function VideoEditorModal({
                 )}
                 <button
                   onClick={() => {
-                    if (selectedVideos.length > 0) {
-                      removeVideo(selectedVideos[currentVideoIndex].id);
+                    if (videos.length > 0) {
+                      handleRemoveVideo(videos[currentVideoIndex].id);
                     }
                   }}
                   className="p-3 hover:bg-red-100 rounded-full transition-colors duration-200"
-                  disabled={selectedVideos.length === 0 || isUploading}
+                  disabled={videos.length === 0 || isUploading}
                   aria-label="Delete video"
                 >
                   <X size={20} className="text-red-500" />
@@ -362,7 +351,7 @@ export default function VideoEditorModal({
                 <button
                    onClick={() => setShowTagPanel(true)}
                    className="p-3 hover:bg-gray-100 rounded-full transition-colors duration-200"
-                   disabled={selectedVideos.length === 0 || isUploading}
+                   disabled={videos.length === 0 || isUploading}
                    aria-label="Tag people"
                 >
                    <UserIcon size={20} className="text-slate-600" />
@@ -372,9 +361,9 @@ export default function VideoEditorModal({
                 onClick={onClose}
                 className="bg-gradient-to-br from-violet-500 to-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isUploading}
-                aria-label={`Done editing, ${selectedVideos.length} video${selectedVideos.length !== 1 ? 's' : ''}`}
+                aria-label={`Done editing, ${videos.length} video${videos.length !== 1 ? 's' : ''}`}
               >
-                Done ({selectedVideos.length})
+                Done ({videos.length})
               </button>
             </div>
             <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
@@ -386,11 +375,11 @@ export default function VideoEditorModal({
           <div className="w-32">
             <div className="text-center mb-4">
               <span className="text-sm text-slate-600 font-medium">
-                {selectedVideos.length > 0 ? `${currentVideoIndex + 1} of ${selectedVideos.length}` : '0 of 0'}
+                {videos.length > 0 ? `${currentVideoIndex + 1} of ${videos.length}` : '0 of 0'}
               </span>
             </div>
             <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-              {selectedVideos.map((video, index) => (
+              {videos.map((video, index) => (
                 <div key={video.id} className="relative group">
                   <video
                     src={video.url as string}
@@ -401,7 +390,7 @@ export default function VideoEditorModal({
                     aria-label={`Select video ${index + 1}`}
                   />
                   <button
-                    onClick={() => removeVideo(video.id)}
+                    onClick={() => handleRemoveVideo(video.id)}
                     className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                     aria-label={`Remove video ${video.name}`}
                     disabled={isUploading}
@@ -424,8 +413,23 @@ export default function VideoEditorModal({
              }))}
              searchQuery={searchQuery}
              onSearchChange={setSearchQuery}
-             currentImageId={selectedVideos[currentVideoIndex]?.id}
+             currentImageId={currentVideo?.id}
              onClose={() => setShowTagPanel(false)}
+             taggedUsers={currentVideo?.taggedUsers}
+             onToggleTag={(user) => {
+                if (!currentVideo) return;
+                const currentTags = currentVideo.taggedUsers || [];
+                const isTagged = currentTags.some(u => u.id === user.id);
+                
+                let newTags;
+                if (isTagged) {
+                   newTags = currentTags.filter(u => u.id !== user.id);
+                } else {
+                   newTags = [...currentTags, user];
+                }
+                
+                updateMediaItem(currentVideo.id, { taggedUsers: newTags });
+             }}
            />
         )}
       </div>

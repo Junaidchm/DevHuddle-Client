@@ -5,13 +5,17 @@ import { TaggedUsersList } from "./TaggedUsersList";
 import { useState } from "react";
 import { useMedia } from "@/src/contexts/MediaContext";
 
+import { PROFILE_DEFAULT_URL } from "@/src/constents";
+
 interface MentionPanelProps {
   users: User[];
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  currentImageId:string;
+  currentImageId?: string;
   onClose: () => void;
   className?: string;
+  taggedUsers?: User[];
+  onToggleTag: (user: User) => void;
 }
 
 // MentionPanel component
@@ -22,14 +26,13 @@ export const MentionPanel: React.FC<MentionPanelProps> = ({
   currentImageId,
   onClose,
   className = "",
+  taggedUsers = [],
+  onToggleTag,
 }) => {
   const filteredUsers = users.filter((user) =>
     user.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
-  const {setTaggedUsers,media} = useMedia()
-  const currentImageTaggedUser = media.filter(media=> media.id === currentImageId)[0]?.taggedUsers;
-
   return (
     <div className="w-96 border-l border-slate-200 pl-6 flex flex-col h-full">
       {/* Top part: Title and Search */}
@@ -64,12 +67,12 @@ export const MentionPanel: React.FC<MentionPanelProps> = ({
               key={user.id}
               className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
               onClick={() => {
-               setTaggedUsers(user,currentImageId)
+               onToggleTag(user)
               }}
               aria-label={`Tag ${user.name}`}
             >
               <img
-                src={user.avatar}
+                src={user.avatar || PROFILE_DEFAULT_URL}
                 alt={`${user.name}'s avatar`}
                 className="w-10 h-10 rounded-full"
               />
@@ -86,7 +89,16 @@ export const MentionPanel: React.FC<MentionPanelProps> = ({
         )}
       </div>
 
-      <TaggedUsersList taggedUsers={currentImageTaggedUser} />
+      <TaggedUsersList
+        taggedUsers={taggedUsers}
+        onRemoveTag={(userId) => {
+          // Find the user to remove
+          const userToRemove = taggedUsers.find((u) => u.id === userId);
+          if (userToRemove) {
+            onToggleTag(userToRemove);
+          }
+        }}
+      />
     </div>
   );
 };

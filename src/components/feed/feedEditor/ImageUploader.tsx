@@ -26,6 +26,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
   //   triggerUpload()  
   // }, []);
 
+
   return (
     <div
       onClick={() => {

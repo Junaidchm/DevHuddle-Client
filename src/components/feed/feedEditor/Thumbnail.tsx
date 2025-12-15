@@ -1,7 +1,7 @@
 import { ImageTransform, ThumbnailProps } from "@/src/app/types/feed";
 import { IconButton } from "./IconButton";
 import { getImageStyle } from "@/lib/feed/getImageStyle";
-import { useMedia } from "@/src/contexts/MediaContext";
+import { default_ImageTransform } from "@/src/constents/feed";
 
 export const Thumbnail: React.FC<ThumbnailProps> = ({
   image,
@@ -13,8 +13,6 @@ export const Thumbnail: React.FC<ThumbnailProps> = ({
   onMoveDown,
   className = "",
 }) => {
-
-  const {setcurrentMediaId} = useMedia()
   return (
     <div className={`relative group ${className}`}>
       <img
@@ -27,10 +25,9 @@ export const Thumbnail: React.FC<ThumbnailProps> = ({
         } `}
         onClick={() => {
           onSelect(index);
-          setcurrentMediaId(image.id)
         }}
         aria-label={`Select image ${index + 1}`}
-        style={getImageStyle(image.transform as ImageTransform)}
+        style={getImageStyle((image.transform || default_ImageTransform) as ImageTransform)}
       />
       <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium">
         {String(index + 1).padStart(2, "0")}
