@@ -1,124 +1,75 @@
-/**
- * ChatInput Component
- * Message input with auto-resize and send button
- */
-
-'use client';
-
-import { useState, useRef, KeyboardEvent, FormEvent } from 'react';
-import { Send, Smile } from 'lucide-react';
+import React, { useState } from "react";
+import { Send, Smile, Paperclip } from "lucide-react";
 
 interface ChatInputProps {
-  onSendMessage: (content: string) => void;
-  onTyping?: () => void;
-  onStopTyping?: () => void;
+  onSend: (message: string) => void;
   disabled?: boolean;
-  placeholder?: string;
 }
 
-export default function ChatInput({
-  onSendMessage,
-  onTyping,
-  onStopTyping,
-  disabled = false,
-  placeholder = 'Type a message...',
-}: ChatInputProps) {
-  const [message, setMessage] = useState('');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+export function ChatInput({ onSend, disabled }: ChatInputProps) {
+  const [message, setMessage] = useState("");
 
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMessage(e.target.value);
-
-    // Auto-resize textarea
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(
-        textareaRef.current.scrollHeight,
-        120
-      )}px`;
-    }
-
-    // Typing indicator
-    if (onTyping) {
-      onTyping();
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-      typingTimeoutRef.current = setTimeout(() => {
-        onStopTyping?.();
-      }, 1000);
-    }
-  };
-
-  const handleSend = () => {
-    const trimmed = message.trim();
-    if (!trimmed || disabled) return;
-
-    onSendMessage(trimmed);
-    setMessage('');
-
-    // Reset textarea height
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-    }
-
-    // Clear typing indicator
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-    onStopTyping?.();
-  };
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Send on Enter (without Shift)
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    handleSend();
+    if (message.trim() && !disabled) {
+      onSend(message.trim());
+      setMessage("");
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="border-t border-border bg-card p-4"
-    >
+    <form onSubmit={handleSubmit} className="p-4 bg-white border-t border-gray-200">
       <div className="flex items-end gap-2">
-        {/* Message Input */}
-        <div className="flex-1 relative">
-          <textarea
-            ref={textareaRef}
-            value={message}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            disabled={disabled}
-            placeholder={placeholder}
-            rows={1}
-            className="w-full resize-none bg-muted rounded-2xl px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-200 max-h-[120px] overflow-y-auto disabled:opacity-50 disabled:cursor-not-allowed"
-          />
+        {/* Emoji Button */}
+        <button
+          type="button"
+          className="p-2.5 text-gray-500 hover:text-[#0A66C2] transition-colors rounded-lg hover:bg-blue-50 flex-shrink-0"
+          disabled={disabled}
+        >
+          <Smile className="w-6 h-6" />
+        </button>
 
-          {/* Emoji Button (placeholder) */}
-          <button
-            type="button"
+        {/* Attachment Button */}
+        <button
+          type="button"
+          className="p-2.5 text-gray-500 hover:text-[#0A66C2] transition-colors rounded-lg hover:bg-blue-50 flex-shrink-0"
+          disabled={disabled}
+        >
+          <Paperclip className="w-6 h-6" />
+        </button>
+
+        {/* Input Field */}
+        <div className="flex-1">
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Write a message..."
             disabled={disabled}
-            className="absolute right-3 bottom-3 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-            aria-label="Add emoji"
-          >
-            <Smile className="w-5 h-5" />
-          </button>
+            rows={1}
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-[15px] text-gray-800 resize-none focus:outline-none focus:border-[#0A66C2] focus:ring-2 focus:ring-[#0A66C2]/10 transition-all max-h-32 placeholder:text-gray-400"
+            style={{ minHeight: '48px' }}
+          />
         </div>
 
         {/* Send Button */}
         <button
           type="submit"
-          disabled={disabled || !message.trim()}
-          className="flex-shrink-0 bg-gradient-to-br from-gradient-start to-gradient-end text-white rounded-full p-3 hover:shadow-lg-gradient transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
-          aria-label="Send message"
+          disabled={!message.trim() || disabled}
+          className={`
+            p-3 rounded-full transition-all flex-shrink-0 shadow-sm
+            ${message.trim() && !disabled
+              ? 'bg-[#0A66C2] text-white hover:bg-[#004182] transform hover:scale-105'
+              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            }
+          `}
         >
           <Send className="w-5 h-5" />
         </button>

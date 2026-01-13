@@ -1,100 +1,73 @@
-/**
- * MessageBubble Component
- * Renders individual chat messages with sender/receiver styling
- */
+import React from "react";
 
-'use client';
-
-import { Message } from '@/src/types/chat.types';
-import { format } from 'date-fns';
-import { CheckCheck, Check } from 'lucide-react';
+interface Message {
+  id: string;
+  content: string;
+  senderId: string;
+  timestamp: string;
+  status?: "sending" | "sent" | "delivered" | "read";
+}
 
 interface MessageBubbleProps {
   message: Message;
-  isOwnMessage: boolean;
+  isOwn: boolean;
+  showAvatar?: boolean;
   senderName?: string;
-  senderAvatar?: string;
 }
 
-export default function MessageBubble({
-  message,
-  isOwnMessage,
-  senderName,
-  senderAvatar,
-}: MessageBubbleProps) {
-  const formattedTime = format(new Date(message.createdAt), 'HH:mm');
-
+export function MessageBubble({ message, isOwn, showAvatar, senderName }: MessageBubbleProps) {
   return (
-    <div
-      className={`flex items-start gap-2 mb-4 ${
-        isOwnMessage ? 'flex-row-reverse' : 'flex-row'
-      }`}
-    >
+    <div className={`flex items-end gap-2 mb-3 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
       {/* Avatar */}
-      {!isOwnMessage && (
-        <div className="flex-shrink-0">
-          {senderAvatar ? (
-            <img
-              src={senderAvatar}
-              alt={senderName || 'User'}
-              className="w-8 h-8 rounded-full object-cover border-2 border-border"
-            />
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gradient-start to-gradient-end flex items-center justify-center text-white font-semibold text-sm">
-              {senderName?.[0]?.toUpperCase() || 'U'}
+      {showAvatar && !isOwn && (
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0A66C2] to-[#004182] flex-shrink-0 flex items-center justify-center text-white text-xs font-semibold shadow-sm">
+          {senderName?.charAt(0) || 'U'}
+        </div>
+      )}
+      {showAvatar && isOwn && <div className="w-8" />}
+
+      {/* Message Bubble */}
+      <div
+        className={`
+          max-w-[70%] rounded-2xl px-4 py-2.5 shadow-sm
+          ${isOwn 
+            ? 'bg-[#0A66C2] text-white rounded-br-md' 
+            : 'bg-white text-gray-800 border border-gray-200 rounded-bl-md'
+          }
+        `}
+      >
+        {!isOwn && senderName && (
+          <p className="text-xs font-semibold text-[#0A66C2] mb-1">{senderName}</p>
+        )}
+        <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">{message.content}</p>
+        <div className={`flex items-center justify-end gap-1 mt-1 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
+          <span className="text-xs">{message.timestamp}</span>
+          {isOwn && (
+            <div className="flex">
+              {message.status === 'read' && (
+                <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M15 4L6 13l-3-3 1-1 2 2 8-8 1 1z" />
+                  <path d="M12 4L5 11l-1-1 6-6 2 2z" />
+                </svg>
+              )}
+              {message.status === 'delivered' && (
+                <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M15 4L6 13l-3-3 1-1 2 2 8-8 1 1z" />
+                  <path d="M12 4L5 11l-1-1 6-6 2 2z" />
+                </svg>
+              )}
+              {message.status === 'sent' && (
+                <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M15 4L6 13l-3-3 1-1 2 2 8-8 1 1z" />
+                </svg>
+              )}
             </div>
           )}
         </div>
-      )}
-
-      {/* Message Content */}
-      <div
-        className={`flex flex-col max-w-[70%] ${
-          isOwnMessage ? 'items-end' : 'items-start'
-        }`}
-      >
-        {/* Sender Name (only for received messages in group chats) */}
-        {!isOwnMessage && senderName && (
-          <span className="text-xs text-muted-foreground mb-1 px-2">
-            {senderName}
-          </span>
-        )}
-
-        {/* Message Bubble */}
-        <div
-          className={`rounded-2xl px-4 py-2.5 shadow-sm transition-all duration-200 ${
-            isOwnMessage
-              ? 'bg-gradient-to-br from-gradient-start to-gradient-end text-white rounded-br-none'
-              : 'bg-card text-card-foreground border border-border rounded-bl-none'
-          }`}
-        >
-          <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
-            {message.content}
-          </p>
-        </div>
-
-        {/* Timestamp and Status */}
-        <div
-          className={`flex items-center gap-1 mt-1 px-2 ${
-            isOwnMessage ? 'flex-row-reverse' : 'flex-row'
-          }`}
-        >
-          <span className="text-xs text-muted-foreground">{formattedTime}</span>
-          {isOwnMessage && (
-            <span className="text-xs">
-              {message.status === 'read' ? (
-                <CheckCheck className="w-3 h-3 text-blue-500" />
-              ) : message.status === 'delivered' || message.status === 'sent' ? (
-                <CheckCheck className="w-3 h-3 text-muted-foreground" />
-              ) : message.status === 'sending' ? (
-                <Check className="w-3 h-3 text-muted-foreground" />
-              ) : message.status === 'failed' ? (
-                <span className="text-red-500">!</span>
-              ) : null}
-            </span>
-          )}
-        </div>
       </div>
+
+      {!showAvatar && !isOwn && <div className="w-8" />}
+      {!showAvatar && isOwn && <div className="w-8" />}
     </div>
   );
 }

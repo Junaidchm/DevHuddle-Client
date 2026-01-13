@@ -173,6 +173,23 @@ export const API_ROUTES = {
     REPORT: (projectId: string) => `${API_VERSION}/projects/${projectId}/report`,
     VIEW: (projectId: string) => `${API_VERSION}/projects/${projectId}/view`,
   },
+
+  // Add to API_ROUTES object
+  CHAT: {
+    // Conversations
+    CONVERSATIONS: `${API_VERSION}/chat/conversations`,
+    CONVERSATION_BY_ID: (conversationId: string) =>
+      `${API_VERSION}/chat/conversations/${conversationId}`,
+
+    // Messages
+    CONVERSATION_MESSAGES: (conversationId: string) =>
+      `${API_VERSION}/chat/conversations/${conversationId}/messages`,
+    SEND_MESSAGE: (conversationId: string) =>
+      `${API_VERSION}/chat/conversations/${conversationId}/messages`,
+
+    // WebSocket
+    WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3003',
+  },
 } as const;
 
 /**
@@ -184,22 +201,22 @@ export const API_ROUTES = {
 export const getApiBaseUrl = (): string => {
   // Server-side (Next.js server components, server actions, middleware)
   if (typeof window === "undefined") {
-    const url = 
+    const url =
       process.env.LOCAL_APIGATEWAY_URL ||
       process.env.API_GATEWAY ||
       process.env.NEXT_PUBLIC_API_URL ||
       "http://localhost:8080";
-    
+
     // Ensure URL doesn't end with slash
     return url.endsWith("/") ? url.slice(0, -1) : url;
   }
-  
+
   // Client-side (browser)
-  const url = 
+  const url =
     process.env.NEXT_PUBLIC_API_URL ||
     process.env.LOCAL_APIGATEWAY_URL ||
     "http://localhost:8080";
-  
+
   // Ensure URL doesn't end with slash
   return url.endsWith("/") ? url.slice(0, -1) : url;
 };

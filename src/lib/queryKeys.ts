@@ -8,7 +8,7 @@ export const queryKeys = {
   // Network queries (followers/following lists)
   network: {
     all: ["network"] as const,
-    list: (username:string, type: "followers" | "following") => ["network", "list", username, type] as const,
+    list: (username: string, type: "followers" | "following") => ["network", "list", username, type] as const,
   },
 
   // Suggestion queries
@@ -31,13 +31,13 @@ export const queryKeys = {
       count: (postId: string) => ["engagement", "post-likes", "count", postId] as const,
       status: (postId: string, userId: string) => ["engagement", "post-likes", "status", postId, userId] as const,
     },
-    
+
     // Comment likes
     commentLikes: {
       count: (commentId: string) => ["engagement", "comment-likes", "count", commentId] as const,
       status: (commentId: string, userId: string) => ["engagement", "comment-likes", "status", commentId, userId] as const,
     },
-    
+
     // Comments
     comments: {
       all: (postId: string) => ["engagement", "comments", "all", postId] as const,
@@ -47,19 +47,19 @@ export const queryKeys = {
       detail: (commentId: string) => ["engagement", "comments", "detail", commentId] as const,
       replies: (commentId: string) => ["engagement", "comments", "replies", commentId] as const,
     },
-    
+
     // Shares
     shares: {
       count: (postId: string) => ["engagement", "shares", "count", postId] as const,
       status: (postId: string, userId: string) => ["engagement", "shares", "status", postId, userId] as const,
     },
-    
+
     // Mentions
     mentions: {
       post: (postId: string) => ["engagement", "mentions", "post", postId] as const,
       comment: (commentId: string) => ["engagement", "mentions", "comment", commentId] as const,
     },
-    
+
     connections: {
       all: (userId?: string) => ["engagement", "connections", ...(userId ? [userId] : [])] as const,
     },
@@ -69,5 +69,16 @@ export const queryKeys = {
   users: {
     search: (query: string) => ["users", "search", query] as const,
     tagging: (query: string) => ["users", "tagging", query] as const,
+    connections: ["users", "connections"] as const,
+  },
+
+  // chat queries
+  chat: {
+    all: ["chat"] as const,
+    conversations: {
+      all: ["chat", "conversations"] as const,
+      list: () => ["chat", "conversations", "list"] as const,
+    },
+
   },
 };

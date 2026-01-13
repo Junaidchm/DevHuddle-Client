@@ -43,7 +43,8 @@ export type ConnectionState =
   | "reconnecting";
 
 export interface WebSocketMessage {
-  type: string;
+  type?: string;    // For notifications: "auth", "new_notification", "unread_count"
+  event?: string;   // For chat: "message:new"
   data?: any;
   error?: string;
 }
@@ -225,7 +226,18 @@ class WebSocketManager {
     }
   }
 
-  private getWebSocketUrl(): string {
+  /**
+   * Get WebSocket URL for different services
+   * @param service - 'notifications' (default) or 'chat'
+   */
+  private getWebSocketUrl(service: 'notifications' | 'chat' = 'notifications'): string {
+    // Chat service has its own WebSocket server
+    if (service === 'chat') {
+      const chatWsUrl = process.env.NEXT_PUBLIC_CHAT_WS_URL || 'ws://localhost:3003';
+      return `${chatWsUrl}?token=${this.token || ''}`;
+    }
+    
+    // Default: Notifications WebSocket (existing)
     const baseUrl =
       process.env.NEXT_PUBLIC_WS_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
@@ -273,7 +285,7 @@ class WebSocketManager {
 
       const message: WebSocketMessage = JSON.parse(event.data);
 
-      if (!message || typeof message !== "object" || !message.type) {
+      if (!message || typeof message !== "object" || (!message.type && !message.event)) {
         console.warn("[WebSocket] Message without type:", message);
         return;
       }
@@ -306,8 +318,20 @@ class WebSocketManager {
         return;
       }
 
-      // Handle notification messages
-      this.handleNotificationMessage(message);
+      // Handle notification messages (existing)
+      if (message.type === "new_notification" || message.type === "unread_count") {
+        this.handleNotificationMessage(message);
+        return;
+      }
+
+      // Handle chat messages (NEW)
+      if (message.event === "message:new") {
+        this.handleChatMessage(message.data);
+        return;
+      }
+
+      // Unknown message type
+      console.warn("[WebSocket] Unknown message:", message);
     } catch (error) {
       console.error("[WebSocket] Failed to parse message:", error);
     }
@@ -351,6 +375,30 @@ class WebSocketManager {
 
       default:
         console.warn("[WebSocket] Unknown message type:", message.type);
+    }
+  }
+
+  /**
+   * Handle incoming chat messages
+   * NEW: Added for chat feature support
+   */
+  private handleChatMessage(messageData: any): void {
+    if (!this.queryClient) return;
+
+    console.log("[WebSocket] Chat message received:", messageData);
+
+    // Invalidate conversations query to update "last message"
+    this.queryClient.invalidateQueries({
+      queryKey: ["chat", "conversations"],
+      refetchType: "active",
+    });
+
+    // Broadcast to components via custom event
+    // Components can listen: window.addEventListener('chat:message', ...)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('chat:message', { 
+        detail: messageData 
+      }));
     }
   }
 
