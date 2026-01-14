@@ -14,9 +14,8 @@ import { default_ImageTransform } from "@/src/constents/feed";
 import { getImageStyle } from "@/lib/feed/getImageStyle";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
-import { searchUsers } from "@/src/services/api/user.service";
+import { searchUsers, getMyConnections, SearchedUser } from "@/src/services/api/user.service";
 import { usePostForm } from "@/src/hooks/feed/usePostForm";
-import { getConnections } from "@/src/services/api/engagement.service";
 import { queryKeys } from "@/src/lib/queryKeys";
 
 export default function PhotoEditorModal({
@@ -24,7 +23,7 @@ export default function PhotoEditorModal({
   onClose,
   initialImageId,
 }: PhotoEditorModalProps & { initialImageId?: string }) {
-  // ✅ Use Centralized Context
+  //  Use Centralized Context
   const {
     media: allMedia,
     addMedia,
@@ -71,23 +70,17 @@ export default function PhotoEditorModal({
 
   const { data: session } = useSession();
 
-  // ✅ Fetch Users for Tagging (Search or Suggestions)
+  //  Fetch Users for Tagging (Search or Suggestions)
   const { data: users = [] } = useQuery({
-    queryKey: queryKeys.users.search(searchQuery),
+    queryKey: searchQuery ? queryKeys.users.search(searchQuery) : queryKeys.users.connections,
     queryFn: async () => {
        const token = session?.user?.accessToken;
        if (!token) return [];
        const headers = { Authorization: `Bearer ${token}` };
 
        if (!searchQuery) {
-         // Fetch connections as default suggestions
-         try {
-           const res = await getConnections(headers);
-           return res.data;
-         } catch (err) {
-           console.error("Failed to fetch connections", err);
-           return [];
-         }
+         // Fetch connections (Direct from Auth Service)
+         return getMyConnections(headers);
        } else {
          // Search users
          return searchUsers(searchQuery, headers);
@@ -235,7 +228,7 @@ export default function PhotoEditorModal({
       )}
       {rightPanelView === "mention" && (
         <MentionPanel
-          users={(users as any[]).map(u => ({
+           users={users.map((u: SearchedUser) => ({
              id: u.id,
              name: u.name,
              avatar: u.profilePicture || u.avatar || "",

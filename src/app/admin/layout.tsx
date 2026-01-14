@@ -8,6 +8,7 @@ import { useAdminRedirectIfNotAuthenticated } from "@/src/customHooks/useAdminAu
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { SettingsTab } from "../(main)/profile/update/[username]/components";
+import { useState } from "react";
 
 export default function AdminLayout({
   children,
@@ -19,6 +20,7 @@ export default function AdminLayout({
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const { isChecking } = useAdminRedirectIfNotAuthenticated("/admin/signIn");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Show loading state while checking authentication
   if (isChecking) {
@@ -35,8 +37,8 @@ export default function AdminLayout({
   return (  
     <>
       <div className="flex min-h-screen font-['Inter'] bg-gray-100 text-gray-900 leading-6 overflow-x-hidden">
-        {/* Sidebar */}
-        <aside className="w-[260px] bg-gray-900 text-gray-50 h-screen fixed z-50 transition-all duration-300 ease-in-out overflow-x-hidden overflow-y-auto flex flex-col">
+        {/* Sidebar - Desktop */}
+        <aside className={`w-[260px] bg-gray-900 text-gray-50 h-screen fixed z-50 transition-all duration-300 ease-in-out overflow-x-hidden overflow-y-auto flex flex-col max-lg:hidden`}>
           <div className="p-6 flex items-center justify-between border-b border-white/10">
             <div className="flex items-center gap-3">
               <i className="fas fa-code text-xl text-indigo-600"></i>
@@ -44,9 +46,6 @@ export default function AdminLayout({
                 DevHuddle
               </span>
             </div>
-            <button className="text-gray-400 text-xl transition-colors duration-300 hover:text-gray-50">
-              <i className="fas fa-bars"></i>
-            </button>
           </div>
 
           <nav className="flex-1 py-4">
@@ -284,24 +283,147 @@ export default function AdminLayout({
           <div className="p-6 border-t border-white/10">
             <div className="bg-white/5 rounded-lg p-3 text-sm transition-opacity duration-300">
               <i className="fas fa-exclamation-triangle text-amber-500 mr-2"></i>
-              <span>System update scheduled for 10/15</span>
+              <span className="text-xs sm:text-sm">System update scheduled for 10/15</span>
             </div>
           </div>
         </aside>
+
+        {/* Mobile Sidebar */}
+        <aside className={`w-[260px] bg-gray-900 text-gray-50 h-screen fixed z-50 transition-transform duration-300 ease-in-out overflow-y-auto flex flex-col lg:hidden ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}>
+          <div className="p-6 flex items-center justify-between border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <i className="fas fa-code text-xl text-indigo-600"></i>
+              <span className="font-bold text-xl">DevHuddle</span>
+            </div>
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className="text-gray-400 hover:text-white"
+            >
+              <i className="fas fa-times text-xl"></i>
+            </button>
+          </div>
+
+          {/* Same navigation as desktop - reuse the nav content */}
+          <nav className="flex-1 py-4">
+            {/* Copy the same nav structure from desktop sidebar */}
+            <div className="mb-4">
+              <h3 className="text-xs uppercase text-gray-400 tracking-[0.05em] px-6 py-2">
+                Dashboard
+              </h3>
+              <ul>
+                <li className="relative">
+                  <Link
+                    href="/admin/dashboard"
+                    onClick={() => setIsSidebarOpen(false)}
+                    className={`flex items-center gap-3 px-6 py-3 text-gray-400 transition-all duration-300 hover:text-gray-50 hover:bg-white/10 ${
+                      pathname === "/admin/dashboard" ? "bg-white/10 text-gray-50" : ""
+                    }`}
+                  >
+                    <span className="text-xl w-6 flex justify-center">
+                      <i className="fas fa-chart-line"></i>
+                    </span>
+                    <span>Overview</span>
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            <div className="mb-4">
+              <h3 className="text-xs uppercase text-gray-400 tracking-[0.05em] px-6 py-2">
+                Management
+              </h3>
+              <ul>
+                <li>
+                  <Link
+                    href="/admin/users"
+                    onClick={() => setIsSidebarOpen(false)}
+                    className={`flex items-center gap-3 px-6 py-3 text-gray-400 transition-all duration-300 hover:text-gray-50 hover:bg-white/10 ${
+                      pathname?.startsWith("/admin/users") ? "bg-white/10 text-gray-50" : ""
+                    }`}
+                  >
+                    <span className="text-xl w-6 flex justify-center">
+                      <i className="fas fa-users"></i>
+                    </span>
+                    <span>Users</span>
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            <div className="mb-4">
+              <h3 className="text-xs uppercase text-gray-400 tracking-[0.05em] px-6 py-2">
+                Content
+              </h3>
+              <ul>
+                <li>
+                  <Link
+                    href="/admin/reports"
+                    onClick={() => setIsSidebarOpen(false)}
+                    className={`flex items-center gap-3 px-6 py-3 text-gray-400 transition-all duration-300 hover:text-gray-50 hover:bg-white/10 ${
+                      pathname?.startsWith("/admin/reports") ? "bg-white/10 text-gray-50" : ""
+                    }`}
+                  >
+                    <span className="text-xl w-6 flex justify-center">
+                      <i className="fas fa-flag"></i>
+                    </span>
+                    <span>Reports</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/admin/posts"
+                    onClick={() => setIsSidebarOpen(false)}
+                    className={`flex items-center gap-3 px-6 py-3 text-gray-400 transition-all duration-300 hover:text-gray-50 hover:bg-white/10 ${
+                      pathname?.startsWith("/admin/posts") ? "bg-white/10 text-gray-50" : ""
+                    }`}
+                  >
+                    <span className="text-xl w-6 flex justify-center">
+                      <i className="fas fa-file-alt"></i>
+                    </span>
+                    <span>Posts</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/admin/comments"
+                    onClick={() => setIsSidebarOpen(false)}
+                    className={`flex items-center gap-3 px-6 py-3 text-gray-400 transition-all duration-300 hover:text-gray-50 hover:bg-white/10 ${
+                      pathname?.startsWith("/admin/comments") ? "bg-white/10 text-gray-50" : ""
+                    }`}
+                  >
+                    <span className="text-xl w-6 flex justify-center">
+                      <i className="fas fa-comments"></i>
+                    </span>
+                    <span>Comments</span>
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          </nav>
+        </aside>
+
         {/* Backdrop for mobile sidebar */}
-        <div className="fixed inset-0 bg-black/50 z-[90] hidden"></div>
+        {isSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          ></div>
+        )}
 
         {/* Main content */}
-        <main className="flex-1 ml-[260px] transition-all duration-300 ease-in-out w-[calc(100%_-_260px)]">
-          <header className="bg-white p-2 flex justify-between items-center border-b border-gray-200 shadow-sm">
+        <main className="flex-1 lg:ml-[260px] transition-all duration-300 ease-in-out w-full lg:w-[calc(100%_-_260px)]">
+          <header className="bg-white p-3 sm:p-4 flex justify-between items-center border-b border-gray-200 shadow-sm flex-wrap gap-3">
             <div className="flex items-center gap-4">
-              <button className="hidden text-gray-500 text-xl">
+              <button 
+                onClick={() => setIsSidebarOpen(true)}
+                className="lg:hidden text-gray-500 text-xl p-2"
+              >
                 <i className="fas fa-bars"></i>
               </button>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="relative w-[250px]">
+            <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+              <div className="relative w-full sm:w-[200px] md:w-[250px]">
                 <button className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
                   <i className="fas fa-search"></i>
                 </button>
@@ -319,23 +441,25 @@ export default function AdminLayout({
                 </span>
               </button>
 
-              <SettingsTab
-                icon="fas fa-sign-out-alt"
-                text="Logout"
-                isActive={false}
-                onclick={() =>
-                  showLogoutConfirmation("/admin/signIn")
-                }
-              />
+              <div className="hidden sm:block">
+                <SettingsTab
+                  icon="fas fa-sign-out-alt"
+                  text="Logout"
+                  isActive={false}
+                  onclick={() =>
+                    showLogoutConfirmation("/admin/signIn")
+                  }
+                />
+              </div>
 
-              <div className="flex items-center gap-3 cursor-pointer p-3 rounded-lg transition-all duration-300 hover:bg-gray-100">
+              <div className="flex items-center gap-2 sm:gap-3 cursor-pointer p-2 sm:p-3 rounded-lg transition-all duration-300 hover:bg-gray-100">
                 <img
                   src="https://ui-avatars.com/api/?name=Admin+User&background=4f46e5&color=fff"
                   alt="Admin User"
-                  className="w-9 h-9 rounded-full object-cover"
+                  className="w-7 h-7 sm:w-9 sm:h-9 rounded-full object-cover"
                 />
-                <span className="font-medium text-sm">Admin User</span>
-                <i className="fas fa-chevron-down text-xs text-gray-500"></i>
+                <span className="font-medium text-xs sm:text-sm hidden md:inline">Admin User</span>
+                <i className="fas fa-chevron-down text-xs text-gray-500 hidden md:inline"></i>
               </div>
             </div>
           </header>

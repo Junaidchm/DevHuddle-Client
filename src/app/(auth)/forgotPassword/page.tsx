@@ -44,12 +44,12 @@ export default function ForgotPassword() {
   };
 
   return (
-    <main className="flex-1 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-lg w-full max-w-[450px] p-8 animate-fadeIn">
-        <h1 className="text-center text-2xl font-bold mb-3 text-gray-900">
+    <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
+      <div className="bg-white rounded-3xl shadow-lg w-full max-w-[90%] sm:max-w-[450px] p-6 sm:p-8 animate-fadeIn">
+        <h1 className="text-center text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-gray-900">
           Forgot Password?
         </h1>
-        <p className="text-center text-gray-600 mb-8">
+        <p className="text-center text-sm sm:text-base text-gray-600 mb-6 sm:mb-8">
           Enter your email address and we'll send you a link to reset your
           password
         </p>
@@ -72,8 +72,8 @@ export default function ForgotPassword() {
             label={!isSubmitting ? "Send Reset Link" : "sending ..."}
           />
 
-          <div className="text-center mb-4">
-            <p className="text-sm text-gray-600">
+          <div className="text-center mb-4 sm:mb-6">
+            <p className="text-xs sm:text-sm text-gray-600">
               Remember your password?{" "}
               <Link
               href="/signup"
@@ -88,10 +88,11 @@ export default function ForgotPassword() {
           <div className="text-center">
             <a
               href="#"
-              className="inline-flex items-center gap-2 text-gray-900 font-medium hover:text-primary transition-colors"
+              className="inline-flex items-center gap-2 text-sm sm:text-base text-gray-900 font-medium hover:text-primary transition-colors"
             >
               <i className="fas fa-headset"></i>
-              <span>Need help? Contact Support</span>
+              <span className="hidden sm:inline">Need help? Contact Support</span>
+              <span className="sm:hidden">Contact Support</span>
             </a>
           </div>
         </form>
