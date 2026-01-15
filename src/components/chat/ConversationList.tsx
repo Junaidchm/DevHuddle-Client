@@ -1,5 +1,6 @@
-import React from "react";
-import { Search, MoreVertical } from "lucide-react";
+import React, { useState } from "react";
+import { Search, MoreVertical, Edit } from "lucide-react";
+import { NewChatModal } from "./NewChatModal";
 
 interface ConversationItem {
   id: string;
@@ -18,6 +19,16 @@ interface ConversationListProps {
 }
 
 export function ConversationList({ conversations, selectedId, onSelect }: ConversationListProps) {
+  const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
+
+  // TODO: Implement conversation creation logic
+  const handleNewConversation = async (userId: string) => {
+    console.log("Creating conversation with user:", userId);
+    // TODO: Call API to create conversation
+    // TODO: Select the newly created conversation
+    // TODO: Invalidate/refetch conversations list
+  };
+
   return (
     <div className="flex flex-col h-full bg-white border-r border-gray-200">
       {/* Header */}
@@ -25,8 +36,13 @@ export function ConversationList({ conversations, selectedId, onSelect }: Conver
         <h1 className="text-xl font-bold text-gray-800">
           Messages
         </h1>
-        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-          <MoreVertical className="w-5 h-5 text-gray-600" />
+        <button 
+          onClick={() => setIsNewChatModalOpen(true)}
+          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          aria-label="New message"
+          title="New message"
+        >
+          <Edit className="w-5 h-5 text-gray-600" />
         </button>
       </div>
 
