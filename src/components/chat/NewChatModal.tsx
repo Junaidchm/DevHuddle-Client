@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { X, Search } from "lucide-react";
+import { useChatSuggestions } from "@/src/hooks/chat/useChatSuggestions";
 
 interface User {
   id: string;
@@ -19,31 +20,32 @@ interface NewChatModalProps {
 
 export function NewChatModal({ isOpen, onClose, onUserSelect }: NewChatModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [suggestedUsers, setSuggestedUsers] = useState<User[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  
+  // Use TanStack Query hook for fetching
+  const { data: rawSuggestions = [], isLoading } = useChatSuggestions();
+  
+  // Memoize the mapped users to avoid re-mapping on every render
+  const suggestedUsers: User[] = React.useMemo(() => {
+    return rawSuggestions.map((item: any) => ({
+      id: item.id,
+      username: item.username,
+      fullName: item.fullName || item.name || item.username,
+      profilePhoto: item.profilePicture || item.profilePhoto, // Handle backend discrepancies
+      bio: item.bio || item.headline || item.jobTitle, 
+    }));
+  }, [rawSuggestions]);
 
-  // TODO: Fetch suggested users when modal opens
-  useEffect(() => {
-    if (isOpen && suggestedUsers.length === 0) {
-      // TODO: Call API to fetch suggested users
-      // fetchSuggestedUsers();
-    }
-  }, [isOpen]);
-
-  // TODO: Filter users based on search query
-  useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setFilteredUsers(suggestedUsers);
-    } else {
-      const filtered = suggestedUsers.filter(
-        (user) =>
-          user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.username.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredUsers(filtered);
-    }
-  }, [searchQuery, suggestedUsers]);
+  // Filter users based on search query
+  const filteredUsers = React.useMemo(() => {
+    if (!searchQuery.trim()) return suggestedUsers;
+    
+    const query = searchQuery.toLowerCase();
+    return suggestedUsers.filter(
+      (user) =>
+        user.fullName.toLowerCase().includes(query) ||
+        user.username.toLowerCase().includes(query)
+    );
+  }, [suggestedUsers, searchQuery]);
 
   const handleUserClick = (userId: string) => {
     onUserSelect(userId);
@@ -79,16 +81,16 @@ export function NewChatModal({ isOpen, onClose, onUserSelect }: NewChatModalProp
 
   return (
     <>
-      {/* Overlay */}
+      {/* Transparent Click-Outside Overlay */}
       <div 
-        className="fixed inset-0 z-50 bg-black bg-opacity-50 transition-opacity"
+        className="fixed inset-0 z-40 bg-transparent"
         onClick={handleClose}
       />
 
-      {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Popover */}
+      <div className="absolute top-16 left-2 z-50 w-[95%] max-w-sm">
         <div 
-          className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[80vh] flex flex-col"
+          className="bg-white rounded-lg shadow-2xl border border-gray-100 flex flex-col max-h-[70vh] animate-in fade-in zoom-in-95 duration-100"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

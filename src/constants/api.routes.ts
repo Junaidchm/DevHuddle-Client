@@ -32,10 +32,11 @@ export const API_ROUTES = {
     FOLLOWING: (username: string) =>
       `${API_VERSION}/users/${username}/following`,
     SEARCH: `${API_VERSION}/users/search`,
+    CHAT_SUGGESTIONS: `${API_VERSION}/users/chat/suggestions`,
   },
 
   FOLLOWS: {
-    SUGGESTIONS: `${API_VERSION}/users/follows/suggestions`,
+    // SUGGESTIONS moved to CHAT_SUGGESTIONS under USERS/CHAT
     FOLLOW: `${API_VERSION}/users/follows/follow`,
     UNFOLLOW: `${API_VERSION}/users/follows/unfollow`,
     FOLLOWERS_INFO: (userId: string) =>
