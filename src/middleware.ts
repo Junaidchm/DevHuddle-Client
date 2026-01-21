@@ -1,7 +1,4 @@
 /**
- * ✅ FIXED: Middleware using Next.js 15 + NextAuth pattern
- * 
- * ❌ OLD: auth() wrapping function (deprecated pattern)
  * ✅ NEW: Export auth as middleware (Next.js 15 best practice)
  * 
  * References:

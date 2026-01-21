@@ -6,13 +6,14 @@ import {
   SendMessagePayload,
   SendMessageResponse,
   Conversation,
+  CheckConversationResponse,
 } from '@/src/types/chat.types';
 
 /**
  * Get user's conversations
  */
 export async function getConversations(
-  token: string,
+  headers: Record<string, string>,
   limit = 50,
   offset = 0
 ): Promise<GetConversationsResponse> {
@@ -20,9 +21,7 @@ export async function getConversations(
     const response = await axiosInstance.get<GetConversationsResponse>(
       API_ROUTES.CHAT.CONVERSATIONS,
       {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         params: { limit, offset },
       }
     );
@@ -37,8 +36,8 @@ export async function getConversations(
  * Get messages for a conversation
  */
 export async function getMessages(
-  token: string,
   conversationId: string,
+  headers: Record<string, string>,
   limit = 50,
   offset = 0
 ): Promise<GetMessagesResponse> {
@@ -46,9 +45,7 @@ export async function getMessages(
     const response = await axiosInstance.get<GetMessagesResponse>(
       API_ROUTES.CHAT.CONVERSATION_MESSAGES(conversationId),
       {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         params: { limit, offset },
       }
     );
@@ -63,20 +60,15 @@ export async function getMessages(
  * Send a message (REST fallback - WebSocket is preferred)
  */
 export async function sendMessage(
-  token: string,
   conversationId: string,
-  content: string
+  content: string,
+  headers: Record<string, string>
 ): Promise<SendMessageResponse> {
   try {
      const response = await axiosInstance.post<SendMessageResponse>(
       API_ROUTES.CHAT.SEND_MESSAGE(conversationId),
       { content },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
+      { headers }
     );
     return response.data;
   } catch (error) {
@@ -89,17 +81,13 @@ export async function sendMessage(
  * Get conversation by ID
  */
 export async function getConversationById(
-  token: string,
-  conversationId: string
+  conversationId: string,
+  headers: Record<string, string>
 ): Promise<Conversation> {
   try {
     const response = await axiosInstance.get<Conversation>(
       API_ROUTES.CHAT.CONVERSATION_BY_ID(conversationId),
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      { headers }
     );
     return response.data;
   } catch (error) {
@@ -112,33 +100,14 @@ export async function getConversationById(
  * Mark messages as read
  */
 export async function markAsRead(
-  token: string,
-  conversationId: string
+  conversationId: string,
+  headers: Record<string, string>
 ): Promise<void> {
   try {
-    // Note: API_ROUTES.CHAT does not currently have a MARK_READ specific to conversation
-    // Assuming it to be added or using a placeholder
-    // For now, I will comment this out or use a direct string to avoid breaking if API route is missing
-    // But better to stick to what was there.
-    /*
-    await axiosInstance.post(
-      `${API_ROUTES.CHAT.CONVERSATIONS}/${conversationId}/read`, 
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    */
      await axiosInstance.post(
       API_ROUTES.CHAT.CONVERSATION_BY_ID(conversationId) + '/read',
       {},
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      { headers }
     );
   } catch (error) {
     console.error('Failed to mark as read:', error);
@@ -158,3 +127,33 @@ export const getChatSuggestions = async (headers: Record<string, string>) => {
     throw error;
   }
 };
+
+/**
+ * Check if conversation exists
+ */
+export async function checkConversationExists(
+  participantIds: string[],
+  headers: Record<string, string>
+): Promise<CheckConversationResponse> {
+  const response = await axiosInstance.post<CheckConversationResponse>(
+    API_ROUTES.CHAT.CHECK_CONVERSATION,
+    { participantIds },
+    { headers }
+  );
+  return response.data;
+}
+
+/**
+ * Create conversation
+ */
+export async function createConversation(
+  participantIds: string[],
+  headers: Record<string, string>
+): Promise<{ success: boolean; data: Conversation }> {
+  const response = await axiosInstance.post(
+    API_ROUTES.CHAT.CONVERSATIONS,
+    { participantIds },
+    { headers }
+  );
+  return response.data;
+}
