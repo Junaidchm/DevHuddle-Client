@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 import { MentionPanel } from "./MentionPanel";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
-import { searchUsers } from "@/src/services/api/user.service";
+import { searchUsers, getMyConnections, SearchedUser } from "@/src/services/api/user.service";
 import { usePostForm } from "@/src/hooks/feed/usePostForm";
 import { queryKeys } from "@/src/lib/queryKeys";
 
@@ -61,11 +61,21 @@ export default function VideoEditorModal({
   const { data: session } = useSession();
 
 
-  // ✅ Fetch Users logic
+  //  Fetch Users logic
   const { data: users = [] } = useQuery({
-    queryKey: queryKeys.users.search(searchQuery),
-    queryFn: () => searchUsers(searchQuery, { Authorization: `Bearer ${session?.user?.accessToken}` }),
-    enabled: showTagPanel
+    queryKey: searchQuery ? queryKeys.users.search(searchQuery) : queryKeys.users.connections,
+    queryFn: async () => {
+       const token = session?.user?.accessToken;
+       if (!token) return [];
+       const headers = { Authorization: `Bearer ${token}` };
+
+       if (!searchQuery) {
+          return getMyConnections(headers);
+       } else {
+          return searchUsers(searchQuery, headers);
+       }
+    },
+    enabled: showTagPanel && !!session?.user?.accessToken
   });
 
   // ✅ Sync index
@@ -404,8 +414,8 @@ export default function VideoEditorModal({
         </div>
         {/* Helper Panel (Tagging) */}
         {showTagPanel && (
-           <MentionPanel
-             users={users.map(u => ({
+             <MentionPanel
+             users={users.map((u: SearchedUser) => ({
                id: u.id,
                name: u.name,
                avatar: u.profilePicture || "",

@@ -87,3 +87,44 @@ export interface SendMessageResponse {
   message: Message;
   conversationId: string;
 }
+
+
+// Participant with user profile
+export interface ConversationParticipant {
+  userId: string;
+  username: string;
+  name: string;
+  profilePhoto: string | null;
+}
+// Enriched conversation with metadata
+export interface ConversationWithMetadata {
+  conversationId: string;
+  participantIds: string[];
+  participants: ConversationParticipant[];
+  lastMessage: {
+    content: string;
+    senderId: string;
+    senderName: string;
+    createdAt: string;
+  } | null;
+  lastMessageAt: string;
+  unreadCount: number;
+}
+// Check conversation response
+export interface CheckConversationResponse {
+  success: boolean;
+  data: {
+    exists: boolean;
+    conversationId?: string;
+  };
+}
+// Updated GetConversationsResponse
+export interface GetConversationsResponse {
+  success: boolean;
+  data: ConversationWithMetadata[];
+  pagination: {
+    limit: number;
+    offset: number;
+    count: number;
+  };
+}

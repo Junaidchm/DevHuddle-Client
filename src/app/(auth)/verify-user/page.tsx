@@ -27,12 +27,12 @@ export default function VerifyOtp() {
   };
 
   return (
-    <main className="flex-1 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-lg w-full max-w-[450px] p-8 animate-fadeIn">
-        <h1 className="text-center text-2xl font-bold mb-3 text-gray-900">
+    <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
+      <div className="bg-white rounded-3xl shadow-lg w-full max-w-[90%] sm:max-w-[450px] p-6 sm:p-8 animate-fadeIn">
+        <h1 className="text-center text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-gray-900">
           Verify Your Account
         </h1>
-        <p className="text-center text-gray-600 mb-6">
+        <p className="text-center text-sm sm:text-base text-gray-600 mb-6">
           We've sent a verification code to your email
         </p>
 
@@ -42,8 +42,8 @@ export default function VerifyOtp() {
 
         <VerifyForm />
 
-        <div className="text-center mb-4">
-          <p className="text-sm text-gray-500">
+        <div className="text-center mb-4 sm:mb-6">
+          <p className="text-xs sm:text-sm text-gray-500">
             Didn't receive the code?{" "}
             <button
               id="resend-link"
@@ -54,7 +54,7 @@ export default function VerifyOtp() {
               Resend Code
             </button>
           </p>
-          <p id="resend-timer" className="text-sm text-gray-500 mt-2">
+          <p id="resend-timer" className="text-xs sm:text-sm text-gray-500 mt-2">
             Resend available in <span id="countdown">{countdown}</span>s
           </p>
         </div>

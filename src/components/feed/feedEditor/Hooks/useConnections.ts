@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getConnections } from "@/src/services/api/engagement.service";
+import { getMyConnections, SearchedUser } from "@/src/services/api/user.service";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 import { Connection } from "@/src/app/types/feed";
 import { queryKeys } from "@/src/lib/queryKeys";
@@ -20,11 +20,22 @@ export function useConnections(enabled: boolean = true) {
   const userId = currentUser?.id;
 
   return useQuery<Connection[]>({
-    queryKey: queryKeys.engagement.connections.all(userId),
+    queryKey: queryKeys.users.connections,
     queryFn: async () => {
       try {
-        const response = await getConnections(authHeaders);
-        const connections = response.data || [];
+        const users: SearchedUser[] = await getMyConnections(authHeaders);
+        
+        // Map SearchedUser to Connection
+        const connections: Connection[] = users.map(u => ({
+          id: u.id,
+          name: u.name,
+          username: u.username,
+          profilePicture: u.profilePicture || u.avatar || null,
+          headline: u.headline || null,
+          jobTitle: u.jobTitle || null,
+          company: u.company || null,
+        }));
+
         console.log("[useConnections] Fetched connections:", connections.length);
         return connections;
       } catch (error: any) {
@@ -32,7 +43,7 @@ export function useConnections(enabled: boolean = true) {
         throw error;
       }
     },
-    enabled: enabled && !!authHeaders.Authorization && !!userId,
+    enabled: enabled && !!authHeaders.Authorization,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
     retry: 2,

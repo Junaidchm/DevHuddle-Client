@@ -130,7 +130,6 @@ export default function ChatPage() {
       {/* Left Sidebar - Conversations */}
       <div className="w-full md:w-96 flex-shrink-0 shadow-sm">
         <ConversationList
-          conversations={mockConversations}
           selectedId={selectedConversationId}
           onSelect={setSelectedConversationId}
         />

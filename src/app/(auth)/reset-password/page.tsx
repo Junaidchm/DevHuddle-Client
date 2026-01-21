@@ -57,9 +57,9 @@ export default function ForgotPassword() {
   };
 
   return (
-    <main className="flex-1 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-lg w-full max-w-[450px] p-8 animate-fadeIn">
-        <h1 className="text-center text-2xl font-bold mb-3 text-gray-900">
+    <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
+      <div className="bg-white rounded-3xl shadow-lg w-full max-w-[90%] sm:max-w-[450px] p-6 sm:p-8 animate-fadeIn">
+        <h1 className="text-center text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-900">
           Reset Password
         </h1>
 
@@ -91,8 +91,8 @@ export default function ForgotPassword() {
             label={!isSubmitting ? "Change password" : "Changing ..."}
           />
 
-          <div className="text-center mb-4">
-            <p className="text-sm text-gray-600">
+          <div className="text-center mb-4 sm:mb-6">
+            <p className="text-xs sm:text-sm text-gray-600">
               Return to login {" "}
               <Link
                 href="/signIn"

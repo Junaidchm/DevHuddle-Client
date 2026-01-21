@@ -25,8 +25,8 @@ export default function AuthCallback() {
   }, [dispatch, router]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <p className="text-lg">Processing authentication...</p>
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+      <p className="text-base sm:text-lg text-gray-900">Processing authentication...</p>
     </div>
   );
 }

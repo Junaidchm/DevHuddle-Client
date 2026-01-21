@@ -32,10 +32,11 @@ export const API_ROUTES = {
     FOLLOWING: (username: string) =>
       `${API_VERSION}/users/${username}/following`,
     SEARCH: `${API_VERSION}/users/search`,
+    CHAT_SUGGESTIONS: `${API_VERSION}/users/chat/suggestions`,
   },
 
   FOLLOWS: {
-    SUGGESTIONS: `${API_VERSION}/users/follows/suggestions`,
+    // SUGGESTIONS moved to CHAT_SUGGESTIONS under USERS/CHAT
     FOLLOW: `${API_VERSION}/users/follows/follow`,
     UNFOLLOW: `${API_VERSION}/users/follows/unfollow`,
     FOLLOWERS_INFO: (userId: string) =>
@@ -177,7 +178,9 @@ export const API_ROUTES = {
   // Add to API_ROUTES object
   CHAT: {
     // Conversations
+   
     CONVERSATIONS: `${API_VERSION}/chat/conversations`,
+    CHECK_CONVERSATION: `${API_VERSION}/chat/conversations/check`,
     CONVERSATION_BY_ID: (conversationId: string) =>
       `${API_VERSION}/chat/conversations/${conversationId}`,
 
@@ -214,8 +217,12 @@ export const getApiBaseUrl = (): string => {
   // Client-side (browser)
   const url =
     process.env.NEXT_PUBLIC_API_URL ||
-    process.env.LOCAL_APIGATEWAY_URL ||
     "http://localhost:8080";
+
+  // Log warning if falling back to default
+  if (!process.env.NEXT_PUBLIC_API_URL && process.env.NODE_ENV === 'development') {
+    console.warn('[API] NEXT_PUBLIC_API_URL not set, using fallback:', url);
+  }
 
   // Ensure URL doesn't end with slash
   return url.endsWith("/") ? url.slice(0, -1) : url;
