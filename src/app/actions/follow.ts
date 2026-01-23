@@ -125,7 +125,7 @@ export async function getSuggestedUsersWithFollowerInfo(limit: number = 5) {
 
     // Fetch suggestions
     const suggestions = await api
-      .get(`${stripLeadingSlash(API_ROUTES.FOLLOWS.SUGGESTIONS)}?limit=${limit}`)
+      .get(`${stripLeadingSlash(API_ROUTES.USERS.CHAT_SUGGESTIONS)}?limit=${limit}`)
       .json<SuggestedFollower[]>();
 
     if (!Array.isArray(suggestions) || suggestions.length === 0) {

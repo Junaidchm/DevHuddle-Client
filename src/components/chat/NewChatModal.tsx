@@ -30,7 +30,7 @@ export function NewChatModal({ isOpen, onClose, onUserSelect }: NewChatModalProp
       id: item.id,
       username: item.username,
       fullName: item.fullName || item.name || item.username,
-      profilePhoto: item.profilePicture || item.profilePhoto, // Handle backend discrepancies
+      profilePhoto: item.profilePhoto, // Backend returns profilePhoto
       bio: item.bio || item.headline || item.jobTitle, 
     }));
   }, [rawSuggestions]);

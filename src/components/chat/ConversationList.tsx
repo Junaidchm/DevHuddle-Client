@@ -9,9 +9,11 @@ import { EmptyState } from "./EmptyState";
 import { ConversationListSkeleton } from "./ConversationListSkeleton";
 import { useConversations, useCreateConversation } from "@/src/hooks/chat/useConversationQuery";
 
+import { ConversationWithMetadata } from "@/src/types/chat.types";
+
 interface ConversationListProps {
   selectedId?: string;
-  onSelect: (id: string) => void;
+  onSelect: (conversation: ConversationWithMetadata) => void;
 }
 
 export function ConversationList({ selectedId, onSelect }: ConversationListProps) {
@@ -29,8 +31,11 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
     isFetchingNextPage 
   } = useConversations();
 
-  // Create conversation hook
-  const createConversation = useCreateConversation();
+  // Create conversation hook with selection callback
+  const createConversation = useCreateConversation((conversation) => {
+    // Select the newly created conversation
+    onSelect(conversation);
+  });
 
   // Flatten pages into single array
   const conversations = data?.pages.flatMap(page => page.data) ?? [];
@@ -59,7 +64,10 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
 
   // Handle new conversation
   const handleNewConversation = async (userId: string) => {
+    console.log('👆 [CLICK] User clicked suggestion', { userId });
+    // Only pass the other user's ID - backend adds current user automatically
     createConversation.mutate([userId]);
+    console.log('📤 [CLICK] Mutation triggered');
   };
 
   // Filter conversations by search query
@@ -171,7 +179,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
               ref={isLast ? lastConversationRef : null}
             >
               <button
-                onClick={() => onSelect(conv.conversationId)}
+                onClick={() => onSelect(conv as any as ConversationWithMetadata)}
                 className={`
                   w-full p-4 flex items-start gap-3 transition-all border-l-3 bg-white hover:bg-gray-50 border-b border-gray-100
                   ${selectedId === conv.conversationId 

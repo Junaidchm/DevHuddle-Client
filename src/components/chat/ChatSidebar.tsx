@@ -9,7 +9,6 @@ import { Conversation, User } from '@/src/types/chat.types';
 import { Search, MessageCircle, Loader2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
-import { PROFILE_DEFAULT_URL } from '@/src/constents';
 
 interface ChatSidebarProps {
   conversations: Conversation[];

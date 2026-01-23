@@ -6,45 +6,8 @@ import { ChatHeader } from "@/src/components/chat/ChatHeader";
 import { MessageList } from "@/src/components/chat/MessageList";
 import { ChatInput } from "@/src/components/chat/ChatInput";
 
-// Mock data for demonstration
-const mockConversations = [
-  {
-    id: "1",
-    name: "Sarah Johnson",
-    avatar: "SJ",
-    lastMessage: "Hey! How's the project going?",
-    time: "10:30 AM",
-    unreadCount: 2,
-    isOnline: true,
-  },
-  {
-    id: "2",
-    name: "Team Dev",
-    avatar: "TD",
-    lastMessage: "Meeting at 3 PM today",
-    time: "Yesterday",
-    unreadCount: 0,
-    isOnline: false,
-  },
-  {
-    id: "3",
-    name: "John Doe",
-    avatar: "JD",
-    lastMessage: "Thanks for the help!",
-    time: "Monday",
-    unreadCount: 0,
-    isOnline: true,
-  },
-  {
-    id: "4",
-    name: "Design Team",
-    avatar: "DT",
-    lastMessage: "New mockups are ready",
-    time: "Sunday",
-    unreadCount: 5,
-    isOnline: false,
-  },
-];
+import { ConversationWithMetadata } from "@/src/types/chat.types";
+import { useSession } from "next-auth/react";
 
 type MessageStatus = "sending" | "sent" | "delivered" | "read";
 
@@ -56,53 +19,20 @@ interface Message {
   status?: MessageStatus;
 }
 
-const mockMessages: Message[] = [
-  {
-    id: "1",
-    content: "Hey there! How are you doing?",
-    senderId: "other",
-    timestamp: new Date(Date.now() - 86400000).toISOString(), // Yesterday
-    status: "read",
-  },
-  {
-    id: "2",
-    content: "I'm doing great! Working on the chat feature.",
-    senderId: "me",
-    timestamp: new Date(Date.now() - 86400000 + 300000).toISOString(),
-    status: "read",
-  },
-  {
-    id: "3",
-    content: "That's awesome! How's it going?",
-    senderId: "other",
-    timestamp: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-    status: "delivered",
-  },
-  {
-    id: "4",
-    content: "Pretty good! The UI looks amazing. Working on WebSocket integration next.",
-    senderId: "me",
-    timestamp: new Date(Date.now() - 1800000).toISOString(), // 30 min ago
-    status: "read",
-  },
-  {
-    id: "5",
-    content: "Can't wait to see it! Let me know if you need any help.",
-    senderId: "other",
-    timestamp: new Date(Date.now() - 300000).toISOString(), // 5 min ago
-    status: "sent",
-  },
-];
-
 export default function ChatPage() {
-  const [selectedConversationId, setSelectedConversationId] = useState("1");
-  const [messages, setMessages] = useState<Message[]>(mockMessages);
+  const { data: session } = useSession();
+  const [selectedConversation, setSelectedConversation] = useState<ConversationWithMetadata | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
 
-  const selectedConversation = mockConversations.find(
-    (c) => c.id === selectedConversationId
-  );
+  const handleSelectConversation = (conversation: ConversationWithMetadata) => {
+    setSelectedConversation(conversation);
+    // TODO: Fetch messages for this conversation
+    setMessages([]);
+  };
 
   const handleSendMessage = (content: string) => {
+    if (!selectedConversation) return;
+
     const newMessage: Message = {
       id: Date.now().toString(),
       content,
@@ -113,7 +43,7 @@ export default function ChatPage() {
 
     setMessages([...messages, newMessage]);
 
-    // Simulate message being sent
+    // TODO: Send message via API/WebSocket
     setTimeout(() => {
       setMessages((prev) =>
         prev.map((msg) =>
@@ -130,21 +60,29 @@ export default function ChatPage() {
       {/* Left Sidebar - Conversations */}
       <div className="w-full md:w-96 flex-shrink-0 shadow-sm">
         <ConversationList
-          selectedId={selectedConversationId}
-          onSelect={setSelectedConversationId}
+          selectedId={selectedConversation?.conversationId}
+          onSelect={handleSelectConversation}
         />
       </div>
 
       {/* Right Side - Chat */}
       {selectedConversation ? (
         <div className="flex-1 flex flex-col bg-white">
-          {/* Chat Header */}
-          <ChatHeader
-            name={selectedConversation.name}
-            avatar={selectedConversation.avatar}
-            isOnline={selectedConversation.isOnline}
-            lastSeen="2 hours ago"
-          />
+          {(() => {
+             const otherParticipant = selectedConversation.participants.find(
+                p => p.userId !== session?.user?.id
+             ) || selectedConversation.participants[0];
+             
+             return (
+              <ChatHeader
+                name={otherParticipant?.name || 'User'}
+                avatar={otherParticipant?.name?.charAt(0) || '?'}
+                image={otherParticipant?.profilePhoto}
+                isOnline={false} // Todo: Real online status
+                lastSeen={selectedConversation.lastMessageAt ? new Date(selectedConversation.lastMessageAt).toLocaleTimeString() : undefined}
+              />
+             );
+          })()}
 
           {/* Messages */}
           <MessageList
@@ -152,7 +90,7 @@ export default function ChatPage() {
             currentUserId="me"
             getUserName={(userId: string) => {
               if (userId === "me") return "You";
-              return selectedConversation.name;
+              return "Other User";
             }}
           />
 

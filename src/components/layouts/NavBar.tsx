@@ -19,8 +19,6 @@ export default function NavBar() {
   const { data: unreadData } = useUnreadCount(); 
   const unreadCount = unreadData?.unreadCount || 0;
 
-  console.log("Unread count updated:", unreadCount); // ← ADD THIS
-
   return (
     <nav className="bg-white/95 backdrop-blur-md shadow sticky top-0 z-[100] px-4 sm:px-6 py-3">
       <div className="flex justify-between items-center gap-4 sm:gap-8">
@@ -62,7 +60,7 @@ export default function NavBar() {
 
         {/* Right Side Actions */}
         <div className="flex items-center gap-2 sm:gap-4">
-          {session?.user ? (
+          {session?.user && (
             <>
               <Link href="/notification" className="flex-shrink-0">
                 <button className="relative bg-transparent border-none cursor-pointer text-gray-600 hover:text-indigo-600 transition-colors p-2">
@@ -84,13 +82,6 @@ export default function NavBar() {
                 </button>
               </Link>
             </>
-          ) : (
-            <Link
-              href="/signIn"
-              className="no-underline bg-gradient-to-br from-gradient-start to-gradient-end text-black px-3 py-1.5 sm:px-4 sm:py-2 rounded-md font-medium text-xs sm:text-sm transition-transform-shadow duration-200 ease-in-out shadow-xs hover:-translate-y-0.5 hover:shadow-xl-profile"
-            >
-              Log In
-            </Link>
           )}
           
           {/* Mobile Menu Button */}

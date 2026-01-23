@@ -2,14 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 import { getChatSuggestions } from "@/src/services/api/chat.service";
 import { queryKeys } from "@/src/lib/queryKeys";
+import { ChatSuggestionsResponse, ChatSuggestionUser } from "@/src/types/chat";
 
 export function useChatSuggestions() {
   const authHeaders = useAuthHeaders();
 
-  return useQuery({
+  return useQuery<ChatSuggestionsResponse, Error, ChatSuggestionUser[]>({
     queryKey: queryKeys.chat.suggestions.list(),
     queryFn: () => getChatSuggestions(authHeaders),
-    select: (data: any) => {
+    select: (data: ChatSuggestionsResponse) => {
       // Backend returns { success: true, data: { suggestions: [...] } }
       // Axios response.data is the whole object
       return data?.data?.suggestions || [];
