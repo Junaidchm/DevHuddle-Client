@@ -32,6 +32,8 @@ import React, {
 } from "react";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/src/lib/queryKeys";
+import { Message, WebSocketMessage } from "@/src/types/chat.types";
 
 // ==================== Types ====================
 
@@ -41,13 +43,6 @@ export type ConnectionState =
   | "authenticating"
   | "connected"
   | "reconnecting";
-
-export interface WebSocketMessage {
-  type?: string;    // For notifications: "auth", "new_notification", "unread_count"
-  event?: string;   // For chat: "message:new"
-  data?: any;
-  error?: string;
-}
 
 export interface WebSocketContextType {
   connectionState: ConnectionState;
@@ -324,9 +319,25 @@ class WebSocketManager {
         return;
       }
 
-      // Handle chat messages (NEW)
+      // Handle chat messages (ENHANCED - supports multiple event types)
+      if (message.type === "new_message") {
+        this.handleNewChatMessage(message.data);
+        return;
+      }
+
+      if (message.type === "message_sent") {
+        this.handleMessageSent(message.data);
+        return;
+      }
+
+      if (message.type === "message_status_updated") {
+        this.handleMessageStatusUpdate(message.data);
+        return;
+      }
+
+      // Legacy chat message support (if backend still uses event format)
       if (message.event === "message:new") {
-        this.handleChatMessage(message.data);
+        this.handleNewChatMessage(message.data);
         return;
       }
 
@@ -334,6 +345,165 @@ class WebSocketManager {
       console.warn("[WebSocket] Unknown message:", message);
     } catch (error) {
       console.error("[WebSocket] Failed to parse message:", error);
+    }
+  }
+
+  /**
+   * Handle incoming chat message from another user
+   */
+  private handleNewChatMessage(messageData: Message): void {
+    if (!this.queryClient) return;
+
+    console.log("[WebSocket] New chat message received:", messageData);
+
+    // Update messages cache for this conversation
+    if (messageData.conversationId) {
+      this.queryClient.setQueryData(
+        queryKeys.chat.messages.list(messageData.conversationId),
+        (old: Message[] = []) => {
+          // Check for duplicates
+          const exists = old.some((msg) => msg.id === messageData.id);
+          if (exists) return old;
+          
+          return [...old, messageData];
+        }
+      );
+
+      // Send delivery acknowledgment automatically
+      if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+        try {
+          this.socket.send(JSON.stringify({
+            type: "message_delivered",
+            messageId: messageData.id,
+          }));
+          console.log("[WebSocket] Sent delivery ACK for:", messageData.id);
+        } catch (error) {
+          console.error("[WebSocket] Failed to send delivery ACK:", error);
+        }
+      }
+    }
+
+    // Invalidate conversations list (update last message)
+    this.queryClient.invalidateQueries({
+      queryKey: queryKeys.chat.conversations.all,
+      refetchType: "active",
+    });
+  }
+
+  /**
+   * Handle message_sent confirmation from server
+   * Updates optimistic message with real data
+   */
+  private handleMessageSent(data: any): void {
+    if (!this.queryClient) return;
+
+    console.log("[WebSocket] Message sent confirmation:", data);
+
+    if (data.conversationId && data.id) {
+      this.queryClient.setQueryData(
+        queryKeys.chat.messages.list(data.conversationId),
+        (old: any[] = []) => {
+          // Replace temp message (dedupeId match) or add if missing
+          // Optimistic updates usually use temp-ID, so we check for that
+          const index = old.findIndex((msg) => 
+            msg.dedupeId === data.dedupeId || msg.id === `temp-${data.dedupeId}`
+          );
+
+          if (index !== -1) {
+            // Replace temp message with real one
+            const updated = [...old];
+            updated[index] = { ...data, status: 'SENT' };
+            return updated;
+          } else {
+            // Add if not found (edge case)
+            return [...old, { ...data, status: 'SENT' }];
+          }
+        }
+      );
+    }
+
+    // Update conversations list
+    this.queryClient.invalidateQueries({
+      queryKey: queryKeys.chat.conversations.all,
+      refetchType: "active",
+    });
+  }
+
+  /**
+   * Handle message status updates (DELIVERED/READ)
+   * Updates status indicators in UI (checkmarks)
+   */
+  private handleMessageStatusUpdate(data: any): void {
+    if (!this.queryClient) return;
+
+    console.log("[WebSocket] Message status update:", data);
+
+    if (data.messageId && data.conversationId) {
+       // We know the conversation ID, so update directly
+       this.queryClient.setQueryData(
+        queryKeys.chat.messages.list(data.conversationId),
+        (old: any[] = []) => {
+            return old.map((msg) =>
+            msg.id === data.messageId
+                ? {
+                    ...msg,
+                    status: data.status,
+                    deliveredAt: data.deliveredAt || msg.deliveredAt,
+                    readAt: data.readAt || msg.readAt,
+                }
+                : msg
+            );
+        }
+       );
+    } else if (data.messageId) {
+      // Fallback: Scan all message queries if conversationId is missing (less efficient)
+      const queryCache = this.queryClient.getQueryCache();
+      // Inspect keys to match ["chat", "messages", "list", conversationId]
+      const messageQueries = queryCache.findAll({ 
+          predicate: (query) => 
+              Array.isArray(query.queryKey) && 
+              query.queryKey[0] === 'chat' && 
+              query.queryKey[1] === 'messages'
+      });
+
+      messageQueries.forEach((query: any) => {
+        if (query.state.data) {
+          const messages = query.state.data as any[];
+          const hasMessage = messages.some((msg) => msg.id === data.messageId);
+
+          if (hasMessage) {
+            // Update this specific message
+            this.queryClient.setQueryData(query.queryKey, (old: any[] = []) => {
+              return old.map((msg) =>
+                msg.id === data.messageId
+                  ? {
+                      ...msg,
+                      status: data.status,
+                      deliveredAt: data.deliveredAt || msg.deliveredAt,
+                      readAt: data.readAt || msg.readAt,
+                    }
+                  : msg
+              );
+            });
+          }
+        }
+      });
+    }
+
+    // Handle bulk read receipts (conversationId + lastReadMessageId)
+    if (data.conversationId && data.lastReadMessageId) {
+      this.queryClient.setQueryData(
+        queryKeys.chat.messages.list(data.conversationId),
+        (old: any[] = []) => {
+          return old.map((msg) => {
+            // Mark all messages up to lastReadMessageId as READ
+            if (msg.senderId !== this.userId && msg.id <= data.lastReadMessageId) {
+              return { ...msg, status: 'READ', readAt: data.readAt };
+            }
+            return msg;
+          });
+        }
+      );
     }
   }
 

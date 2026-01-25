@@ -83,6 +83,10 @@ export const queryKeys = {
       all: ["chat", "suggestions"] as const,
       list: () => ["chat", "suggestions", "list"] as const,
     },
+    messages: {
+      all: (conversationId: string) => ["chat", "messages", conversationId] as const,
+      list: (conversationId: string) => ["chat", "messages", "list", conversationId] as const,
+    },
 
   },
 };

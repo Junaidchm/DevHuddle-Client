@@ -48,20 +48,32 @@ export type WebSocketMessageType =
   | 'send_message'
   | 'new_message'
   | 'message_sent'
+  | 'message_delivered'
+  | 'message_read'
+  | 'message_status_updated'
   | 'typing'
   | 'stop_typing'
   | 'error'
   | 'heartbeat'
-  | 'heartbeat_ack';
+  | 'heartbeat_ack'
+  // Notification types
+  | 'new_notification'
+  | 'unread_count';
 
-export interface WebSocketMessage {
+export interface WebSocketMessage<T = any> {
   type: WebSocketMessageType;
-  data?: any;
+  data?: T;
   token?: string;
   recipientIds?: string[];
   content?: string;
   error?: string;
   message?: string;
+  // Chat specific fields
+  conversationId?: string;
+  dedupeId?: string;
+  messageId?: string;
+  lastReadMessageId?: string;
+  event?: string; // Legacy support
 }
 
 /**
