@@ -64,15 +64,15 @@ export function MediaUploadButton({ conversationId }: MediaUploadButtonProps) {
         type="button"
         onClick={() => fileInputRef.current?.click()}
         disabled={isUploading}
-        className="p-2 text-gray-400 hover:text-gray-300 transition-colors rounded-lg flex-shrink-0"
+        className="p-2 text-gray-500 hover:text-[#0A66C2] transition-colors rounded-lg flex-shrink-0"
         title="Attach"
       >
         {isUploading ? (
-          <div className="w-6 h-6 flex items-center justify-center text-xs font-medium text-[#00A884]">
+          <div className="w-5 h-5 flex items-center justify-center text-xs font-medium text-[#0A66C2]">
             {progress?.percentage || 0}%
           </div>
         ) : (
-          <Plus className="w-6 h-6" strokeWidth={2.5} />
+          <Plus className="w-5 h-5" strokeWidth={2.5} />
         )}
       </button>
     </>

@@ -19,14 +19,33 @@ export interface Participant {
   user?: User;
 }
 
+export type MessageType = 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO' | 'FILE' | 'STICKER';
+
 export interface Message {
   id: string;
   conversationId: string;
   senderId: string;
   content: string;
+  type: MessageType;
+  
+  // Media fields
+  mediaUrl?: string;
+  mediaId?: string;
+  mediaMimeType?: string;
+  mediaSize?: number;
+  mediaName?: string;
+  mediaDuration?: number;
+
   createdAt: string;
-  updatedAt: string;
-  status?: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+  updatedAt?: string;
+  
+  // Status
+  status: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+  deliveredAt?: string;
+  readAt?: string;
+  
+  // Optimistic updates
+  dedupeId?: string;
 }
 
 export interface Conversation {

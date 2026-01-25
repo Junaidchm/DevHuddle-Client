@@ -24,22 +24,9 @@ export function useCreateConversation(onConversationCreated?: (conversation: Con
     mutationFn: async (participantIds: string[]) => {
       console.log('🚀 [MUTATION] Starting conversation creation', { participantIds, authHeaders });
       
-      // First, check if conversation already exists
-      console.log('🔍 [MUTATION] Checking if conversation exists...');
-      const checkResult = await checkConversationExists(participantIds, authHeaders);
-      console.log('✅ [MUTATION] Check result:', checkResult);
-      
-      if (checkResult.data.exists && checkResult.data.conversationId) {
-        // Conversation exists - need to fetch full conversation data
-        console.log('📋 [MUTATION] Conversation already exists, fetching full data...');
-        // For now, we'll return a marker and let the frontend handle it
-        // In production, you might want to add an API call to fetch the full conversation
-        return {
-          conversationId: checkResult.data.conversationId,
-          conversation: null, // Will be fetched separately if needed
-          isNew: false,
-        };
-      }
+      // We reuse the 'create' endpoint which implements find-or-create logic on the backend
+      // This ensures we always get the full enriched conversation object back,
+      // whether it's new or existing, without an extra round trip.
 
       // Conversation doesn't exist, create new one
       console.log('➕ [MUTATION] Creating new conversation...');
@@ -156,7 +143,8 @@ export function useCreateConversation(onConversationCreated?: (conversation: Con
       return { previousConversations, optimisticId };
     },
 
-    onSuccess: ({ conversation, conversationId, isNew }, variables, context) => {
+    onSuccess: ({ conversation, isNew }, variables, context) => {
+      const conversationId = conversation.conversationId;
       console.log('🎉 [SUCCESS] Mutation succeeded', { conversation, conversationId, isNew });
       
       if (isNew && conversation) {
@@ -213,10 +201,6 @@ export function useCreateConversation(onConversationCreated?: (conversation: Con
       // Call callback with real conversation object
       if (conversation) {
         onConversationCreated?.(conversation);
-      } else if (conversationId) {
-         // Fallback if for some reason we only have ID (shouldn't happen with new logic)
-         // We might need to fetch it or just construct a partial one, but let's assume we have it or handle in UI
-         // proper type fix later if needed, but for now we prioritized conversation object being present
       }
     },
 

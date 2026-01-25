@@ -44,15 +44,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               // If JSON parsing fails, use status text
               errorData = { message: res.statusText || "Login failed" };
             }
-            
+
             // Extract the exact error message from the backend
             // API Gateway sends: { status: number, message: string }
             // Auth service might send: { message: string } or { error: string }
-            const errorMessage = errorData?.message || 
-                                errorData?.error || 
-                                (typeof errorData === 'string' ? errorData : null) ||
-                                `Login failed (${res.status})`;
-            
+            const errorMessage = errorData?.message ||
+              errorData?.error ||
+              (typeof errorData === 'string' ? errorData : null) ||
+              `Login failed (${res.status})`;
+
             // Log for debugging
             console.error("Login error response:", {
               status: res.status,
@@ -60,7 +60,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               errorData,
               message: errorMessage,
             });
-            
+
             // Throw error with the exact message from backend
             throw new Error(errorMessage);
           }
@@ -90,7 +90,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
 
-   pages: {
+  pages: {
     signIn: "/signIn",   // 👈 This is where unauthenticated users will be sent
   },
 
@@ -100,7 +100,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
 
   callbacks: {
-    
+
     async jwt({ token, user }) {
       // On first login → attach tokens
       if (user) {
@@ -128,7 +128,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // ✅ FIXED: Refresh token before it expires (5 minutes buffer)
       // This prevents 401 errors by refreshing proactively
       const shouldRefresh = token.expiresAt && Date.now() >= ((token.expiresAt as number) - 5 * 60 * 1000);
-      
+
       // Otherwise try to refresh (only if refreshToken exists)
       if (!token.refreshToken) {
         console.error("[NextAuth JWT] No refresh token available");
@@ -171,7 +171,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         const data = await res.json();
-        
+
         if (!data?.user?.accessToken) {
           console.error("[NextAuth JWT] No access token in refresh response:", data);
           throw new Error("No access token in refresh response");

@@ -30,7 +30,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <QueryClientProvider client={queryClient}>
               <WebSocketProvider>
                 {children}
-                <ReactQueryDevtools initialIsOpen={false} />
+                {/* <ReactQueryDevtools initialIsOpen={false} /> */}
               </WebSocketProvider>
             </QueryClientProvider>
           </SessionProviderWrapper>

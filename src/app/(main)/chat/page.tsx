@@ -5,54 +5,21 @@ import { ConversationList } from "@/src/components/chat/ConversationList";
 import { ChatHeader } from "@/src/components/chat/ChatHeader";
 import { MessageList } from "@/src/components/chat/MessageList";
 import { ChatInput } from "@/src/components/chat/ChatInput";
-
+import { useMessages } from "@/src/hooks/chat/useMessages";
 import { ConversationWithMetadata } from "@/src/types/chat.types";
 import { useSession } from "next-auth/react";
-
-type MessageStatus = "sending" | "sent" | "delivered" | "read";
-
-interface Message {
-  id: string;
-  content: string;
-  senderId: string;
-  timestamp: string;
-  status?: MessageStatus;
-}
 
 export default function ChatPage() {
   const { data: session } = useSession();
   const [selectedConversation, setSelectedConversation] = useState<ConversationWithMetadata | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  
+  //✅ REAL-TIME: Fetch messages using useMessages hook (integrates with WebSocket)
+  const { data: messages = [], isLoading } = useMessages(
+    selectedConversation?.conversationId ?? null
+  );
 
   const handleSelectConversation = (conversation: ConversationWithMetadata) => {
     setSelectedConversation(conversation);
-    // TODO: Fetch messages for this conversation
-    setMessages([]);
-  };
-
-  const handleSendMessage = (content: string) => {
-    if (!selectedConversation) return;
-
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      content,
-      senderId: "me",
-      timestamp: new Date().toISOString(),
-      status: "sending",
-    };
-
-    setMessages([...messages, newMessage]);
-
-    // TODO: Send message via API/WebSocket
-    setTimeout(() => {
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === newMessage.id
-            ? { ...msg, status: "sent" as MessageStatus }
-            : msg
-        )
-      );
-    }, 1000);
   };
 
   return (
@@ -84,18 +51,24 @@ export default function ChatPage() {
              );
           })()}
 
-          {/* Messages */}
+          {/* Messages - REAL-TIME */}
           <MessageList
             messages={messages}
-            currentUserId="me"
+            currentUserId={session?.user?.id || ""}
+            isLoading={isLoading}
             getUserName={(userId: string) => {
-              if (userId === "me") return "You";
-              return "Other User";
+              if (userId === session?.user?.id) return "You";
+              const participant = selectedConversation.participants.find(
+                p => p.userId === userId
+              );
+              return participant?.name || "Unknown";
             }}
           />
 
-          {/* Input */}
-          <ChatInput onSend={handleSendMessage} />
+          {/* Input - REAL-TIME WebSocket */}
+          <ChatInput 
+            conversationId={selectedConversation.conversationId}
+          />
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center bg-gray-50">
@@ -105,8 +78,7 @@ export default function ChatPage() {
                 className="w-16 h-16 text-[#0A66C2]"
                 fill="none"
                 viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
+                stroke="currentColor">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"

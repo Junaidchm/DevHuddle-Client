@@ -65,7 +65,21 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
   // Handle new conversation
   const handleNewConversation = async (userId: string) => {
     console.log('👆 [CLICK] User clicked suggestion', { userId });
-    // Only pass the other user's ID - backend adds current user automatically
+    
+    // FAST PATH: Check if we already have this conversation in our local list
+    // This provides INSTANT switching without waiting for network
+    const existingConversation = conversations.find(c => 
+      c.participants.some(p => p.userId === userId)
+    );
+
+    if (existingConversation) {
+       console.log('⚡ [INSTANT] Found in cache, switching immediately', existingConversation.conversationId);
+       // Check if we need to cast or if the types match perfectly (they should)
+       onSelect(existingConversation as any as ConversationWithMetadata);
+    }
+
+    // Still trigger mutation to ensure backend sync/fetch latest data
+    // The onMutate hook handles preventing duplicate entries in the list
     createConversation.mutate([userId]);
     console.log('📤 [CLICK] Mutation triggered');
   };

@@ -225,14 +225,20 @@ class WebSocketManager {
    * Get WebSocket URL for different services
    * @param service - 'notifications' (default) or 'chat'
    */
-  private getWebSocketUrl(service: 'notifications' | 'chat' = 'notifications'): string {
-    // Chat service has its own WebSocket server
+  private getWebSocketUrl(service: 'notifications' | 'chat' = 'chat'): string {
+    // Chat service has its own WebSocket server - connect via API Gateway
     if (service === 'chat') {
-      const chatWsUrl = process.env.NEXT_PUBLIC_CHAT_WS_URL || 'ws://localhost:3003';
-      return `${chatWsUrl}?token=${this.token || ''}`;
+      // Use API Gateway URL (usually port 8080)
+      const baseUrl =
+        process.env.NEXT_PUBLIC_WS_URL ||
+        process.env.NEXT_PUBLIC_API_URL ||
+        "http://localhost:8080";
+      
+      const wsUrl = baseUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:") + "/api/v1/chat";
+      return `${wsUrl}?token=${this.token || ''}`;
     }
-    
-    // Default: Notifications WebSocket (existing)
+
+    // Default: Notifications WebSocket
     const baseUrl =
       process.env.NEXT_PUBLIC_WS_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
@@ -364,7 +370,7 @@ class WebSocketManager {
           // Check for duplicates
           const exists = old.some((msg) => msg.id === messageData.id);
           if (exists) return old;
-          
+
           return [...old, messageData];
         }
       );
@@ -405,7 +411,7 @@ class WebSocketManager {
         (old: any[] = []) => {
           // Replace temp message (dedupeId match) or add if missing
           // Optimistic updates usually use temp-ID, so we check for that
-          const index = old.findIndex((msg) => 
+          const index = old.findIndex((msg) =>
             msg.dedupeId === data.dedupeId || msg.id === `temp-${data.dedupeId}`
           );
 
@@ -439,31 +445,31 @@ class WebSocketManager {
     console.log("[WebSocket] Message status update:", data);
 
     if (data.messageId && data.conversationId) {
-       // We know the conversation ID, so update directly
-       this.queryClient.setQueryData(
+      // We know the conversation ID, so update directly
+      this.queryClient.setQueryData(
         queryKeys.chat.messages.list(data.conversationId),
         (old: any[] = []) => {
-            return old.map((msg) =>
+          return old.map((msg) =>
             msg.id === data.messageId
-                ? {
-                    ...msg,
-                    status: data.status,
-                    deliveredAt: data.deliveredAt || msg.deliveredAt,
-                    readAt: data.readAt || msg.readAt,
-                }
-                : msg
-            );
+              ? {
+                ...msg,
+                status: data.status,
+                deliveredAt: data.deliveredAt || msg.deliveredAt,
+                readAt: data.readAt || msg.readAt,
+              }
+              : msg
+          );
         }
-       );
+      );
     } else if (data.messageId) {
       // Fallback: Scan all message queries if conversationId is missing (less efficient)
       const queryCache = this.queryClient.getQueryCache();
       // Inspect keys to match ["chat", "messages", "list", conversationId]
-      const messageQueries = queryCache.findAll({ 
-          predicate: (query) => 
-              Array.isArray(query.queryKey) && 
-              query.queryKey[0] === 'chat' && 
-              query.queryKey[1] === 'messages'
+      const messageQueries = queryCache.findAll({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) &&
+          query.queryKey[0] === 'chat' &&
+          query.queryKey[1] === 'messages'
       });
 
       messageQueries.forEach((query: any) => {
@@ -477,11 +483,11 @@ class WebSocketManager {
               return old.map((msg) =>
                 msg.id === data.messageId
                   ? {
-                      ...msg,
-                      status: data.status,
-                      deliveredAt: data.deliveredAt || msg.deliveredAt,
-                      readAt: data.readAt || msg.readAt,
-                    }
+                    ...msg,
+                    status: data.status,
+                    deliveredAt: data.deliveredAt || msg.deliveredAt,
+                    readAt: data.readAt || msg.readAt,
+                  }
                   : msg
               );
             });
@@ -521,7 +527,7 @@ class WebSocketManager {
           queryKey: ["unread-count", this.userId],
           refetchType: "active",
         });
-        
+
         // ✅ FIXED: Also refetch if notifications page is open
         this.queryClient.refetchQueries({
           queryKey: ["notifications", this.userId],
@@ -566,8 +572,8 @@ class WebSocketManager {
     // Broadcast to components via custom event
     // Components can listen: window.addEventListener('chat:message', ...)
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('chat:message', { 
-        detail: messageData 
+      window.dispatchEvent(new CustomEvent('chat:message', {
+        detail: messageData
       }));
     }
   }

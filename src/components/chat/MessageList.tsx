@@ -1,25 +1,33 @@
 import React from "react";
 import { MessageBubble } from "./MessageBubble";
-
-interface Message {
-  id: string;
-  content: string;
-  senderId: string;
-  timestamp: string;
-  status?: "sending" | "sent" | "delivered" | "read";
-}
+import { Message } from "@/src/types/chat.types";
 
 interface MessageListProps {
   messages: Message[];
   currentUserId: string;
   getUserName?: (userId: string) => string;
+  isLoading?: boolean;
 }
 
-export function MessageList({ messages, currentUserId, getUserName }: MessageListProps) {
+export function MessageList({ messages, currentUserId, getUserName, isLoading = false }: MessageListProps) {
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+        <div className="flex flex-col items-center justify-center h-full">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A66C2]"></div>
+          <p className="mt-4 text-gray-500">Loading messages...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Group messages by date
   const groupedMessages: { [key: string]: Message[] } = {};
   messages.forEach((message) => {
-    const date = new Date(message.timestamp).toDateString();
+    // legacy support for timestamp vs createdAt
+    const ts = message.createdAt || (message as any).timestamp;
+    const date = new Date(ts).toDateString();
     if (!groupedMessages[date]) {
       groupedMessages[date] = [];
     }

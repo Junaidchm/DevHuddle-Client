@@ -1,12 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
-import { Send, Smile } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Send, Smile, X, Mic } from "lucide-react";
+import dynamic from "next/dynamic";
 import { MediaUploadButton } from "./MediaUploadButton";
 import { useWebSocket } from "@/src/contexts/WebSocketContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { v4 as uuidv4 } from "uuid";
+import { useVoiceRecording } from "@/src/hooks/chat/useVoiceRecording";
+
+// Dynamically import EmojiPicker to avoid SSR issues
+const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
 
 interface ChatInputProps {
   conversationId: string;
@@ -15,9 +20,51 @@ interface ChatInputProps {
 
 export function ChatInput({ conversationId, disabled }: ChatInputProps) {
   const [message, setMessage] = useState("");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  
   const { sendMessage: sendWsMessage,  isConnected } = useWebSocket();
   const queryClient = useQueryClient();
   const { data: session } = useSession();
+  
+  // Voice recording hook
+  const {
+    isRecording,
+    duration,
+    error: recordingError,
+    isUploading: isUploadingVoice,
+    startRecording,
+    stopRecording,
+    cancelRecording,
+  } = useVoiceRecording();
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    }
+
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showEmojiPicker]);
+
+  // 🔍 DEBUG: Log connection state
+  React.useEffect(() => {
+    console.log("[ChatInput] Connection State:", {
+      isConnected,
+      hasSession: !!session,
+      userId: session?.user?.id,
+      disabled,
+      conversationId
+    });
+  }, [isConnected, session, disabled, conversationId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +85,7 @@ export function ChatInput({ conversationId, disabled }: ChatInputProps) {
           senderId: session.user.id,
           content,
           createdAt: new Date().toISOString(),
+          timestamp: new Date().toISOString(),
           status: "sending",
           dedupeId,
         },
@@ -64,68 +112,183 @@ export function ChatInput({ conversationId, disabled }: ChatInputProps) {
     }
   };
 
+  // Emoji picker handler
+  const handleEmojiClick = (emojiData: any) => {
+    setMessage((prev) => prev + emojiData.emoji);
+    setShowEmojiPicker(false);
+  };
+
+  // Voice recording handlers
+  const handleStartVoiceRecording = async () => {
+    await startRecording();
+  };
+
+  const handleSendVoiceRecording = async () => {
+    const result = await stopRecording();
+    
+    if (result && session?.user?.id) {
+      // Send voice message via WebSocket
+      sendWsMessage({
+        type: "send_message",
+        recipientIds: [],
+        content: "",
+        conversationId,
+        // @ts-ignore
+        messageType: 'AUDIO',
+        mediaUrl: result.mediaUrl,
+        mediaId: result.mediaId,
+        mediaDuration: result.duration,
+      } as any);
+    }
+  };
+
+  const handleCancelVoiceRecording = () => {
+    cancelRecording();
+  };
+
+  // 🔧 FIX: Only disable if explicitly disabled prop is true, not based on connection
+  const isInputDisabled = disabled || false;
+  const canSend = isConnected && !!session?.user?.id && message.trim().length > 0;
+
   return (
-    <form onSubmit={handleSubmit} className="px-4 py-3 bg-[#202C33] border-t border-[#202C33] flex items-end gap-2">
+    <form onSubmit={handleSubmit} className="px-4 py-3 bg-white border-t border-gray-200 flex items-end gap-2">
       {/* Plus / Attach Button */}
       <div className="mb-[5px]">
         <MediaUploadButton conversationId={conversationId} />
       </div>
 
       {/* Input Field Container */}
-      <div className="flex-1 bg-[#2A3942] rounded-lg flex items-end px-3 py-2 min-h-[42px] max-h-32">
-        {/* Emoji Button (Inside Left) - WhatsApp Web puts it left, Mobile right. Screenshot shows right? 
-            Wait, standard WhatsApp Web has smiley left within pill. Screenshot provided has Smiley inside right?
-            Let's Stick to standard WhatsApp Web: Smiley Left, Input, Mic Right.
-            User Screenshot 1769335076708.png: 
-            [Plus] [Rounded Rect: [Cursor] ... [Smile] [Sticker] ] [Mic]
-            Ah, inside the PILL, the icons are on the RIGHT.
-        */}
-        
-        {/* Text Area */}
+      <div className="flex-1 bg-gray-50 rounded-lg flex items-end px-3 py-2 min-h-[42px] max-h-32 border border-gray-200 focus-within:border-[#0A66C2] focus-within:ring-1 focus-within:ring-[#0A66C2] transition-all">
+        {/* Text Area - ALWAYS ENABLED for typing */}
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Type a message"
-          disabled={disabled || !isConnected}
+          placeholder={
+            !isConnected 
+              ? "Connecting to chat..." 
+              : !session?.user?.id
+              ? "Loading..."
+              : "Type a message"
+          }
+          disabled={isInputDisabled}
           rows={1}
-          className="flex-1 bg-transparent border-none text-[15px] text-[#D1D7DB] placeholder:text-[#8696A0] resize-none focus:outline-none focus:ring-0 max-h-32 py-1 scrollbar-hide"
+          className="flex-1 bg-transparent border-none text-[15px] text-gray-800 placeholder:text-gray-400 resize-none focus:outline-none focus:ring-0 max-h-32 py-1"
           style={{ minHeight: "24px", lineHeight: "1.5" }}
         />
 
         {/* Icons Inside Input (Right Side) */}
-        <div className="flex items-center gap-2 mb-0.5 ml-2">
-           <button
-            type="button"
-            className="text-[#8696A0] hover:text-[#D1D7DB] transition-colors"
-            disabled={disabled}
-          >
-           {/* Sticker Icon Placeholder - using Smile for now as generic emoji/sticker entry */}
-           <Smile className="w-6 h-6" />
-          </button>
+        <div className="flex items-center gap-2 mb-0.5 ml-2 relative">
+          {/* Emoji Picker Button */}
+          <div ref={emojiPickerRef} className="relative">
+            <button
+              type="button"
+              className="text-gray-400 hover:text-[#0A66C2] transition-colors"
+              disabled={isInputDisabled || isRecording}
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              title="Add emoji"
+            >
+              <Smile className="w-5 h-5" />
+            </button>
+
+            {/* LinkedIn-style Emoji Picker Popover */}
+            {showEmojiPicker && (
+              <div className="absolute bottom-12 right-0 z-50 shadow-2xl rounded-lg overflow-hidden border border-gray-200 bg-white">
+                <EmojiPicker
+                  onEmojiClick={handleEmojiClick}
+                  width={350}
+                  height={400}
+                  searchDisabled={false}
+                  skinTonesDisabled={false}
+                  previewConfig={{
+                    showPreview: false,
+                  }}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Mic / Send Button */}
-      {message.trim() ? (
+      {isRecording ? (
+        /* Voice Recording Interface */
+        <div className="flex items-center gap-2 mb-[5px] px-3 py-2 bg-red-50 rounded-full border border-red-200">
+          {/* Recording indicator */}
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+            <span className="text-sm font-medium text-red-600">
+              {Math.floor(duration / 60)}:{(duration % 60).toString().padStart(2, '0')}
+            </span>
+          </div>
+
+          {/* Cancel button */}
+          <button
+            type="button"
+            onClick={handleCancelVoiceRecording}
+            className="p-1.5 hover:bg-red-100 rounded-full transition-colors"
+            title="Cancel recording"
+          >
+            <X className="w-4 h-4 text-red-600" />
+          </button>
+
+          {/* Send voice button */}
+          <button
+            type="button"
+            onClick={handleSendVoiceRecording}
+            disabled={isUploadingVoice}
+            className="p-1.5 bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white rounded-full transition-colors"
+            title="Send voice message"
+          >
+            {isUploadingVoice ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      ) : message.trim() ? (
+        /* Send Text Button */
         <button
           type="submit"
-          disabled={disabled || !isConnected}
-          className="mb-[5px] p-2 text-[#8696A0] hover:text-[#D1D7DB] transition-colors bg-transparent"
+          disabled={!canSend}
+          className={`
+            mb-[5px] p-2.5 rounded-full transition-all
+            ${canSend 
+              ? 'bg-[#0A66C2] text-white hover:bg-[#004182]' 
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }
+          `}
+          title={!isConnected ? "Connecting..." : !session?.user?.id ? "Loading..." : "Send message"}
         >
-          <Send className="w-6 h-6 text-[#00A884]" /> 
+          <Send className="w-5 h-5" /> 
         </button>
       ) : (
+        /* Voice Recording Button */
         <button
-          type="button" // Mic button logic to be added later
-          disabled={disabled || !isConnected}
-          className="mb-[5px] p-2 text-[#8696A0] hover:text-[#D1D7DB] transition-colors bg-transparent"
+          type="button"
+          disabled={isInputDisabled || !isConnected}
+          className="mb-[5px] p-2 text-gray-400 hover:text-[#0A66C2] transition-colors disabled:opacity-50"
+          onClick={handleStartVoiceRecording}
+          title="Record voice message"
         >
-          {/* Using generic Mic icon */}
-           <svg viewBox="0 0 24 24" width="24" height="24" className="fill-current">
-              <path fill="currentColor" d="M11.999 14.942c2.001 0 3.531-1.53 3.531-3.531V4.35c0-2.001-1.53-3.531-3.531-3.531S8.469 2.35 8.469 4.35v7.061c0 2.001 1.53 3.531 3.53 3.531zm4.606-3.531c0 2.544-2.063 4.606-4.606 4.606-2.544 0-4.606-2.063-4.606-4.606H6.218c0 2.896 2.113 5.298 4.908 5.669v3.081h1.746v-3.081c2.795-.371 4.908-2.773 4.908-5.669h-1.175z"></path>
-           </svg>
+          <Mic className="w-6 h-6" />
         </button>
+      )}
+
+      {/* Recording Error Toast */}
+      {recordingError && (
+        <div className="absolute bottom-20 right-4 bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-lg shadow-lg">
+          <p className="text-sm">{recordingError}</p>
+        </div>
+      )}
+
+      {/* Debug Info (remove after testing) */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="hidden">
+          Connection: {isConnected ? "✅" : "❌"} | 
+          Session: {session?.user?.id ? "✅" : "❌"}
+        </div>
       )}
     </form>
   );
