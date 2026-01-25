@@ -1,7 +1,14 @@
 import { axiosInstance } from "@/src/axios/axios";
 import { API_ROUTES } from "@/src/constants/api.routes";
 
-export type MediaType = "POST_IMAGE" | "POST_VIDEO" | "PROFILE_IMAGE";
+export type MediaType = 
+  | "POST_IMAGE" 
+  | "POST_VIDEO" 
+  | "PROFILE_IMAGE"
+  | "CHAT_IMAGE"
+  | "CHAT_VIDEO"
+  | "CHAT_AUDIO"
+  | "CHAT_FILE";
 
 export interface UploadSessionRequest {
   fileName: string;
