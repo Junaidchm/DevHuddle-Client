@@ -101,7 +101,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
   callbacks: {
 
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      // Handle session update via useSession().update()
+      if (trigger === "update" && session) {
+        // Update user image if provided
+        if (session.inputImage) token.image = session.inputImage;
+        // Allows updating other fields if needed
+        if (session.name) token.name = session.name;
+        // Add other fields you might want to update here
+        return token;
+      }
+
       // On first login → attach tokens
       if (user) {
         return {

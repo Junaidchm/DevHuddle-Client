@@ -63,6 +63,11 @@ export const getProfile = async (headers: Record<string, string>) => {
   return response;
 };
 
+export const getProfileByUsername = async (username: string, headers?: Record<string, string>) => {
+  const response = await axiosInstance.get(API_ROUTES.USERS.PROFILE_BY_USERNAME(username), { headers });
+  return response.data;
+};
+
 export const updateProfile = async (payload: userUpdate, headers: Record<string, string>) => {
   const response = await axiosInstance.patch(API_ROUTES.AUTH.PROFILE, payload, { headers });
   return response.data;
@@ -104,7 +109,7 @@ export const uploadToS3 = async (file: File, headers: Record<string, string>) =>
       body: file,
     });
 
-    return presignedKey;
+    return presignedKey;  
   } catch (err: any) {
     console.error("Upload error:", err);
     throw new Error("Failed to upload profile picture to S3");

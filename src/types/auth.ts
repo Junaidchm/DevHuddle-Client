@@ -56,7 +56,7 @@ export interface userUpdate {
   location?: string;
   bio?: string;
   skills?: string[];
-  yearsOfExperience?: string;
+  yearsOfExperience?: number;
   jobTitle?: string;
   company?: string;
 }

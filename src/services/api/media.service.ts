@@ -196,3 +196,32 @@ export const uploadFileToR2 = async (
   });
 };
 
+/**
+ * Orchestrate full profile image upload flow
+ */
+export const uploadProfileImage = async (
+  file: File,
+  headers: Record<string, string>
+): Promise<string> => {
+  try {
+    // 1. Create upload session
+    const session = await createUploadSession({
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      mediaType: "PROFILE_IMAGE"
+    }, headers);
+
+    // 2. Upload to R2
+    await uploadFileToR2(file, session.uploadUrl);
+
+    // 3. Complete upload
+    const result = await completeUpload(session.mediaId, headers);
+
+    return result.cdnUrl;
+  } catch (error) {
+    console.error("Profile upload failed:", error);
+    throw error;
+  }
+};
+

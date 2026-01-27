@@ -1,11 +1,10 @@
 "use client";
 
 import {
-  getPresignedUrlForImage,
   getProfile,
   updateProfile,
-  uploadToS3,
 } from "@/src/services/api/auth.service";
+import { uploadProfileImage } from "@/src/services/api/media.service";
 import {
   Button,
   Card,
@@ -29,10 +28,10 @@ import { useDispatch } from "react-redux";
 import { AppDispatch, RootState } from "@/src/store/store";
 import { setProfilePicture } from "@/src/store/slices/userSlice";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useProtected } from "@/src/customHooks/useProtected";
 import showLogoutConfirmation from "@/src/utils/showLogoutConfirmation";
 import { userUpdate } from "@/src/types/auth";
-import usePresignedProfileImage from "@/src/customHooks/usePresignedProfileImage";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 import SkillsInput from "@/src/components/profile/SkillsInput";
 
@@ -41,7 +40,6 @@ export default function ProfilePage() {
 
   // useRedirectIfNotAuthenticated();
   // useProtected();
-  const profileImageUrl = usePresignedProfileImage();
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const dispatch = useDispatch<AppDispatch>();
@@ -129,6 +127,8 @@ export default function ProfilePage() {
     );
   }, [watchFields, originalData]);
 
+  const { update } = useSession();
+
   const onSubmit = async (data: ProfileFormData) => {
 
     try {
@@ -140,16 +140,24 @@ export default function ProfilePage() {
         skills: data.skills || [],
         jobTitle: data.jobTitle || "",
         company: data.company || "",
-        yearsOfExperience: data.yearsOfExperience || "",
+        yearsOfExperience: data.yearsOfExperience ? parseInt(data.yearsOfExperience) : 0,
       };
       let profilePictureKey: string | undefined;
       if (data.profileImage instanceof File) {
-        profilePictureKey = await uploadToS3(data.profileImage,authHeaders);
+        // Use MediaService orchestrator instead of Auth service S3 helper
+        profilePictureKey = await uploadProfileImage(data.profileImage, authHeaders);
         payload.profilePicture = profilePictureKey;
       }
      
       console.log('this is the profile picuture key' , profilePictureKey)
       await updateProfile(payload,authHeaders);
+      
+      // Update NextAuth session with new data
+      await update({
+        ...payload,
+        inputImage: profilePictureKey // Ensure session knows about new image if name changed
+      });
+
       if (profilePictureKey) {
         dispatch(setProfilePicture(profilePictureKey));
       }
@@ -235,7 +243,7 @@ export default function ProfilePage() {
                         value={field.value}
                         previewUrl={previewImage}
                         PROFILE_DEFAULT_URL={
-                          profileImageUrl || PROFILE_DEFAULT_URL
+                          profileData?.profilePicture || PROFILE_DEFAULT_URL
                         }
                       />
                     )}

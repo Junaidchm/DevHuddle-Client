@@ -1,6 +1,8 @@
 // app/components/ProfileHeader.tsx
 'use client';
 
+import { getProfileByUsername } from '@/src/services/api/auth.service';
+
 import { useQuery } from '@tanstack/react-query';
 import CoverImage from './CoverImage';
 import UserInfo from './UserInfo';
@@ -21,7 +23,7 @@ const ProfileHeader = ({ username, initialProfile, currentUserId }: ProfileHeade
   // This component now owns the query state.
   // It reads from the cache hydrated by the server component.
   const { data: profile } = useQuery<UserProfile>({
-    queryFn: () => Promise.resolve(initialProfile),
+    queryFn: () => getProfileByUsername(username),
     queryKey: queryKeys.profiles.detail(username),
     initialData: initialProfile,
     staleTime: 5 * 60 * 1000, // 5 minutes

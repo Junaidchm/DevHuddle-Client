@@ -1,32 +1,27 @@
 "use client";
 
-import { PROFILE_DEFAULT_URL } from "@/src/constents";
-import usePresignedProfileImageForAdmin from "@/src/customHooks/useShowImageForAdmin";
-import { fetchUserFullDetails } from "@/src/services/api/admin.service";
-import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 import { useQuery } from "@tanstack/react-query";
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import Link from "next/link";
+import { PROFILE_DEFAULT_URL } from "@/src/constents";
+import { useApiClient } from "@/src/lib/api-client";
+import { fetchUserFullDetails } from "@/src/services/api/admin.service";
 
 interface UserDetailsModalProps {
   userId: string;
-  onClose: Dispatch<SetStateAction<string | null>>;
+  onClose: (value: any) => void;
 }
 
-export default function UserDetailsModal({
-  userId,
-  onClose,
-}: UserDetailsModalProps) {
-  const authHeaders = useAuthHeaders();
-  const { data, error, isLoading } = useQuery({
-    queryKey: ["user", userId, authHeaders],
-    queryFn: () => fetchUserFullDetails(userId, authHeaders),
-    enabled: !!authHeaders.Authorization,
-    staleTime: 30000,
+export default function UserDetailsModal({ userId, onClose }: UserDetailsModalProps) {
+  const apiClient = useApiClient({ requireAuth: true });
+
+  const { data } = useQuery({
+    queryKey: ["user-details", userId],
+    queryFn: () => fetchUserFullDetails(userId, apiClient.getHeaders() as Record<string, string>),
+    enabled: !!userId && apiClient.isReady,
   });
- 
-  const profileImageUrl = usePresignedProfileImageForAdmin(data?.data)
- 
+
+  const profileImageUrl = data?.data?.profileImage;
+
   return (
     <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-[0_1px_3px_0_rgba(0,0,0,0.1),0_1px_2px_0_rgba(0,0,0,0.06)] w-full max-w-3xl max-h-[80vh] overflow-y-auto font-['Inter'] text-gray-900">

@@ -68,7 +68,6 @@ class WebSocketManager {
   private connectionState: ConnectionState = "disconnected";
   private listeners: Set<(state: ConnectionState) => void> = new Set();
   private reconnectTimeout: NodeJS.Timeout | null = null;
-  private authTimeout: NodeJS.Timeout | null = null;
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private reconnectAttempts = 0;
   private isAuthenticated = false;
@@ -144,9 +143,12 @@ class WebSocketManager {
       this.socket = socket;
 
       socket.onopen = () => {
-        console.log("[WebSocket] Connection established, authenticating...");
-        this.updateState("authenticating");
-        this.sendAuthMessage();
+        console.log("[WebSocket] Connection established (Authenticated via Gateway)");
+        // Gateway has already validated the token. Connection open means success.
+        this.isAuthenticated = true;
+        this.updateState("connected");
+        this.reconnectAttempts = 0;
+        this.startHeartbeat();
       };
 
       socket.onmessage = (event) => {
@@ -244,38 +246,10 @@ class WebSocketManager {
       process.env.NEXT_PUBLIC_API_URL ||
       "http://localhost:8080";
     return baseUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:") +
-      "/api/v1/notifications";
+      "/api/v1/notifications" + `?token=${this.token || ''}`; // Append token for Notification Service too
   }
 
-  private sendAuthMessage(): void {
-    if (!this.socket || !this.token) return;
-
-    // Set auth timeout
-    this.authTimeout = setTimeout(() => {
-      if (!this.isAuthenticated && this.socket) {
-        console.error("[WebSocket] Authentication timeout");
-        this.socket.close(4002, "Authentication timeout");
-      }
-    }, AUTH_TIMEOUT);
-
-    // Send auth message
-    setTimeout(() => {
-      if (this.socket && this.token) {
-        try {
-          const authMessage = JSON.stringify({
-            type: "auth",
-            token: this.token,
-          });
-          this.socket.send(authMessage);
-        } catch (error) {
-          console.error("[WebSocket] Failed to send auth message:", error);
-          if (this.socket) {
-            this.socket.close(4000, "Failed to authenticate");
-          }
-        }
-      }
-    }, 100);
-  }
+  // sendAuthMessage removed - handled by Gateway Handshake
 
   private handleMessage(event: MessageEvent): void {
     try {
@@ -291,22 +265,17 @@ class WebSocketManager {
         return;
       }
 
-      // Handle authentication
+      // Handle authentication success confirmation (legacy support or double check)
       if (message.type === "auth_success") {
-        console.log("[WebSocket] Authentication successful");
-        this.isAuthenticated = true;
-        this.updateState("connected");
-        this.reconnectAttempts = 0;
-        this.clearAuthTimeout();
-        this.startHeartbeat();
+        // Already handled in onopen, but safe to ignore or log
+        // console.log("Auth success confirmed by service");
         return;
       }
 
       if (message.type === "auth_error") {
-        console.error("[WebSocket] Authentication failed:", message.error);
+        console.error("[WebSocket] Authentication failed (Service rejected):", message.error);
         this.isAuthenticated = false;
         this.updateState("disconnected");
-        this.clearAuthTimeout();
         if (this.socket) {
           this.socket.close(4001, "Authentication failed");
         }
@@ -644,14 +613,6 @@ class WebSocketManager {
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
-    }
-    this.clearAuthTimeout();
-  }
-
-  private clearAuthTimeout(): void {
-    if (this.authTimeout) {
-      clearTimeout(this.authTimeout);
-      this.authTimeout = null;
     }
   }
 

@@ -3,8 +3,8 @@ import { useState } from "react";
 import { PostCreationProvider } from "@/src/contexts/PostCreationContext";
 import dynamic from "next/dynamic";
 import { Image, FileText, Video } from "lucide-react";
-import usePresignedProfileImage from "@/src/customHooks/usePresignedProfileImage";
 import { PROFILE_DEFAULT_URL } from "@/src/constents";
+import { useSession } from "next-auth/react";
 
 const LazyCreatePostModal = dynamic(() => import("./CreatePostModal"), {
   ssr: false,
@@ -16,7 +16,8 @@ interface PostComposerProps {
 
 export default function PostComposer({ userId }: PostComposerProps) {
   const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
-  const profileImage = usePresignedProfileImage();
+  const { data: session } = useSession();
+  const profileImage = session?.user?.image;
 
   return (
     <PostCreationProvider>

@@ -2,7 +2,6 @@
 
 import { NavLink } from "@/src/app/(main)/profile/update/[username]/components";
 import { useUnreadCount } from "@/src/customHooks/useNotifications";
-import usePresignedProfileImage from "@/src/customHooks/usePresignedProfileImage";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { PROFILE_DEFAULT_URL } from "@/src/constents";
@@ -13,7 +12,7 @@ import { useState } from "react";
 
 export default function NavBar() {
   const { data: session } = useSession();
-  const profileImageUrl = usePresignedProfileImage();
+  const profileImageUrl = session?.user?.image;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const { data: unreadData } = useUnreadCount(); 
