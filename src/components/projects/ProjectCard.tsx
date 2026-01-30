@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Project } from "@/src/services/api/project.service";
 import { Heart, Share2, Eye, ExternalLink } from "lucide-react";
+import { PROFILE_DEFAULT_URL } from "@/src/constents";
 
 interface ProjectCardProps {
   project: Project;
@@ -29,7 +30,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
 
   // Helper function to get author avatar URL
   const getAuthorAvatarUrl = (avatar: string | undefined): string => {
-    if (!avatar) return "";
+    if (!avatar) return PROFILE_DEFAULT_URL;
     // If it's already an absolute URL (S3, R2, etc.), return as is
     if (avatar.startsWith("http://") || avatar.startsWith("https://")) {
       return avatar;
@@ -126,16 +127,14 @@ export default function ProjectCard({ project }: ProjectCardProps) {
           {/* Author */}
           <div className="flex items-center gap-2 mt-4 pt-4 border-t">
             <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
-              {project.author.avatar && (
-                <Image
-                  src={getAuthorAvatarUrl(project.author.avatar)}
-                  alt={project.author.name}
-                  width={32}
-                  height={32}
-                  className="object-cover"
-                  unoptimized={project.author.avatar?.includes("s3") || project.author.avatar?.includes("r2")}
-                />
-              )}
+              <Image
+                src={getAuthorAvatarUrl(project.author.avatar)}
+                alt={project.author.name}
+                width={32}
+                height={32}
+                className="object-cover"
+                unoptimized={true}
+              />
             </div>
             <div>
               <p className="text-sm font-medium">{project.author.name}</p>

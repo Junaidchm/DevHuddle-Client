@@ -4,7 +4,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { usePathname, useRouter } from "next/navigation";
+// import { usePathname, useRouter } from "next/navigation";
 import { deletePost } from "../feedEditor/actions/deletePost";
 import { NewPost, PostsPage } from "@/src/app/types/feed";
 import toast from "react-hot-toast";
@@ -12,8 +12,8 @@ import toast from "react-hot-toast";
 export function useDeletePostMutation() {
   const queryClient = useQueryClient();
 
-  const router = useRouter();
-  const pathname = usePathname();
+  // const router = useRouter();
+  // const pathname = usePathname();
 
   const mutation = useMutation({
     mutationFn: deletePost,
@@ -40,9 +40,9 @@ export function useDeletePostMutation() {
 
       toast.success("Post Deleted successfully");
 
-      if (pathname === `/posts/${deletedPost.id}`) {
-        router.push(`/profile/${deletedPost.user.username}`);
-      }
+      // if (pathname === `/posts/${deletedPost.id}`) {
+      //   router.push(`/profile/${deletedPost.user.username}`);
+      // }
     },
     onError(error) {
       console.error(error);

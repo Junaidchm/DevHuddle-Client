@@ -8,7 +8,8 @@ export type MediaType =
   | "CHAT_IMAGE"
   | "CHAT_VIDEO"
   | "CHAT_AUDIO"
-  | "CHAT_FILE";
+  | "CHAT_FILE"
+  | "COVER_IMAGE";
 
 export interface UploadSessionRequest {
   fileName: string;

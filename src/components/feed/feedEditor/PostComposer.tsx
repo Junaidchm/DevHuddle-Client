@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PostCreationProvider } from "@/src/contexts/PostCreationContext";
 import dynamic from "next/dynamic";
 import { Image, FileText, Video } from "lucide-react";
@@ -17,13 +17,21 @@ interface PostComposerProps {
 export default function PostComposer({ userId }: PostComposerProps) {
   const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
   const profileImage = usePresignedProfileImage();
+  const [imageSrc, setImageSrc] = useState(PROFILE_DEFAULT_URL);
+
+  useEffect(() => {
+    if (profileImage) {
+      setImageSrc(profileImage);
+    }
+  }, [profileImage]);
 
   return (
     <PostCreationProvider>
       <div className="bg-white rounded-xl p-4 mb-6 border border-slate-200 shadow-sm ">
         <div className="flex items-center gap-3 mb-4">
           <img
-            src={profileImage ? profileImage : PROFILE_DEFAULT_URL}
+            src={imageSrc}
+            onError={() => setImageSrc(PROFILE_DEFAULT_URL)}
             className="w-12 h-12 rounded-full object-cover"
             alt="Profile"
           />

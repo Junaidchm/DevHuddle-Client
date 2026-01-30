@@ -199,7 +199,7 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
             onClick={handleSend}
           />
           {/* Post Menu */}
-          <div className="relative">
+          {/* <div className="relative">
             <button
               onClick={() => setShowPostMenu(!showPostMenu)}
               className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
@@ -237,7 +237,7 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
                 )}
               </div>
             )}
-          </div>
+          </div> */}
           </div>
         </div>
       </div>

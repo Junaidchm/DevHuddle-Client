@@ -10,6 +10,7 @@ import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { PROFILE_DEFAULT_URL } from "@/src/constents";
 
 interface ProjectDetailProps {
   project: Project;
@@ -23,7 +24,7 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
 
   // Helper function to get author avatar URL
   const getAuthorAvatarUrl = (avatar: string | undefined): string => {
-    if (!avatar) return "";
+    if (!avatar) return PROFILE_DEFAULT_URL;
     // If it's already an absolute URL (S3, R2, etc.), return as is
     if (avatar.startsWith("http://") || avatar.startsWith("https://")) {
       return avatar;
@@ -62,16 +63,14 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
         {/* Author */}
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
-            {project.author.avatar && (
-              <Image
-                src={getAuthorAvatarUrl(project.author.avatar)}
-                alt={project.author.name}
-                width={40}
-                height={40}
-                className="object-cover"
-                unoptimized={project.author.avatar?.includes("s3") || project.author.avatar?.includes("r2")}
-              />
-            )}
+            <Image
+              src={getAuthorAvatarUrl(project.author.avatar)}
+              alt={project.author.name}
+              width={40}
+              height={40}
+              className="object-cover"
+              unoptimized={true}
+            />
           </div>
           <div>
             <p className="font-medium">{project.author.name}</p>

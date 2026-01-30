@@ -2,6 +2,7 @@
 'use client';
 import React from 'react';
 import { cn } from '@/src/lib/utils';
+import { PROFILE_DEFAULT_URL } from '@/src/constents';
 
 interface AvatarProps {
   src: string;
@@ -10,10 +11,21 @@ interface AvatarProps {
 }
 
 const Avatar = ({ src, alt, className }: AvatarProps) => {
+  const [imgSrc, setImgSrc] = React.useState(src);
+
+  React.useEffect(() => {
+    setImgSrc(src);
+  }, [src]);
+
   return (
     <div className="relative">
       <div className={cn("w-[150px] h-[150px] rounded-full border-4 border-white overflow-hidden bg-white shadow-lg", className)}>
-        <img src={src} alt={alt} className="w-full h-full object-cover" />
+        <img 
+          src={imgSrc || PROFILE_DEFAULT_URL} 
+          alt={alt} 
+          className="w-full h-full object-cover"
+          onError={() => setImgSrc(PROFILE_DEFAULT_URL)}
+        />
       </div>
       <button
         className="absolute bottom-2 right-2 bg-white text-blue-500 border-none w-8 h-8 rounded-full flex items-center justify-center cursor-pointer shadow-md"

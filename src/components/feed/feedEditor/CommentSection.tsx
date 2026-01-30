@@ -27,7 +27,7 @@ interface CommentSectionProps {
   onClose?: () => void;
 }
 
-const PROFILE_DEFAULT_URL = "/default-avatar.png";
+import { PROFILE_DEFAULT_URL } from "@/src/constents";
 
 // Author Badge Component (LinkedIn-style)
 const AuthorBadge: React.FC = () => (

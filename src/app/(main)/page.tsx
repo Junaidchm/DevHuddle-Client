@@ -1,11 +1,6 @@
-import { notFound } from "next/navigation";
 import PostComposer from "@/src/components/feed/feedEditor/PostComposer";
 import FeedContainer from "@/src/components/feed/feedEditor/FeedContainer";
-import Sidebar from "@/src/components/feed/feedEditor/SideBar";
-import { FeedResponse, User } from "../types/feed";
-import { useState } from "react";
-import { Providers } from "@/src/store/providers";
-import { getSession } from "next-auth/react";
+import Sidebar from "@/src/components/feed/feedEditor/SideBar"
 import { auth } from "@/auth";
 
 interface CommunityFeedProps {

@@ -4,9 +4,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { PostIntract } from "./PostIntract";
 import { formatRelativeDate } from "@/src/utils/formateRelativeDate";
 import DeletePostDialog from "./DeletePostModal";
-import Image from "next/image";
-import useGetUserData from "@/src/customHooks/useGetUserData";
 import { useCopyPostLink } from "./Hooks/useCopyPostLink";
+import { PROFILE_DEFAULT_URL } from "@/src/constents";
 
 interface PostProp {
   post: NewPost;
@@ -16,7 +15,7 @@ interface PostProp {
 
 // Attachment interface based on your data structure
 interface Attachment {
- id: string,
+id: string,
 postId:string;
 type:string;
 url: string,
@@ -58,7 +57,7 @@ const VideoPlayer = ({ attachments }: { attachments: Attachment[] }) => {
         {/* Video Container */}
         <video
           ref={videoRef}
-          src={videoAttachments[currentVideoIndex].url}
+          src={videoAttachments[currentVideoIndex].url.startsWith("http") ? videoAttachments[currentVideoIndex].url : `${process.env.NEXT_PUBLIC_IMAGE_PATH}${videoAttachments[currentVideoIndex].url}`}
           controls
           className="w-full h-auto max-h-[700px] object-contain block"
           style={{
@@ -170,13 +169,21 @@ const ImageCarousel = ({ attachments }: { attachments: Attachment[] }) => {
     setCurrentImageIndex(index);
   };
 
+
+  // Helper to construct media URL
+  const getMediaUrl = (url: string) => {
+    if (!url) return "";
+    if (url.startsWith("http") || url.startsWith("blob:")) return url;
+    return `${process.env.NEXT_PUBLIC_IMAGE_PATH}${url}`;
+  };
+
   return (
     <div className="relative w-full bg-gray-100 rounded-lg overflow-hidden">
       {/* Main Image Display - Responsive container that adapts to image aspect ratio */}
       <div className="relative w-full flex items-center justify-center" style={{ minHeight: '200px', maxHeight: '700px' }}>
         {/* Image Container */}
         <img
-          src={imageAttachments[currentImageIndex].url}
+          src={getMediaUrl(imageAttachments[currentImageIndex].url)}
           alt={`Post image ${currentImageIndex + 1}`}
           className="w-full h-auto max-h-[700px] object-contain block"
           style={{
@@ -358,10 +365,13 @@ export default function PostCard({ post, onDeletePost,userid }: PostProp) {
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <img
-                src={`${process.env.NEXT_PUBLIC_IMAGE_PATH}${post.user?.avatar}`}
+                src={post.user?.avatar ? `${process.env.NEXT_PUBLIC_IMAGE_PATH}${post.user?.avatar}` : PROFILE_DEFAULT_URL}
                 alt=""
                 className="w-8 h-8 rounded-full object-cover"
                 aria-label="Author avatar"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = PROFILE_DEFAULT_URL;
+                }}
               />
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
@@ -435,7 +445,7 @@ export default function PostCard({ post, onDeletePost,userid }: PostProp) {
             )}
 
             {/* Save */}
-            <button
+            {/* <button
               onClick={() => setShowMenu(false)}
               className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
             >
@@ -455,10 +465,10 @@ export default function PostCard({ post, onDeletePost,userid }: PostProp) {
                 <polyline points="7,3 7,8 15,8" />
               </svg>
               Save
-            </button>
+            </button> */}
 
             {/* Copy link */}
-            <CopyLinkButton postId={post.id} onClose={() => setShowMenu(false)} />
+            {/* <CopyLinkButton postId={post.id} onClose={() => setShowMenu(false)} /> */}
 
             <div className="border-t border-gray-200 my-1"></div>
 

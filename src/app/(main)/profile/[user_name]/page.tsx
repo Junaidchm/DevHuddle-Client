@@ -5,9 +5,7 @@ import {
   dehydrate,
 } from "@tanstack/react-query";
 import ProfileHeader from "@/src/components/profile/ProfileHeader";
-import FollowersSection from "@/src/components/profile/FollowersSection";
 import ProfileNav from "@/src/components/profile/ProfileNav";
-import SkillsSection from "@/src/components/profile/SkillsSection";
 import { auth } from "@/auth";
 import { notFound } from "next/navigation";
 import { UserProfile } from "@/src/types/user.type";
@@ -47,15 +45,12 @@ export default async function ProfilePage({
         currentUserId={currentUserId}
       />
       <main className="max-w-7xl mx-auto my-8 p-0 md:px-6">
-        <ProfileNav />
+{/* ProfileNav removed as it's replaced by ProfileTabs */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 mb-8">
           <div>
-            <SkillsSection skills={profile_user.skills || []} />
-            <FollowersSection
-              username={profile_user.username}
-              currentUserId={currentUserId}
-              initialProfile={profile_user}
-            />
+          <div>
+            {/* Content moved to ProfileHeader */}
+          </div>
           </div>
           <div>{/* Right Sidebar */}</div>
         </div>

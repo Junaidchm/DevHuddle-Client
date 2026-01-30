@@ -29,7 +29,7 @@ const ProfileHeaderClient = ({ profile, isOwnProfile }: ProfileHeaderClientProps
         ) : (
           <FollowButton userId={profile.id} isFollowing={profile.isFollowing!} />
         )}
-        <button
+        {/* <button
           className="bg-white text-slate-500 border border-slate-200 py-2.5 px-5 rounded-lg font-medium cursor-pointer transition-all duration-200 text-sm flex items-center justify-center gap-2 hover:bg-gray-50"
           onClick={() => {
             navigator.clipboard.writeText(window.location.href);
@@ -37,7 +37,7 @@ const ProfileHeaderClient = ({ profile, isOwnProfile }: ProfileHeaderClientProps
           }}
         >
           Share Profile
-        </button>
+        </button> */}
       </div>
     </>
   );

@@ -9,6 +9,7 @@ import { Conversation, User } from '@/src/types/chat.types';
 import { Search, MessageCircle, Loader2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
+import { PROFILE_DEFAULT_URL } from '@/src/constents';
 
 interface ChatSidebarProps {
   conversations: Conversation[];
@@ -126,7 +127,7 @@ export default function ChatSidebar({
                   <div className="flex-shrink-0 relative">
                     {otherUser?.profileImage ? (
                       <img
-                        src={otherUser.profileImage}
+                        src={otherUser.profileImage || PROFILE_DEFAULT_URL}
                         alt={otherUser.username}
                         className="w-12 h-12 rounded-full object-cover border-2 border-border"
                       />
