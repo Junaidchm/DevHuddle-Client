@@ -8,10 +8,10 @@ import { axiosInstance } from "@/src/axios/axios";
  * Protected API calls now accept headers as parameters.
  */
 
-export const fetchFeed = async (cursor: string | null, headers: Record<string, string>) => {
+export const fetchFeed = async (cursor: string | null, headers: Record<string, string>, authorId?: string) => {
   try {
     const res = await axiosInstance.get("feed/list", {
-      params: { cursor },
+      params: { cursor, authorId },
       headers,
     });
 

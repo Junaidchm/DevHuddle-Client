@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
+import { PROFILE_DEFAULT_URL } from "@/src/constents";
 
 interface NotificationItemProps {
   notification: {
@@ -96,7 +97,7 @@ export default function NotificationItem({
       {notification.avatar ? (
         <div className="w-[3rem] h-[3rem] rounded-[50%] overflow-hidden flex-shrink-0 mr-[1rem]">
           <img
-            src={notification.avatar}
+            src={notification.avatar || PROFILE_DEFAULT_URL}
             alt="User"
             className="w-full h-full object-cover"
           />

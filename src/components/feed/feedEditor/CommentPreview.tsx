@@ -9,7 +9,7 @@ import { Loader2, Heart, MessageCircle } from "lucide-react";
 import { useCommentLikeMutation } from "../mutations/useCommentLikeMutation";
 import CommentSection from "./CommentSection";
 
-const PROFILE_DEFAULT_URL = "/default-avatar.png";
+import { PROFILE_DEFAULT_URL } from "@/src/constents";
 
 // Author Badge Component
 const AuthorBadge: React.FC = () => (

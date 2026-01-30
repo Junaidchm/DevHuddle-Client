@@ -59,4 +59,5 @@ export interface userUpdate {
   yearsOfExperience?: number;
   jobTitle?: string;
   company?: string;
+  coverImage?: string;
 }

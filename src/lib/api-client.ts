@@ -102,6 +102,23 @@ export function createApiClient(options: ApiClientOptions = {}) {
       return response.data;
     },
 
+    async put<T = any>(url: string, data?: any, config?: any): Promise<T> {
+      const headers = await getAuthHeaders();
+      
+      if (requireAuth && !headers.Authorization) {
+        throw new Error("Authentication required");
+      }
+
+      const response = await axiosInstance.put(url, data, {
+        ...config,
+        headers: {
+          ...config?.headers,
+          ...headers,
+        },
+      });
+      return response.data;
+    },
+
     async delete<T = any>(url: string, config?: any): Promise<T> {
       const headers = await getAuthHeaders();
       
@@ -120,6 +137,9 @@ export function createApiClient(options: ApiClientOptions = {}) {
     },
   };
 }
+
+// Export a default instance for convenience usage
+export const api = createApiClient();
 
 /**
  * Hook-based API client for React components
@@ -172,6 +192,14 @@ export function useApiClient(options: ApiClientOptions = {}) {
         });
         return response.data;
       },
+      put: async <T = any>(url: string, data?: any, config?: any): Promise<T> => {
+        const headers = getHeaders();
+        const response = await axiosInstance.put(url, data, {
+          ...config,
+          headers: { ...config?.headers, ...headers },
+        });
+        return response.data;
+      },
       delete: async <T = any>(url: string, config?: any): Promise<T> => {
         const headers = getHeaders();
         const response = await axiosInstance.delete(url, {
@@ -185,4 +213,3 @@ export function useApiClient(options: ApiClientOptions = {}) {
 
   return apiClient;
 }
-

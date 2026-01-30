@@ -1,5 +1,6 @@
 import React from "react";
 import { Phone, Video, MoreVertical } from "lucide-react";
+import { PROFILE_DEFAULT_URL } from "@/src/constents";
 
 interface ChatHeaderProps {
   name: string;
@@ -17,7 +18,7 @@ export function ChatHeader({ name, avatar, image, isOnline, lastSeen }: ChatHead
         <div className="relative">
           {image ? (
             <img 
-              src={image} 
+              src={image || PROFILE_DEFAULT_URL} 
               alt={name} 
               className="w-10 h-10 rounded-full object-cover shadow-sm border border-gray-100"
             />

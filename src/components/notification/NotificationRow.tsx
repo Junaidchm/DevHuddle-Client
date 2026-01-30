@@ -19,6 +19,7 @@ import {
   Bell
 } from "lucide-react";
 import { MappedNotification, NotificationType } from "./types";
+import { PROFILE_DEFAULT_URL } from "@/src/constents";
 
 // LinkedIn-style icon mapping with proper colors
 const getNotificationIcon = (type: NotificationType): React.ReactNode => {
@@ -122,7 +123,7 @@ export const NotificationRow = ({ notification, onMarkAsRead, isLast }: Notifica
 
       {/* Profile Picture */}
       <Avatar className="w-12 h-12 flex-shrink-0 border border-gray-200">
-        <AvatarImage src={notification.avatarUrl} alt={actorNames} />
+        <AvatarImage src={notification.avatarUrl || PROFILE_DEFAULT_URL} alt={actorNames} />
         <AvatarFallback className="bg-gray-100 text-gray-600">
           {actorNames.charAt(0).toUpperCase()}
         </AvatarFallback>

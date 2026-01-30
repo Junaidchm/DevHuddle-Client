@@ -33,6 +33,13 @@ export const API_ROUTES = {
       `${API_VERSION}/users/${username}/following`,
     SEARCH: `${API_VERSION}/users/search`,
     CHAT_SUGGESTIONS: `${API_VERSION}/users/chat/suggestions`,
+    
+    // Profile Sections
+    EXPERIENCE: `${API_VERSION}/users/experience`,
+    EXPERIENCE_BY_ID: (id: string) => `${API_VERSION}/users/experience/${id}`,
+    EDUCATION: `${API_VERSION}/users/education`,
+    EDUCATION_BY_ID: (id: string) => `${API_VERSION}/users/education/${id}`,
+    SKILLS: `${API_VERSION}/users/skills`,
   },
 
   FOLLOWS: {

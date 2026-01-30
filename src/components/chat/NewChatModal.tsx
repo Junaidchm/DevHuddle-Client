@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { X, Search } from "lucide-react";
 import { useChatSuggestions } from "@/src/hooks/chat/useChatSuggestions";
+import { PROFILE_DEFAULT_URL } from "@/src/constents";
 
 interface User {
   id: string;
@@ -147,7 +148,7 @@ export function NewChatModal({ isOpen, onClose, onUserSelect }: NewChatModalProp
                     <div className="flex-shrink-0">
                       {user.profilePhoto ? (
                         <img
-                          src={user.profilePhoto}
+                          src={user.profilePhoto || PROFILE_DEFAULT_URL}
                           alt={user.fullName}
                           className="w-12 h-12 rounded-full object-cover"
                         />

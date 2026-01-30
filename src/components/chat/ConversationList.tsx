@@ -10,6 +10,7 @@ import { ConversationListSkeleton } from "./ConversationListSkeleton";
 import { useConversations, useCreateConversation } from "@/src/hooks/chat/useConversationQuery";
 
 import { ConversationWithMetadata } from "@/src/types/chat.types";
+import { PROFILE_DEFAULT_URL } from "@/src/constents";
 
 interface ConversationListProps {
   selectedId?: string;
@@ -206,7 +207,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                 <div className="relative flex-shrink-0">
                   {otherParticipant.profilePhoto ? (
                     <img 
-                      src={otherParticipant.profilePhoto}
+                      src={otherParticipant.profilePhoto || PROFILE_DEFAULT_URL}
                       alt={otherParticipant.name}
                       className="w-12 h-12 rounded-full object-cover"
                     />

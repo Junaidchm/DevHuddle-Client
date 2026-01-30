@@ -5,6 +5,12 @@ export const queryKeys = {
     detail: (username: string) => ["profiles", "detail", username] as const,
   },
 
+  feed: {
+    all: ["feed"] as const,
+    list: (filters?: any) => ["feed", "list", { filters }] as const,
+    user: (userId: string) => ["feed", "user", userId] as const,
+  },
+
   // Network queries (followers/following lists)
   network: {
     all: ["network"] as const,

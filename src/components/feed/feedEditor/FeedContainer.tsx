@@ -30,9 +30,17 @@ export default function FeedContainer({userid}:{userid:string}) {
     enabled: sessionStatus !== "loading" && !!authHeaders.Authorization, // Only fetch when session is loaded and authenticated
   });
 
-  const posts: NewPost[] = data?.pages.flatMap(
-    (page) => page.posts
-  ) as NewPost[];
+  const posts = React.useMemo(() => {
+    const allPosts = data?.pages.flatMap((page) => page.posts) || [];
+    const seenIds = new Set();
+    return allPosts.filter((post) => {
+      if (seenIds.has(post.id)) {
+        return false;
+      }
+      seenIds.add(post.id);
+      return true;
+    }) as NewPost[];
+  }, [data]);
 
   if (status === "pending") {
     return <PostsLoadingSkeleton />;

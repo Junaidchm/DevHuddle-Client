@@ -6,14 +6,21 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { PROFILE_DEFAULT_URL } from "@/src/constents";
 import UserSearch from "@/src/components/UserSearch";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 // WebSocket is now managed at root level via WebSocketProvider
 // No need to import or call hook here
 
 export default function NavBar() {
   const { data: session } = useSession();
   const profileImageUrl = session?.user?.image;
+  const [avatarSrc, setAvatarSrc] = useState(PROFILE_DEFAULT_URL);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (profileImageUrl) {
+      setAvatarSrc(profileImageUrl);
+    }
+  }, [profileImageUrl]);
   
   const { data: unreadData } = useUnreadCount(); 
   const unreadCount = unreadData?.unreadCount || 0;
@@ -74,8 +81,9 @@ export default function NavBar() {
               <Link href={`/profile/${session.user.username}`} className="flex-shrink-0">
                 <button className="profile-btn flex items-center gap-2 bg-transparent border-none cursor-pointer">
                   <img
-                    src={profileImageUrl || PROFILE_DEFAULT_URL}
+                    src={avatarSrc}
                     alt="Profile"
+                     onError={() => setAvatarSrc(PROFILE_DEFAULT_URL)}
                     className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-indigo-600"
                   />
                 </button>

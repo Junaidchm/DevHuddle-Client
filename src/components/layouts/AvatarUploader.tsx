@@ -23,7 +23,12 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({
 }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [displayUrl, setDisplayUrl] = useState<string>(previewUrl || PROFILE_DEFAULT_URL || "");
   const [crop, setCrop] = useState({ x: 0, y: 0 });
+
+  React.useEffect(() => {
+    setDisplayUrl(previewUrl || PROFILE_DEFAULT_URL || "");
+  }, [previewUrl, PROFILE_DEFAULT_URL]);
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [isCropping, setIsCropping] = useState(false);
@@ -71,19 +76,12 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({
 
   return (
     <div className="flex flex-col items-center gap-2">
-      {previewUrl ? (
-        <img
-          src={previewUrl}
-          alt="Avatar"
-          className="w-[100px] h-[100px] rounded-full object-cover border-4 border-gray-200"
-        />
-      ) : (
-        <img
-          src={PROFILE_DEFAULT_URL}
-          alt="Default Avatar"
-          className="w-[100px] h-[100px] rounded-full object-cover border-4 border-gray-200"
-        />
-      )}
+      <img
+        src={displayUrl}
+        alt="Avatar"
+        onError={() => setDisplayUrl(PROFILE_DEFAULT_URL || "")}
+        className="w-[100px] h-[100px] rounded-full object-cover border-4 border-gray-200"
+      />
 
       <Button
         text="Upload New Picture"

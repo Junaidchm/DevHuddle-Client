@@ -88,7 +88,7 @@ export default function ChatWindow({
           {/* Avatar */}
           {otherUser?.profileImage ? (
             <img
-              src={otherUser.profileImage}
+              src={otherUser.profileImage || PROFILE_DEFAULT_URL}
               alt={otherUser.username}
               className="w-10 h-10 rounded-full object-cover border-2 border-border"
             />
