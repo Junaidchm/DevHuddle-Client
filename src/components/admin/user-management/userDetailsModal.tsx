@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { PROFILE_DEFAULT_URL } from "@/src/constents";
+import { PROFILE_DEFAULT_URL } from "@/src/constants";
 import { useApiClient } from "@/src/lib/api-client";
 import { fetchUserFullDetails } from "@/src/services/api/admin.service";
 

@@ -1,16 +1,15 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Smile, X, Mic, Pause, Play, Trash2 } from "lucide-react";
+import { Send, Smile, Mic, Pause, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { MediaUploadButton } from "./MediaUploadButton";
-import { useWebSocket } from "@/src/contexts/WebSocketContext";
-import { useQueryClient } from "@tanstack/react-query";
+import { useSendMessage } from "@/src/hooks/chat/useSendMessage";
 import { useSession } from "next-auth/react";
-import { v4 as uuidv4 } from "uuid";
 import { useVoiceRecording } from "@/src/hooks/chat/useVoiceRecording";
 import { WaveformVisualizer } from "./WaveformVisualizer";
 import { VoicePreviewPlayer } from "./VoicePreviewPlayer";
+import { Button } from "@/src/components/ui/button";
 
 // Dynamically import EmojiPicker to avoid SSR issues
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
@@ -25,9 +24,9 @@ export function ChatInput({ conversationId, disabled }: ChatInputProps) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   
-  const { sendMessage: sendWsMessage, isConnected } = useWebSocket();
-  const queryClient = useQueryClient();
   const { data: session } = useSession();
+  const { sendMessage, isConnected } = useSendMessage();
+
   
   // Voice recording hook
   const {
@@ -63,51 +62,17 @@ export function ChatInput({ conversationId, disabled }: ChatInputProps) {
     };
   }, [showEmojiPicker]);
 
-  // 🔍 DEBUG: Log connection state
-  React.useEffect(() => {
-    console.log("[ChatInput] Connection State:", {
-      isConnected,
-      hasSession: !!session,
-      userId: session?.user?.id,
-      disabled,
-      conversationId
-    });
-  }, [isConnected, session, disabled, conversationId]);
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim() || disabled || !isConnected || !session?.user?.id) return;
 
     const content = message.trim();
-    const dedupeId = uuidv4();
-    const tempId = `temp-${dedupeId}`;
-
-    // ✅ OPTIMISTIC UPDATE: Add message to cache immediately
-    queryClient.setQueryData<any[]>(
-      ["messages", conversationId],
-      (old = []) => [
-        ...old,
-        {
-          id: tempId,
-          conversationId,
-          senderId: session.user.id,
-          content,
-          type: 'TEXT',
-          createdAt: new Date().toISOString(),
-          timestamp: new Date().toISOString(),
-          status: "sending",
-          dedupeId,
-        },
-      ]
-    );
-
-    // ✅ SEND VIA WEBSOCKET
-    sendWsMessage({
-      type: "send_message",
-      recipientIds: [],
-      content,
-      dedupeId,
-      conversationId,
+    
+    // Send via Hook (Handles optimistic updates)
+    await sendMessage({
+        conversationId,
+        content,
+        type: 'TEXT'
     });
 
     // Clear input
@@ -148,18 +113,16 @@ export function ChatInput({ conversationId, disabled }: ChatInputProps) {
     const result = await sendVoiceMessage();
     
     if (result && session?.user?.id) {
-      // Send voice message via WebSocket
-      sendWsMessage({
-        type: "send_message",
-        recipientIds: [],
-        content: "",
+       await sendMessage({
         conversationId,
-        // @ts-ignore
-        messageType: 'AUDIO',
-        mediaUrl: result.mediaUrl,
-        mediaId: result.mediaId,
-        mediaDuration: result.duration,
-      } as any);
+        content: "",
+        type: 'AUDIO', // Assuming AUDIO type exists in backend/types
+        mediaDetails: {
+            mediaId: result.mediaId,
+            mediaUrl: result.mediaUrl,
+            duration: result.duration
+        }
+       });
     }
   };
 
@@ -179,7 +142,7 @@ export function ChatInput({ conversationId, disabled }: ChatInputProps) {
   const canSend = isConnected && !!session?.user?.id && message.trim().length > 0;
 
   return (
-    <form onSubmit={handleSubmit} className="px-4 py-3 bg-white border-t border-gray-200 flex items-end gap-2">
+    <form onSubmit={handleSubmit} className="px-4 py-3 bg-white border-t border-border flex items-end gap-2 text-foreground">
       {/* PREVIEW MODE - WhatsApp Style Preview Bar */}
       {recordingState === 'preview' && audioBlob && (
         <VoicePreviewPlayer
@@ -194,21 +157,23 @@ export function ChatInput({ conversationId, disabled }: ChatInputProps) {
 
       {/* RECORDING/PAUSED MODE - WhatsApp Style Recording Bar */}
       {(recordingState === 'recording' || recordingState === 'paused') && (
-        <div className="flex-1 flex items-center gap-4 px-2 py-1 w-full">
+        <div className="flex-1 flex items-center gap-4 px-2 py-1 w-full text-foreground">
           {/* Trash icon (Left) */}
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={handleDiscardVoiceRecording}
-            className="flex-shrink-0 p-2 text-gray-400 hover:text-red-500 hover:bg-gray-100 rounded-full transition-colors"
+            className="flex-shrink-0 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
             title="Discard recording"
           >
             <Trash2 className="w-5 h-5" />
-          </button>
+          </Button>
 
           {/* Timer + Red Pulse */}
           <div className="flex items-center gap-2 min-w-[65px]">
             <div className={`w-2.5 h-2.5 bg-red-500 rounded-full ${recordingState === 'recording' ? 'animate-pulse' : ''}`}></div>
-            <span className="text-gray-900 font-mono text-[15px] tabular-nums">
+            <span className="text-foreground font-mono text-[15px] tabular-nums">
               {formatTime(duration)}
             </span>
           </div>
@@ -227,28 +192,30 @@ export function ChatInput({ conversationId, disabled }: ChatInputProps) {
           {/* Controls (Right) */}
           <div className="flex items-center gap-2">
             {/* Pause/Resume button */}
-            <button
+            <Button
                type="button"
+               variant="ghost"
+               size="icon"
                onClick={handlePauseRecording}
-               className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+               className="text-red-500 hover:bg-red-50 rounded-full"
                title={recordingState === 'paused' ? 'Resume' : 'Pause'}
             >
                {recordingState === 'paused' ? (
-                 <Mic className="w-6 h-6" /> // Resume with Mic icon or Play? WhatsApp uses Mic to Resume usually
+                 <Mic className="w-6 h-6" /> 
                ) : (
                  <Pause className="w-6 h-6 fill-current" />
                )}
-            </button>
+            </Button>
 
             {/* Stop/Review Button */}
-            <button
+            <Button
                type="button"
                onClick={handleStopRecording}
-               className="p-3 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-sm"
+               className="bg-red-500 text-white hover:bg-red-600 rounded-full shadow-sm w-10 h-10 p-0 flex items-center justify-center"
                title="Stop and review"
             >
                <div className="w-4 h-4 bg-white rounded-sm" /> 
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -262,7 +229,7 @@ export function ChatInput({ conversationId, disabled }: ChatInputProps) {
           </div>
 
           {/* Input Field Container */}
-          <div className="flex-1 bg-gray-50 rounded-lg flex items-end px-3 py-2 min-h-[42px] max-h-32 border border-gray-200 focus-within:border-[#0A66C2] focus-within:ring-1 focus-within:ring-[#0A66C2] transition-all">
+          <div className="flex-1 bg-muted/40 rounded-2xl flex items-end px-3 py-2 min-h-[42px] max-h-32 border border-input focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
             {/* Text Area */}
             <textarea
               value={message}
@@ -277,8 +244,7 @@ export function ChatInput({ conversationId, disabled }: ChatInputProps) {
               }
               disabled={isInputDisabled}
               rows={1}
-              className="flex-1 bg-transparent border-none text-[15px] text-gray-800 placeholder:text-gray-400 resize-none focus:outline-none focus:ring-0 max-h-32 py-1"
-              style={{ minHeight: "24px", lineHeight: "1.5" }}
+              className="flex-1 bg-transparent border-none text-[15px] text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-0 max-h-32 py-1 min-h-[24px] leading-relaxed"
             />
 
             {/* Emoji Picker Button */}
@@ -286,7 +252,7 @@ export function ChatInput({ conversationId, disabled }: ChatInputProps) {
               <div ref={emojiPickerRef} className="relative">
                 <button
                   type="button"
-                  className="text-gray-400 hover:text-[#0A66C2] transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors"
                   disabled={isInputDisabled}
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   title="Add emoji"
@@ -296,7 +262,7 @@ export function ChatInput({ conversationId, disabled }: ChatInputProps) {
 
                 {/* LinkedIn-style Emoji Picker Popover */}
                 {showEmojiPicker && (
-                  <div className="absolute bottom-12 right-0 z-50 shadow-2xl rounded-lg overflow-hidden border border-gray-200 bg-white">
+                  <div className="absolute bottom-12 right-0 z-50 shadow-2xl rounded-lg overflow-hidden border border-border bg-background">
                     <EmojiPicker
                       onEmojiClick={handleEmojiClick}
                       width={350}
@@ -316,26 +282,29 @@ export function ChatInput({ conversationId, disabled }: ChatInputProps) {
           {/* Mic / Send Button */}
           {message.trim() ? (
             /* Send Text Button */
-            <button
+            <Button
               type="submit"
               disabled={!canSend}
+              size="icon"
               className={`
-                mb-[5px] p-2.5 rounded-full transition-all
+                mb-[5px] rounded-full transition-all w-10 h-10
                 ${canSend 
-                  ? 'bg-[#0A66C2] text-white hover:bg-[#004182]' 
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                  : 'bg-muted text-muted-foreground cursor-not-allowed'
                 }
               `}
               title={!isConnected ? "Connecting..." : !session?.user?.id ? "Loading..." : "Send message"}
             >
               <Send className="w-5 h-5" /> 
-            </button>
+            </Button>
           ) : (
             /* Voice Recording Button */
-            <button
+            <Button
               type="button"
-              disabled={isInputDisabled} // Allow recording even if offline (upload will fail later, but UX is better)
-              className="mb-[5px] p-2 text-gray-400 hover:text-[#0A66C2] transition-colors disabled:opacity-50"
+              disabled={isInputDisabled}
+              variant="ghost"
+              size="icon"
+              className="mb-[5px] text-muted-foreground hover:text-primary hover:bg-muted rounded-full w-10 h-10"
               onClick={() => {
                 console.log("Mic clicked, starting recording...");
                 handleStartVoiceRecording();
@@ -343,14 +312,14 @@ export function ChatInput({ conversationId, disabled }: ChatInputProps) {
               title="Record voice message"
             >
               <Mic className="w-6 h-6" />
-            </button>
+            </Button>
           )}
         </>
       )}
 
       {/* Recording Error Toast */}
       {recordingError && (
-        <div className="absolute bottom-20 right-4 bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-lg shadow-lg">
+        <div className="absolute bottom-20 right-4 bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded-lg shadow-lg">
           <p className="text-sm">{recordingError}</p>
         </div>
       )}

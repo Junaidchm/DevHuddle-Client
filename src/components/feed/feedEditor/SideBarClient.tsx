@@ -1,9 +1,12 @@
-// app/components/SidebarClient.tsx
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { FollowButton } from "@/src/components/FollowButton";
 import { SuggestedFollower } from "@/src/app/types";
 import { getSuggestedUsersWithFollowerInfo } from "@/src/app/actions/follow";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
+import { PROFILE_DEFAULT_URL } from "@/src/constants";
+import { Info } from "lucide-react";
 
 export default function SidebarClient({id}: { id: string }) {
   const data = useQuery({
@@ -19,72 +22,63 @@ export default function SidebarClient({id}: { id: string }) {
   
   if (!usersToFollow.length) {
     return (
-      <div className="space-y-5 rounded-2xl bg-card p-5 shadow-sm">
-        <div className="text-xl font-bold">Who to follow</div>
-        <p className="text-muted-foreground">
-          No suggestions yet—start connecting!
-        </p>
-      </div>
+      <Card className="border-none shadow-sm">
+        <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold">Who to follow</CardTitle>
+        </CardHeader>
+        <CardContent>
+             <p className="text-sm text-muted-foreground">
+                No suggestions yet—start connecting!
+            </p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <aside className="w-[350px] flex-shrink-0">
-      <div className="bg-white rounded-xl p-6 mb-6 border border-slate-200 shadow-sm">
-        <h3 className="m-0 mb-4 text-lg font-semibold text-text-main flex items-center gap-2">
-          {/* SVG icon here */}
-          Who to Follow
-        </h3>
-        <div className="flex flex-col gap-4">
+      <Card className="border-none shadow-sm overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+          <CardTitle className="text-base font-semibold text-foreground">Add to your feed</CardTitle>
+          <Info className="h-4 w-4 text-muted-foreground cursor-pointer" />
+        </CardHeader>
+        <CardContent className="grid gap-4">
           {usersToFollow.map((user, index) => (
-            <div key={user.id} className="flex items-center gap-3">
-              <div className="relative">
-                <img
-                  src={
-                    `${process.env.NEXT_PUBLIC_IMAGE_PATH}${user.profilePicture}` ||
-                    "/default-avatar.png"
-                  }
-                  alt={`${user.name}'s avatar`}
-                  className="w-[42px] h-[42px] rounded-full object-cover"
-                  aria-label="Contributor avatar"
-                />
-                <div className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] bg-success rounded-full flex items-center justify-center border-2 border-white">
-                  <span className="text-white text-[0.5rem]">{index + 1}</span>
+            <div key={user.id} className="flex items-start gap-3">
+               <Avatar className="h-12 w-12 border border-border">
+                  <AvatarImage 
+                    src={user.profilePicture ? `${process.env.NEXT_PUBLIC_IMAGE_PATH}${user.profilePicture}` : PROFILE_DEFAULT_URL} 
+                    alt={user.name} 
+                    className="object-cover"
+                  />
+                  <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
+                </Avatar>
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-col">
+                    <span className="font-semibold text-sm text-foreground truncate">
+                        {user.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground mb-1 truncate">
+                       {/* Placeholder headline or username */}
+                       @{user.username}
+                    </span>
                 </div>
-              </div>
-              <div className="flex-1">
-                <span className="font-semibold text-sm text-text-main">
-                  @{user.username}
-                </span>
-                <div className="text-xs text-text-light flex items-center gap-1">
-                  <span className="w-1 h-1 bg-slate-300 rounded-full" />
-                  <span className="text-xs text-text-light">
-                    {user.followersCount} followers
-                  </span>
-                </div>
-              </div>
-              <div className="flex-shrink-0">
-                {/* <FollowButtonText
-                  userId={user.id}
-                  buttonType="suggestion"
-                  initialData={{
-                    followers: user._count.followers,
-                    isFollowedByUser: false,
-                  }}
-                /> */}
+                
                 <FollowButton
-                  theUser={id}
                   userId={user.id}
-                  context="suggestion"
-                  initialFollowerCount={user.followersCount}
-                  initialIsFollowing={user.isFollowedByUser}
+                  isFollowing={user.isFollowedByUser}
                   size="sm"
+                  className="w-fit h-8 text-xs px-4 rounded-full border-2 font-semibold hover:bg-muted/50 hover:border-foreground/50"
+                  variant="outline"
                 />
               </div>
             </div>
           ))}
-        </div>
-      </div>
-    </aside>
+          
+           <div className="flex items-center gap-1 text-xs text-muted-foreground hover:bg-muted p-1 rounded cursor-pointer mt-1">
+             <span className="font-semibold">View all recommendations</span>
+             <Info className="h-3 w-3" /> {/* Arrow icon would be better */}
+         </div>
+        </CardContent>
+      </Card>
   );
 }

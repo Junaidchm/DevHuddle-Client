@@ -1,6 +1,5 @@
 "use client";
 
-import { InputField, PrimaryButton } from "@/src/components/layouts/auth";
 import { passwordResetRequest } from "@/src/services/api/auth.service";
 import { AppDispatch } from "@/src/store/store";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +9,11 @@ import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { z } from "zod";
+
+import { Button } from "@/src/components/ui/button";
+import { Input } from "@/src/components/ui/input";
+import { Label } from "@/src/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/src/components/ui/card";
 
 const forgotScehma = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -24,7 +28,7 @@ export default function ForgotPassword() {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting, isValid },
+    formState: { errors, isSubmitting },
   } = useForm<ForgotSchema>({
     resolver: zodResolver(forgotScehma),
     mode: "onChange",
@@ -33,7 +37,7 @@ export default function ForgotPassword() {
   const onSubmit = async (data: ForgotSchema) => {
     try {
       await passwordResetRequest(data)
-      toast.success("Reset mail send you your mail", {
+      toast.success("Reset mail sent to your email", {
         position: "bottom-center",
       });
     } catch (error: any) {
@@ -44,59 +48,59 @@ export default function ForgotPassword() {
   };
 
   return (
-    <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
-      <div className="bg-white rounded-3xl shadow-lg w-full max-w-[90%] sm:max-w-[450px] p-6 sm:p-8 animate-fadeIn">
-        <h1 className="text-center text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-gray-900">
-          Forgot Password?
-        </h1>
-        <p className="text-center text-sm sm:text-base text-gray-600 mb-6 sm:mb-8">
-          Enter your email address and we'll send you a link to reset your
-          password
-        </p>
-
-        <form id="forgot-password-form" onSubmit={handleSubmit(onSubmit)}>
-          <InputField
-            label="Email"
-            id="email"
-            type="email"
-            autoFocus
-            placeholder="you@example.com"
-            error={errors.email?.message}
-            {...register("email")}
-          />
-
-          <PrimaryButton
-            disabled={isSubmitting}
-            id="reset-button"
-            type="submit"
-            label={!isSubmitting ? "Send Reset Link" : "sending ..."}
-          />
-
-          <div className="text-center mb-4 sm:mb-6">
-            <p className="text-xs sm:text-sm text-gray-600">
-              Remember your password?{" "}
-              <Link
-              href="/signup"
-              className="text-xs sm:text-sm text-primary hover:text-primary-hover hover:underline transition-colors"
-            >
-              {" "}
-              signup
-            </Link>
-            </p>
+    <Card className="w-full max-w-[400px] shadow-lg animate-fadeIn border-0 sm:border">
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl font-bold">Forgot Password?</CardTitle>
+        <CardDescription>
+          Enter your email address and we'll send you a link to reset your password
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              autoFocus
+              {...register("email")}
+            />
+            {errors.email && (
+              <p className="text-sm text-destructive">{errors.email.message}</p>
+            )}
           </div>
 
-          <div className="text-center">
+          <Button 
+            className="w-full" 
+            type="submit" 
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Sending..." : "Send Reset Link"}
+          </Button>
+        </form>
+      </CardContent>
+      <CardFooter className="flex flex-col space-y-2 text-center">
+        <div className="text-sm text-muted-foreground">
+          Remember your password?{" "}
+          <Link
+            href="/signIn"
+            className="text-primary hover:text-primary-hover font-medium hover:underline"
+          >
+            Log in
+          </Link>
+        </div>
+        
+        <div className="pt-2">
             <a
               href="#"
-              className="inline-flex items-center gap-2 text-sm sm:text-base text-gray-900 font-medium hover:text-primary transition-colors"
+              className="inline-flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors"
             >
-              <i className="fas fa-headset"></i>
               <span className="hidden sm:inline">Need help? Contact Support</span>
               <span className="sm:hidden">Contact Support</span>
             </a>
-          </div>
-        </form>
-      </div>
-    </main>
+        </div>
+      </CardFooter>
+    </Card>
   );
 }

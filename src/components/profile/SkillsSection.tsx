@@ -1,6 +1,8 @@
 import React from 'react';
 import { Pencil } from 'lucide-react';
 import SkillsModal from './modals/SkillsModal';
+import { Card } from '../ui/card';
+import { Button } from '../ui/button';
 
 interface SkillsSectionProps {
   skills: string[];
@@ -15,31 +17,33 @@ const SkillsSection = ({ skills, isOwnProfile, username }: SkillsSectionProps) =
   
   return (
     <>
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-4">
+      <Card className="p-6 mb-4 shadow-sm border border-border">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-gray-900">Skills</h2>
+          <h2 className="text-xl font-bold text-foreground">Skills</h2>
           {isOwnProfile && (
             <div className="flex gap-2">
-              <button 
+              <Button 
+                variant="ghost"
+                size="icon"
                 onClick={() => setIsModalOpen(true)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors" 
+                className="hover:bg-muted rounded-full w-10 h-10" 
                 title="Edit skills"
               >
-                <Pencil size={20} className="text-gray-600" />
-              </button>
+                <Pencil className="w-5 h-5 text-muted-foreground" />
+              </Button>
             </div>
           )}
         </div>
 
         <div className="space-y-4">
           {skills.length === 0 ? (
-             <p className="text-gray-500 italic">No skills added yet.</p>
+             <p className="text-muted-foreground italic">No skills added yet.</p>
           ) : (
               <div className="flex flex-wrap gap-2">
                   {skills.map((skill, index) => (
                       <div 
                           key={`${skill}-${index}`} 
-                          className="px-4 py-2 bg-white border border-slate-200 rounded-full text-slate-700 font-medium text-sm hover:border-purple-300 hover:bg-purple-50 transition-colors cursor-default"
+                          className="px-4 py-2 bg-background border border-border rounded-full text-foreground font-medium text-sm hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-default"
                       >
                           {skill}
                       </div>
@@ -49,13 +53,13 @@ const SkillsSection = ({ skills, isOwnProfile, username }: SkillsSectionProps) =
         </div>
         
         {skills.length > 20 && (
-            <div className="border-t border-gray-100 mt-4 pt-3 text-center">
-              <button className="text-gray-600 font-semibold text-sm hover:underline">
+            <div className="border-t border-border mt-4 pt-3 text-center">
+              <button className="text-muted-foreground font-semibold text-sm hover:underline hover:text-foreground">
                   Show all {skills.length} skills <span>→</span>
               </button>
             </div>
         )}
-      </div>
+      </Card>
 
       {isOwnProfile && (
         <SkillsModal 

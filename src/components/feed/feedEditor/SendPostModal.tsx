@@ -6,7 +6,7 @@ import { useSendPost } from "./Hooks/useSendPost";
 import { useConnections } from "./Hooks/useConnections";
 import Modal from "@/src/components/ui/Modal";
 import { Connection } from "@/src/app/types/feed";
-import { PROFILE_DEFAULT_URL } from "@/src/constents";
+import { PROFILE_DEFAULT_URL } from "@/src/constants";
 import useGetUserData from "@/src/customHooks/useGetUserData";
 import { useQueryClient } from "@tanstack/react-query";
 import { NewPost } from "@/src/app/types/feed";

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Search, Edit } from "lucide-react";
+import { Search, Edit, Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { formatDistanceToNow } from "date-fns";
 import { NewChatModal } from "./NewChatModal";
@@ -10,7 +10,12 @@ import { ConversationListSkeleton } from "./ConversationListSkeleton";
 import { useConversations, useCreateConversation } from "@/src/hooks/chat/useConversationQuery";
 
 import { ConversationWithMetadata } from "@/src/types/chat.types";
-import { PROFILE_DEFAULT_URL } from "@/src/constents";
+import { PROFILE_DEFAULT_URL } from "@/src/constants";
+import { Avatar, AvatarImage, AvatarFallback } from "@/src/components/ui/avatar";
+import { Badge } from "@/src/components/ui/badge";
+import { Input } from "@/src/components/ui/input";
+import { Button } from "@/src/components/ui/button";
+import { cn } from "@/src/lib/utils";
 
 interface ConversationListProps {
   selectedId?: string;
@@ -68,21 +73,17 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
     console.log('👆 [CLICK] User clicked suggestion', { userId });
     
     // FAST PATH: Check if we already have this conversation in our local list
-    // This provides INSTANT switching without waiting for network
     const existingConversation = conversations.find(c => 
       c.participants.some(p => p.userId === userId)
     );
 
     if (existingConversation) {
        console.log('⚡ [INSTANT] Found in cache, switching immediately', existingConversation.conversationId);
-       // Check if we need to cast or if the types match perfectly (they should)
        onSelect(existingConversation as any as ConversationWithMetadata);
     }
 
     // Still trigger mutation to ensure backend sync/fetch latest data
-    // The onMutate hook handles preventing duplicate entries in the list
     createConversation.mutate([userId]);
-    console.log('📤 [CLICK] Mutation triggered');
   };
 
   // Filter conversations by search query
@@ -98,12 +99,12 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
   // Loading state
   if (isLoading) {
     return (
-      <div className="relative flex flex-col h-full bg-white border-r border-gray-200">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-800">Messages</h1>
-          <button className="p-2 rounded-full" disabled>
-            <Edit className="w-5 h-5 text-gray-400" />
-          </button>
+      <div className="relative flex flex-col h-full bg-card border-r border-border">
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <h1 className="text-xl font-bold text-foreground">Messages</h1>
+          <Button variant="ghost" size="icon" disabled>
+            <Edit className="w-5 h-5 text-muted-foreground" />
+          </Button>
         </div>
         <ConversationListSkeleton />
       </div>
@@ -114,7 +115,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
   if (isError) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-red-500">Failed to load conversations</p>
+        <p className="text-destructive">Failed to load conversations</p>
       </div>
     );
   }
@@ -122,15 +123,17 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
   // Empty state
   if (conversations.length === 0) {
     return (
-      <div className="relative flex flex-col h-full bg-white border-r border-gray-200">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-800">Messages</h1>
-          <button 
+      <div className="relative flex flex-col h-full bg-card border-r border-border">
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <h1 className="text-xl font-bold text-foreground">Messages</h1>
+          <Button 
+            variant="ghost" 
+            size="icon"
             onClick={() => setIsNewChatModalOpen(true)}
-            className="p-2 hover: rounded-full transition-colors"
+            className="rounded-full"
           >
-            <Edit className="w-5 h-5 text-gray-600" />
-          </button>
+            <Edit className="w-5 h-5" />
+          </Button>
         </div>
         <EmptyState onNewChat={() => setIsNewChatModalOpen(true)} />
         <NewChatModal 
@@ -143,38 +146,40 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
   }
 
   return (
-    <div className="relative flex flex-col h-full bg-white border-r border-gray-200">
+    <div className="relative flex flex-col h-full bg-card border-r border-border">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
-        <h1 className="text-xl font-bold text-gray-800">
+      <div className="flex items-center justify-between p-4 border-b border-border bg-card sticky top-0 z-10">
+        <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
           Messages
         </h1>
-        <button 
+        <Button 
+          variant="ghost" 
+          size="icon"
           onClick={() => setIsNewChatModalOpen(true)}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          className="rounded-full text-muted-foreground hover:text-foreground"
           aria-label="New message"
           title="New message"
         >
-          <Edit className="w-5 h-5 text-gray-600" />
-        </button>
+          <Edit className="w-5 h-5" />
+        </Button>
       </div>
 
       {/* Search */}
-      <div className="p-3 bg-white">
+      <div className="p-3 bg-card sticky top-[65px] z-10 border-b border-border">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
             type="text"
             placeholder="Search messages..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#0A66C2] focus:ring-2 focus:ring-[#0A66C2]/10 transition-all text-gray-800 placeholder:text-gray-400"
+            className="pl-9 bg-muted/40"
           />
         </div>
       </div>
 
       {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto bg-gray-50">
+      <div className="flex-1 overflow-y-auto">
         {filteredConversations.map((conv, index) => {
           // Get the other participant (not current user)
           const otherParticipant = conv.participants.find(
@@ -187,6 +192,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
             : '';
 
           const isLast = index === filteredConversations.length - 1;
+          const isSelected = selectedId === conv.conversationId;
 
           return (
             <div 
@@ -195,47 +201,39 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
             >
               <button
                 onClick={() => onSelect(conv as any as ConversationWithMetadata)}
-                className={`
-                  w-full p-4 flex items-start gap-3 transition-all border-l-3 bg-white hover:bg-gray-50 border-b border-gray-100
-                  ${selectedId === conv.conversationId 
-                    ? 'border-l-[#0A66C2] bg-blue-50/50' 
-                    : 'border-l-transparent'
-                  }
-                `}
+                className={cn(
+                  "w-full p-4 flex items-start gap-3 transition-all border-b border-border/40 hover:bg-muted/50 text-left",
+                  isSelected && "bg-muted/60 hover:bg-muted/70"
+                )}
               >
                 {/* Avatar */}
                 <div className="relative flex-shrink-0">
-                  {otherParticipant.profilePhoto ? (
-                    <img 
-                      src={otherParticipant.profilePhoto || PROFILE_DEFAULT_URL}
-                      alt={otherParticipant.name}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#0A66C2] to-[#004182] flex items-center justify-center text-white font-semibold shadow-sm">
-                      {otherParticipant.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
+                    <Avatar className="w-12 h-12 border border-border">
+                        <AvatarImage src={otherParticipant.profilePhoto || PROFILE_DEFAULT_URL} alt={otherParticipant.name} className="object-cover" />
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                            {otherParticipant.name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                    </Avatar>
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 min-w-0 text-left">
                   <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-semibold text-gray-900 truncate">
+                    <h3 className={cn("font-medium text-sm truncate", isSelected ? "text-foreground" : "text-foreground/90")}>
                       {otherParticipant.name}
                     </h3>
-                    <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
+                    <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
                       {timeAgo}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-600 truncate">
+                    <p className={cn("text-xs truncate flex-1", conv.unreadCount > 0 ? "font-medium text-foreground" : "text-muted-foreground")}>
                       {conv.lastMessage?.content || 'No messages yet'}
                     </p>
                     {conv.unreadCount > 0 && (
-                      <span className="flex-shrink-0 ml-2 min-w-[20px] h-5 px-1.5 bg-[#0A66C2] rounded-full flex items-center justify-center text-xs text-white font-semibold">
-                        {conv.unreadCount}
-                      </span>
+                        <Badge variant="default" className="ml-2 h-5 min-w-[20px] px-1.5 flex items-center justify-center text-[10px]">
+                            {conv.unreadCount > 99 ? '99+' : conv.unreadCount}
+                        </Badge>
                     )}
                   </div>
                 </div>
@@ -246,8 +244,8 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
 
         {/* Loading more indicator */}
         {isFetchingNextPage && (
-          <div className="p-4 text-center">
-            <span className="text-sm text-gray-500">Loading more...</span>
+          <div className="p-4 flex justify-center">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
           </div>
         )}
       </div>

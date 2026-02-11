@@ -3,13 +3,13 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-// import { useDebounce } from "@/src/customHooks/useDebounce";
 import { useOnClickOutside } from "@/src/customHooks/useOnClickOutside";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
-// import { searchUsers, SearchedUser } from "@/src/services/api/user.service";
-import { PROFILE_DEFAULT_URL } from "@/src/constents";
+import { PROFILE_DEFAULT_URL } from "@/src/constants";
 import useDebounce from "../customHooks/useDebounce";
 import { SearchedUser, searchUsers } from "../services/api/user.service";
+import { Search } from "lucide-react";
+import { Input } from "./ui/input";
 
 const Spinner = () => (
   <div className="flex justify-center items-center p-4">
@@ -21,7 +21,7 @@ const UserSearchResultItem: React.FC<{ user: SearchedUser; onClick: () => void }
   <Link
     href={`/profile/${user.username}`}
     onClick={onClick}
-    className="flex items-center gap-3 p-3 hover:bg-gray-100 rounded-lg transition-colors"
+    className="flex items-center gap-3 p-3 hover:bg-muted rounded-lg transition-colors"
   >
     <img
       src={user.profilePicture || PROFILE_DEFAULT_URL}
@@ -29,8 +29,8 @@ const UserSearchResultItem: React.FC<{ user: SearchedUser; onClick: () => void }
       className="w-10 h-10 rounded-full object-cover"
     />
     <div>
-      <p className="font-semibold text-sm text-gray-800">{user.name}</p>
-      <p className="text-xs text-gray-500">@{user.username}</p>
+      <p className="font-semibold text-sm text-foreground">{user.name}</p>
+      <p className="text-xs text-muted-foreground">@{user.username}</p>
     </div>
   </Link>
 );
@@ -81,35 +81,35 @@ export default function UserSearch() {
   return (
     <div className="relative w-full max-w-xs" ref={searchContainerRef}>
       <div className="relative">
-        <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-        <input
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
           type="text"
           placeholder="Search for users..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsFocused(true)}
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full bg-gray-100 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+          className="pl-9 h-9 bg-muted/50 focus:bg-background border-none focus-visible:ring-1 transition-all rounded-sm"
           aria-label="Search for users"
           autoComplete="off"
         />
       </div>
 
       {showDropdown && (
-        <div className="absolute top-full mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg z-10 max-h-80 overflow-y-auto">
+        <div className="absolute top-full mt-2 w-full bg-background border border-border rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
           <div className="p-2">
             {isLoading && <Spinner />}
             {isError && (
-              <div className="p-4 text-center text-sm text-red-600">
+              <div className="p-4 text-center text-sm text-destructive">
                 Error: {error.message}
               </div>
             )}
             {!isLoading && !isError && users?.length === 0 && (
-              <div className="p-4 text-center text-sm text-gray-500">
+              <div className="p-4 text-center text-sm text-muted-foreground">
                 No users found.
               </div>
             )}
             {!isLoading && !isError && users && users.length > 0 && (
-              <ul className="flex flex-col">
+              <ul className="flex flex-col gap-1">
                 {users.map((user) => (
                   <li key={user.id}>
                     <UserSearchResultItem user={user} onClick={handleReset} />

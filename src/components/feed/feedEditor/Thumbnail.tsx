@@ -1,7 +1,7 @@
 import { ImageTransform, ThumbnailProps } from "@/src/app/types/feed";
 import { IconButton } from "./IconButton";
 import { getImageStyle } from "@/lib/feed/getImageStyle";
-import { default_ImageTransform } from "@/src/constents/feed";
+import { default_ImageTransform } from "@/src/constants/feed";
 
 export const Thumbnail: React.FC<ThumbnailProps> = ({
   image,

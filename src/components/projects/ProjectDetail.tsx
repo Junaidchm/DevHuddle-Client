@@ -10,7 +10,11 @@ import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { PROFILE_DEFAULT_URL } from "@/src/constents";
+import { PROFILE_DEFAULT_URL } from "@/src/constants";
+import { Card, CardContent } from "@/src/components/ui/card";
+import { Badge } from "@/src/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/src/components/ui/avatar";
+import { Button } from "@/src/components/ui/button";
 
 interface ProjectDetailProps {
   project: Project;
@@ -25,17 +29,10 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
   // Helper function to get author avatar URL
   const getAuthorAvatarUrl = (avatar: string | undefined): string => {
     if (!avatar) return PROFILE_DEFAULT_URL;
-    // If it's already an absolute URL (S3, R2, etc.), return as is
-    if (avatar.startsWith("http://") || avatar.startsWith("https://")) {
-      return avatar;
-    }
-    // If it's a relative path, prepend the image path
+    if (avatar.startsWith("http") || avatar.startsWith("https")) return avatar;
     const imagePath = process.env.NEXT_PUBLIC_IMAGE_PATH || "";
-    // Remove trailing slash from imagePath if present
     const cleanImagePath = imagePath.endsWith("/") ? imagePath.slice(0, -1) : imagePath;
-    // Remove leading slash from avatar if present
     const cleanAvatar = avatar.startsWith("/") ? avatar.slice(1) : avatar;
-    // Combine without double slashes
     return cleanImagePath ? `${cleanImagePath}/${cleanAvatar}` : `/${cleanAvatar}`;
   };
 
@@ -55,85 +52,76 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+    <Card className="overflow-hidden border-border bg-card">
       {/* Header */}
-      <div className="p-6 border-b">
-        <h1 className="text-3xl font-bold mb-2">{project.title}</h1>
+      <div className="p-6 border-b border-border bg-muted/5">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+             <div>
+                <h1 className="text-3xl font-bold mb-4 tracking-tight text-foreground">{project.title}</h1>
+                
+                {/* Author */}
+                <div className="flex items-center gap-3">
+                    <Avatar className="w-10 h-10 border border-border">
+                        <AvatarImage src={getAuthorAvatarUrl(project.author.avatar)} alt={project.author.name} className="object-cover" />
+                        <AvatarFallback>{project.author.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <Link href={`/profile/${project.author.username}`} className="font-medium text-foreground hover:underline">
+                            {project.author.name}
+                        </Link>
+                        <p className="text-sm text-muted-foreground">@{project.author.username}</p>
+                    </div>
+                </div>
+             </div>
 
-        {/* Author */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
-            <Image
-              src={getAuthorAvatarUrl(project.author.avatar)}
-              alt={project.author.name}
-              width={40}
-              height={40}
-              className="object-cover"
-              unoptimized={true}
-            />
-          </div>
-          <div>
-            <p className="font-medium">{project.author.name}</p>
-            <p className="text-sm text-gray-500">@{project.author.username}</p>
-          </div>
-        </div>
-
-        {/* Links */}
-        <div className="flex flex-wrap gap-4">
-          {project.repositoryUrls.map((url, index) => (
-            <a
-              key={index}
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
-            >
-              <Github className="w-5 h-5" />
-              <span className="text-sm">Repository {index + 1}</span>
-            </a>
-          ))}
-          {project.demoUrl && (
-            <a
-              href={project.demoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
-            >
-              <ExternalLink className="w-5 h-5" />
-              <span className="text-sm">Live Demo</span>
-            </a>
-          )}
+             {/* Links */}
+            <div className="flex flex-wrap gap-2">
+            {project.repositoryUrls.map((url, index) => (
+                <Button key={index} variant="outline" size="sm" asChild>
+                    <a href={url} target="_blank" rel="noopener noreferrer">
+                        <Github className="w-4 h-4 mr-2" />
+                        Repository {project.repositoryUrls.length > 1 ? index + 1 : ""}
+                    </a>
+                </Button>
+            ))}
+            {project.demoUrl && (
+                 <Button variant="default" size="sm" asChild>
+                    <a href={project.demoUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Live Demo
+                    </a>
+                </Button>
+            )}
+            </div>
         </div>
       </div>
 
       {/* Media Gallery */}
       {project.media.length > 0 && (
-        <div className="border-b">
+        <div className="border-b border-border bg-background">
           <ProjectMediaGallery media={project.media} />
         </div>
       )}
 
       {/* Description */}
-      <div className="p-6 border-b">
+      <div className="p-8 border-b border-border">
+        <h2 className="text-lg font-semibold mb-3">About this Project</h2>
         <div
-          className="prose max-w-none"
+          className="prose prose-sm max-w-none text-muted-foreground leading-relaxed"
           dangerouslySetInnerHTML={{ __html: project.description }}
         />
       </div>
 
       {/* Tech Stack & Tags */}
-      <div className="p-6 border-b">
+      <div className="p-6 border-b border-border space-y-6">
         {project.techStack.length > 0 && (
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold mb-2">Tech Stack</h3>
+          <div>
+            <h3 className="text-sm font-semibold mb-3 text-foreground uppercase tracking-wider">Tech Stack</h3>
             <div className="flex flex-wrap gap-2">
               {project.techStack.map((tech) => (
-                <span
-                  key={tech}
-                  className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full"
-                >
+                <Badge key={tech} variant="secondary" className="px-3 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-100">
                   {tech}
-                </span>
+                </Badge>
               ))}
             </div>
           </div>
@@ -141,15 +129,12 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
 
         {project.tags.length > 0 && (
           <div>
-            <h3 className="text-sm font-semibold mb-2">Tags</h3>
+            <h3 className="text-sm font-semibold mb-3 text-foreground uppercase tracking-wider">Tags</h3>
             <div className="flex flex-wrap gap-2">
               {project.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full"
-                >
+                <Badge key={tag} variant="outline" className="px-3 py-1">
                   #{tag}
-                </span>
+                </Badge>
               ))}
             </div>
           </div>
@@ -157,7 +142,7 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
       </div>
 
       {/* Engagement */}
-      <div className="p-6">
+      <div className="p-6 bg-muted/5">
         <ProjectEngagement
           project={project}
           onLike={handleLike}
@@ -165,7 +150,7 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
           isLiking={isLiking || isUnliking}
         />
       </div>
-    </div>
+    </Card>
   );
 }
 

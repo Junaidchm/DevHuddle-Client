@@ -12,7 +12,6 @@ import ProfileTabs from './ProfileTabs';
 import ActivitySection from './ActivitySection';
 import ProfileAnalytics from './ProfileAnalytics';
 import { format } from 'date-fns';
-import ProfileHeaderClient from './ProfileHeaderClient';
 import { queryKeys } from '@/src/lib/queryKeys';
 import { useAuthHeaders } from '@/src/customHooks/useAuthHeaders';
 import { createUploadSession, uploadFileToR2, completeUpload, MediaType } from '@/src/services/api/media.service';
@@ -24,6 +23,13 @@ import FollowersSection from './FollowersSection';
 
 import { api } from '@/src/lib/api-client';
 import { API_ROUTES } from '@/src/constants/api.routes';
+import { Card } from '../ui/card';
+import Avatar from './Avatar';
+import { Button } from '../ui/button';
+import { useRouter } from 'next/navigation';
+import { Calendar, MapPin, Pencil } from 'lucide-react';
+import { PROFILE_DEFAULT_URL } from '@/src/constants';
+import { FollowButton } from '../FollowButton';
 
 interface ProfileHeaderProps {
   username: string;
@@ -95,16 +101,17 @@ const ProfileHeader = ({ username, initialProfile, currentUserId }: ProfileHeade
   const joinedDate = profile.createdAt ? format(new Date(profile.createdAt), 'MMM yyyy') : 'Unknown';
 
   const [activeTab, setActiveTab] = React.useState('network');
+  const router = useRouter();
 
   return (
-    <div className="max-w-7xl mx-auto px-0 md:px-4 lg:px-6 py-4 grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <div className="max-w-[1128px] mx-auto px-0 md:px-0 py-4 grid grid-cols-1 lg:grid-cols-4 gap-6">
       
       {/* Left Sidebar (Main Profile Card) - Spans 3 columns on large screens */}
       <div className="lg:col-span-3 space-y-4">
         
         {/* Profile Card */}
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden relative">
-            <div className="relative">
+        <Card className="rounded-lg shadow-sm border border-border overflow-hidden relative">
+            <div className="relative h-[201px] w-full bg-[#A0B4B7]">
                 <CoverImage 
                     src={profile.coverImage} 
                     editable={isOwnProfile} 
@@ -117,95 +124,99 @@ const ProfileHeader = ({ username, initialProfile, currentUserId }: ProfileHeade
                     accept="image/*"
                     onChange={handleFileChange}
                 />
-                
-                {/* Avatar overlapping cover */}
-                <div className="absolute -bottom-16 left-6">
-                <div className="rounded-full p-1 bg-white">
-                    <ProfileHeaderClient
-                        profile={profile}
-                        isOwnProfile={isOwnProfile}
-                    />
-                </div>
-                </div>
             </div>
 
-            {/* Profile Info & Actions */}
-            <div className="pt-20 px-6 pb-6">
-                <div className="flex justify-between items-start">
+            <div className="px-6 pb-6 relative">
+                 {/* Avatar overlapping cover */}
+                 <div className="absolute -top-[100px] left-6">
+                    <div className="rounded-full p-1 bg-white">
+                         <Avatar 
+                             src={profile.profilePicture || PROFILE_DEFAULT_URL} 
+                             alt={profile.name} 
+                             className="w-[152px] h-[152px] border-4 border-white shadow-none"
+                         />
+                    </div>
+                </div>
+
+                {/* Actions (Top Right) */}
+                <div className="flex justify-end pt-4 mb-2">
+                     {isOwnProfile ? (
+                        <div className="flex gap-2">
+                            {/* <Button variant="outline" className="rounded-full" onClick={() => {}}>
+                                I'm Open To
+                            </Button> */}
+                            <Button 
+                                variant="outline" 
+                                className="rounded-full text-primary border-primary hover:bg-primary/10 hover:border-primary-hover hover:text-primary-hover font-semibold"
+                                onClick={() => router.push(`/profile/update/${profile.username}`)}
+                            >
+                                <Pencil className="w-4 h-4 mr-2" />
+                                Edit profile
+                            </Button>
+                        </div>
+                     ) : (
+                         <FollowButton userId={profile.id} isFollowing={profile.isFollowing!} />
+                     )}
+                </div>
+
+                {/* Profile Info */}
+                <div className="mt-8 flex justify-between items-start">
                     <div className="space-y-1">
-                        {/* Name & verification */}
                         <div className="flex items-center gap-2">
-                            <h1 className="text-2xl font-bold text-gray-900">{profile.name}</h1>
-                            {profile.emailVerified && <span className="text-blue-500" title="Verified">✓</span>}
+                            <h1 className="text-2xl font-bold text-foreground">{profile.name}</h1>
+                            {profile.emailVerified && <span className="text-muted-foreground text-sm" title="Verified">(Verified)</span>}
                         </div>
-                        <p className="text-gray-500 text-sm">@{profile.username}</p>
+                         
+                        <p className="text-base text-foreground mt-1 max-w-[600px] break-words">
+                            {profile.bio || profile.jobTitle || 'No headline available'}
+                        </p>
                         
-                        {/* Headline/Bio */}
-                        <p className="text-gray-900 mt-2 text-base">{profile.bio || profile.jobTitle || 'No headline available'}</p>
-                        
-                        {/* Location & Meta */}
-                        <div className="flex items-center gap-4 mt-2 text-gray-500 text-sm">
-                            {profile.location && <span>📍 {profile.location}</span>}
-                            <span>📅 Joined {joinedDate}</span>
+                        <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                            {profile.location && <span className="inline-flex items-center gap-1"><MapPin className="w-4 h-4" /> {profile.location}</span>}
+                            <span className="inline-flex items-center gap-1"><Calendar className="w-4 h-4" /> Joined {joinedDate}</span>
                         </div>
                         
-                        {/* Connection Count */}
-                        <div className="mt-2 text-purple-600 font-semibold text-sm hover:underline cursor-pointer">
-                            {profile._count.followers} followers • {profile._count.following} following
+                        <div className="mt-4 flex items-center gap-4 text-sm font-bold text-primary hover:text-primary-hover cursor-pointer">
+                           <span>{profile._count.followers} followers</span>
+                           <span>{profile._count.following} following</span>
                         </div>
                     </div>
-                    
-                    {/* Action Buttons */}
-                    <div className="flex gap-2">
-                        {isOwnProfile ? (
-                            <>
-                                {/* <button className="px-4 py-1.5 bg-purple-600 text-white rounded-full font-semibold hover:bg-purple-700 transition">
-                                    Edit Profile
-                                </button> */}
-                                {/* <button className="px-4 py-1.5 border border-gray-300 text-gray-600 rounded-full font-semibold hover:bg-gray-50 transition">
-                                    Share Profile
-                                </button> */}
-                            </>
-                        ) : (
-                            <button className="px-6 py-1.5 bg-purple-600 text-white rounded-full font-semibold hover:bg-purple-700 transition">
-                                Follow
-                            </button>
-                        )}
-                    </div>
+                    {/* Could add current company/school logos here on the right */}
                 </div>
                 
                 {/* Nav Tabs */}
-                <div className="mt-2">
+                <div className="mt-4 border-t border-border pt-1">
                     <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
                 </div>
             </div>
-        </div>
+        </Card>
 
-
-         {/* Tab Content Areas (Activity/Network) */}
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 min-h-[300px]">
+        {/* Tab Content Areas (Activity/Network) */}
+        <div className="min-h-[100px]">
             {activeTab === 'posts' && (
-                <>
-                    <h3 className="text-lg font-semibold mb-4">Activity</h3>
+                <div className="space-y-4">
+                    <h3 className="text-xl font-bold text-foreground px-1">Activity</h3>
                     <ActivitySection type="posts" userId={profile.id} currentUserId={currentUserId} />
-                </>
+                </div>
             )}
 
             {activeTab === 'comments' && (
-                <>
-                    <h3 className="text-lg font-semibold mb-4">Comments</h3>
+                <Card className="rounded-lg shadow-sm border border-border p-6">
+                    <h3 className="text-xl font-bold text-foreground mb-4">Comments</h3>
                     <ActivitySection type="comments" userId={profile.id} currentUserId={currentUserId} />
-                </>
+                </Card>
             )}
 
             {activeTab === 'network' && (
-                <div className="space-y-6">
-                    <FollowersSection
-                        username={profile.username}
-                        currentUserId={currentUserId}
-                        initialProfile={profile}
-                    />
-                </div>
+                <Card className="rounded-lg shadow-sm border border-border p-6">
+                    <div className="space-y-6">
+                        <FollowersSection
+                            username={profile.username}
+                            currentUserId={currentUserId}
+                            initialProfile={profile}
+                        />
+                    </div>
+                </Card>
             )}
         </div>
 
@@ -229,27 +240,12 @@ const ProfileHeader = ({ username, initialProfile, currentUserId }: ProfileHeade
             isOwnProfile={isOwnProfile} 
             username={username}
         />
-
-       
-
       </div>
 
-      {/* Right Sidebar - Analytics & Suggestions */}
-      {/* <div className="lg:col-span-1 space-y-4">
-         {isOwnProfile && (
-             <ProfileAnalytics 
-                profileViews={42} // Dummy data
-                searchImpressions={15} // Dummy data
-                searchScore={75} // Dummy data
-             />
-         )} */}
-
-         {/* Additional Right sidebar content can go here, e.g. "People also viewed" */}
-         {/* <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-            <h3 className="font-semibold text-gray-900 mb-3">People you may know</h3>
-             <p className="text-sm text-gray-500">Suggestions coming soon...</p>
-         </div>
-      </div> */}
+       {/* Right Sidebar - Analytics & Suggestions */}
+      <div className="lg:col-span-1 space-y-4">
+        {/* Placeholder for "People also viewed" or similar */}
+      </div>
 
     </div>
   );

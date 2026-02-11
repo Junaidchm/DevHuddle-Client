@@ -2,16 +2,18 @@
 
 import { Camera } from 'lucide-react';
 import Image from 'next/image';
+import { cn } from '@/src/lib/utils';
 
 interface CoverImageProps {
   src?: string | null;
   editable?: boolean;
   onEdit?: () => void;
+  className?: string;
 }
 
-const CoverImage = ({ src, editable, onEdit }: CoverImageProps) => {
+const CoverImage = ({ src, editable, onEdit, className }: CoverImageProps) => {
   return (
-    <div className="relative w-full h-48 md:h-60 bg-gradient-to-r from-slate-200 to-slate-300 overflow-hidden">
+    <div className={cn("relative w-full h-48 md:h-60 bg-muted overflow-hidden", className)}>
       {src ? (
         <Image
           src={src}

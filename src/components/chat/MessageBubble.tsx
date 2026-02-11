@@ -8,9 +8,10 @@ interface MessageBubbleProps {
   isOwn: boolean;
   showAvatar?: boolean;
   senderName?: string;
+  senderAvatar?: string;
 }
 
-export function MessageBubble({ message, isOwn, showAvatar, senderName }: MessageBubbleProps) {
+export function MessageBubble({ message, isOwn, showAvatar, senderName, senderAvatar }: MessageBubbleProps) {
   const [isPlaying, setIsPlaying] = useState(false);
 
   // Format time to HH:MM (WhatsApp style)
@@ -100,8 +101,12 @@ export function MessageBubble({ message, isOwn, showAvatar, senderName }: Messag
     <div className={`flex items-end gap-2 mb-1 ${isOwn ? 'justify-end' : 'justify-start'}`}>
       {/* Avatar for received messages */}
       {!isOwn && showAvatar && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-[#0A66C2] to-[#004182] flex items-center justify-center text-white text-xs font-semibold shadow-sm">
-          {senderName?.charAt(0)?.toUpperCase() || 'U'}
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-[#0A66C2] to-[#004182] flex items-center justify-center text-white text-xs font-semibold shadow-sm overflow-hidden">
+           {senderAvatar ? (
+               <Image src={senderAvatar} alt={senderName || 'U'} width={32} height={32} className="object-cover w-full h-full" />
+           ) : (
+               <span>{senderName?.charAt(0)?.toUpperCase() || 'U'}</span>
+           )}
         </div>
       )}
       {!isOwn && !showAvatar && <div className="w-8" />}

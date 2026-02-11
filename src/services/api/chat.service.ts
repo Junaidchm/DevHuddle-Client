@@ -39,16 +39,21 @@ export async function getMessages(
   conversationId: string,
   headers: Record<string, string>,
   limit = 50,
-  offset = 0
+  before?: Date
 ): Promise<GetMessagesResponse> {
   try {
     const response = await axiosInstance.get<GetMessagesResponse>(
       API_ROUTES.CHAT.CONVERSATION_MESSAGES(conversationId),
       {
         headers,
-        params: { limit, offset },
+        params: { 
+            limit, 
+            before: before?.toISOString() // Send as ISO string
+        },
       }
     );
+    console.log(`[API] getMessages response data:`, response.data); 
+    console.log(`[API] getMessages fetched ${(response.data as any).messages?.length} messages for conv ${conversationId}`);
     return response.data;
   } catch (error) {
     console.error('Failed to fetch messages:', error);
@@ -156,4 +161,23 @@ export async function createConversation(
     { headers }
   );
   return response.data;
+}
+/**
+ * Mark conversation as read (updates lastReadAt timestamp, clears unread count)
+ */
+export async function markConversationAsRead(
+  conversationId: string,
+  headers: Record<string, string>
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await axiosInstance.post(
+      `/chat/conversations/${conversationId}/read`,
+      {},
+      { headers }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Failed to mark conversation as read:', error);
+    throw error;
+  }
 }

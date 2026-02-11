@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { PROFILE_DEFAULT_URL } from "@/src/constents";
+import { PROFILE_DEFAULT_URL } from "@/src/constants";
+import { Avatar, AvatarImage, AvatarFallback } from "@/src/components/ui/avatar";
+import { Button } from "@/src/components/ui/button";
+import { Card } from "@/src/components/ui/card";
+import { cn } from "@/src/lib/utils";
+import { Check, X, GitBranch, Bell } from "lucide-react";
 
 interface NotificationItemProps {
   notification: {
@@ -88,45 +93,47 @@ export default function NotificationItem({
 
   return (
     <div
-      className={`flex p-[1.25rem] border-b border-[#e5e7eb] transition-all duration-[0.2s] relative last:border-b-0 hover:bg-[#f3f4f6] ${
-        notification.unread
-          ? 'bg-[rgba(79,70,229,0.05)] before:content-[""] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-[#4f46e5]'
-          : ""
-      }`}
+      className={cn(
+        "flex p-4 border-b border-border transition-colors hover:bg-muted/30 relative",
+        notification.unread && "bg-blue-50/50 hover:bg-blue-50/70 dark:bg-blue-950/10 dark:hover:bg-blue-950/20"
+      )}
     >
+        {notification.unread && (
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
+        )}
+
       {notification.avatar ? (
-        <div className="w-[3rem] h-[3rem] rounded-[50%] overflow-hidden flex-shrink-0 mr-[1rem]">
-          <img
-            src={notification.avatar || PROFILE_DEFAULT_URL}
-            alt="User"
-            className="w-full h-full object-cover"
-          />
-        </div>
+        <Avatar className="w-12 h-12 mr-4 border border-border">
+             <AvatarImage src={notification.avatar || PROFILE_DEFAULT_URL} alt="User" className="object-cover" />
+             <AvatarFallback>U</AvatarFallback>
+        </Avatar>
       ) : (
         <div
-          className="w-[3rem] h-[3rem] rounded-[50%] flex-shrink-0 mr-[1rem] flex items-center justify-center text-[1.25rem]"
+          className="w-12 h-12 rounded-full mr-4 flex items-center justify-center flex-shrink-0"
           style={{
-            backgroundColor: notification.iconBg,
-            color: notification.iconColor,
+            backgroundColor: notification.iconBg || "#f3f4f6",
+            color: notification.iconColor || "#6b7280",
           }}
         >
-          <i className={notification.icon}></i>
+          {/* We might need to render icons dynamically if passed as string names, 
+              but for now keeping it simple as it seems to be passing class names or similar */}
+          <Bell className="w-5 h-5" /> 
         </div>
       )}
 
-      <div className="flex-1">
-        <div className="flex items-center justify-between mb-[0.25rem]">
-          <div className="font-[600] text-[#1f2937]">{notification.title}</div>
-          <div className="text-[0.8rem] text-[#6b7280]">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <div className="font-semibold text-foreground text-sm">{notification.title}</div>
+          <div className="text-xs text-muted-foreground whitespace-nowrap">
             {notification.time}
           </div>
         </div>
 
-        <div className="text-[#6b7280] text-[0.95rem] mb-[0.5rem]">
+        <div className="text-sm text-muted-foreground mb-2 leading-relaxed">
           {notification.message.split(/(\*\*.*?\*\*)/).map((part, index) => {
             if (part.startsWith("**") && part.endsWith("**")) {
               return (
-                <strong key={index} className="text-[#1f2937] font-[500]">
+                <strong key={index} className="text-foreground font-medium">
                   {part.slice(2, -2)}
                 </strong>
               );
@@ -136,61 +143,65 @@ export default function NotificationItem({
         </div>
 
         {notification.project && (
-          <div className="inline-flex items-center gap-[0.35rem] text-[0.85rem] text-[#4f46e5] px-[0.75rem] py-[0.35rem] bg-[rgba(79,70,229,0.1)] rounded-[0.35rem] mt-[0.5rem]">
-            <i className="fas fa-code-branch"></i> {notification.project}
+          <div className="inline-flex items-center gap-1.5 text-xs font-medium text-primary px-2 py-1 bg-primary/10 rounded-md mb-2">
+            <GitBranch className="w-3 h-3" />
+            {notification.project}
           </div>
         )}
 
         {notification.hasButtons && !accepted && !declined && (
-          <div className="flex gap-[0.75rem] mt-[0.75rem]">
-            <button
+          <div className="flex gap-3 mt-3">
+            <Button
               onClick={handleAccept}
-              className="inline-flex items-center gap-[0.5rem] px-[1rem] py-[0.4rem] border-none rounded-[0.5rem] font-[500] cursor-pointer transition-all duration-[0.2s] text-[0.875rem] bg-[#4f46e5] text-white hover:bg-[#4338ca]"
+              size="sm"
+              className="gap-1"
             >
+              <Check className="w-4 h-4" />
               Accept Invitation
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleDecline}
-              className="inline-flex items-center gap-[0.5rem] px-[1rem] py-[0.4rem] border-none rounded-[0.5rem] font-[500] cursor-pointer transition-all duration-[0.2s] text-[0.875rem] bg-transparent text-[#1f2937] border border-[#e5e7eb] hover:bg-[#f3f4f6]"
+              variant="outline"
+              size="sm"
+              className="gap-1"
             >
+              <X className="w-4 h-4" />
               Decline
-            </button>
+            </Button>
           </div>
         )}
 
         {accepted && (
-          <div className="flex gap-[0.75rem] mt-[0.75rem]">
-            <button
-              disabled
-              className="inline-flex items-center gap-[0.5rem] px-[1rem] py-[0.4rem] border-none rounded-[0.5rem] font-[500] cursor-not-allowed transition-all duration-[0.2s] text-[0.875rem] bg-[#10b981] text-white"
-            >
-              Accepted
-            </button>
+          <div className="flex gap-3 mt-3">
+            <Button disabled size="sm" variant="outline" className="text-green-600 border-green-200 bg-green-50">
+               <Check className="w-4 h-4 mr-1" /> Accepted
+            </Button>
           </div>
         )}
 
         {declined && (
-          <div className="flex gap-[0.75rem] mt-[0.75rem]">
-            <button
-              disabled
-              className="inline-flex items-center gap-[0.5rem] px-[1rem] py-[0.4rem] border-none rounded-[0.5rem] font-[500] cursor-not-allowed transition-all duration-[0.2s] text-[0.875rem] bg-transparent text-[#1f2937] border border-[#e5e7eb]"
-            >
-              Declined
-            </button>
+          <div className="flex gap-3 mt-3">
+            <Button disabled size="sm" variant="outline" className="text-muted-foreground">
+               Declined
+            </Button>
           </div>
         )}
 
-        <div className="flex items-center justify-end mt-[0.5rem]">
-          {notification.actions.map((action, index) => (
-            <button
-              key={index}
-              onClick={() => action === "Mark as Read" && onMarkAsRead()}
-              className="bg-none border-none text-[#6b7280] text-[0.85rem] cursor-pointer px-[0.5rem] py-[0.25rem] ml-[1rem] transition-all duration-[0.2s] hover:text-[#4f46e5]"
-            >
-              {action}
-            </button>
-          ))}
-        </div>
+        {notification.actions && notification.actions.length > 0 && (
+             <div className="flex items-center justify-end mt-2">
+                {notification.actions.map((action, index) => (
+                    <Button 
+                        key={index} 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => action === "Mark as Read" && onMarkAsRead()}
+                        className="text-xs text-muted-foreground hover:text-primary h-8"
+                    >
+                        {action}
+                    </Button>
+                ))}
+             </div>
+        )}
       </div>
     </div>
   );

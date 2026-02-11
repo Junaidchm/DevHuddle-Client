@@ -1,32 +1,29 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { FaEyeSlash } from "react-icons/fa";
 import { z } from "zod";
-
 import {
-  useFormField,
   Form,
+  FormControl,
+  FormField,
   FormItem,
   FormLabel,
-  FormControl,
-  FormDescription,
   FormMessage,
-  FormField,
 } from "@/src/components/ui/form";
 import { useForm } from "react-hook-form";
 import { Input } from "@/src/components/ui/input";
-import { FaEye } from "react-icons/fa";
-import { BsGithub } from "react-icons/bs";
+import { PasswordInput } from "@/src/components/ui/password-input";
+import { Button } from "@/src/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/src/components/ui/card";
+import { Separator } from "@/src/components/ui/separator"; 
 import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import type { AppDispatch } from "@/src/store/store";
 import { useRouter } from "next/navigation";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { googleAuth, register } from "@/src/store/actions/authActions";
-import { OAuthButton } from "@/src/components/layouts/auth";
 import useRedirectIfAuthenticated from "@/src/customHooks/useRedirectIfAuthenticated";
 
 const formSchema = z
@@ -82,9 +79,6 @@ export default function SignUpForm() {
 
   useRedirectIfAuthenticated()
 
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [showConfirmPassword, setShowConfirmPassword] =
-    useState<boolean>(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -137,197 +131,135 @@ export default function SignUpForm() {
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem className="mb-3 sm:mb-4 relative">
-              <FormLabel className="block font-medium mb-2 text-gray-900 text-sm sm:text-base">
-                Full Name
-              </FormLabel>
-              <FormControl>
-                <input
-                  {...field}
-                  required
-                  placeholder="John Doe"
-                  className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-200 rounded-3xl font-sans text-sm sm:text-base transition-all focus:outline-none focus:border-primary focus:ring-3 focus:ring-primary/20"
-                />
-              </FormControl>
-              <FormMessage className="text-xs sm:text-sm text-red-500 mt-2" />
-            </FormItem>
-          )}
-        />
+    <Card className="w-full max-w-[500px] shadow-lg animate-fadeIn border-0 sm:border">
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl font-bold">Create your account</CardTitle>
+        <CardDescription>
+          Join DevHuddle and start collaborating with developers
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Full Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="John Doe" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem className="mb-3 sm:mb-4 relative">
-              <FormLabel
-                htmlFor="username"
-                className="block font-medium mb-2 text-gray-900 text-sm sm:text-base"
+            <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Username</FormLabel>
+                  <FormControl>
+                    <Input placeholder="your_username" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="you@example.com" type="email" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <PasswordInput placeholder="••••••••" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirm Password</FormLabel>
+                  <FormControl>
+                    <PasswordInput placeholder="••••••••" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="pt-2">
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={form.formState.isSubmitting}
               >
-                Username
-              </FormLabel>
-              <FormControl>
-                <input
-                  {...field}
-                  id="username"
-                  type="text"
-                  placeholder="your_username"
-                  required
-                  className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-200 rounded-3xl font-sans text-sm sm:text-base transition-all focus:outline-none focus:border-primary focus:ring-3 focus:ring-primary/20"
-                />
-              </FormControl>
-              <FormMessage className="text-xs sm:text-sm text-red-500 mt-2" />
-            </FormItem>
-          )}
-        />
+                {form.formState.isSubmitting ? "Creating account..." : "Create Account"}
+              </Button>
+            </div>
 
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem className="mb-3 sm:mb-4 relative">
-              <FormLabel
-                htmlFor="email"
-                className="block font-medium mb-2 text-gray-900 text-sm sm:text-base"
-              >
-                Email
-              </FormLabel>
-              <FormControl>
-                <input
-                  {...field}
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  required
-                  className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-200 rounded-3xl font-sans text-sm sm:text-base transition-all focus:outline-none focus:border-primary focus:ring-3 focus:ring-primary/20"
-                />
-              </FormControl>
-              <FormMessage className="text-xs sm:text-sm text-red-500 mt-2" />
-            </FormItem>
-          )}
-        />
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-muted" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
 
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem className="mb-3 sm:mb-4 relative">
-              <FormLabel
-                htmlFor="password"
-                className="block font-medium mb-2 text-gray-900 text-sm sm:text-base"
-              >
-                Password
-              </FormLabel>
-              <FormControl>
-                <div className="relative">
-                  <input
-                    {...field}
-                    type={showPassword ? "text" : "password"}
-                    id="password"
-                    placeholder="••••••••"
-                    required
-                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-200 rounded-3xl font-sans text-sm sm:text-base transition-all focus:outline-none focus:border-primary focus:ring-3 focus:ring-primary/20"
-                  />
-                  {!showPassword ? (
-                    <FaEye
-                      onClick={() => {
-                        setShowPassword(true);
-                      }}
-                      className="absolute right-3 sm:right-4 top-7 transform -translate-y-1/2 text-gray-500 cursor-pointer hover:text-gray-900 transition-colors"
-                    />
-                  ) : (
-                    <FaEyeSlash
-                      onClick={() => {
-                        setShowPassword(false);
-                      }}
-                      className="absolute right-3 sm:right-4 top-7 transform -translate-y-1/2 text-gray-500 cursor-pointer hover:text-gray-900 transition-colors"
-                    />
-                  )}
-                </div>
-              </FormControl>
-              <FormMessage className="text-xs sm:text-sm text-red-500 mt-2" />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="confirmPassword"
-          render={({ field }) => (
-            <FormItem className="mb-3 sm:mb-4 relative">
-              <FormLabel
-                htmlFor="confirmPassword"
-                className="block font-medium mb-2 text-gray-900 text-sm sm:text-base"
-              >
-                Confirm Password
-              </FormLabel>
-              <FormControl>
-                <div className="relative">
-                  <input
-                    {...field}
-                    type={showConfirmPassword ? "text" : "password"}
-                    id="confirmPassword"
-                    placeholder="••••••••"
-                    required
-                    className="w-full px-3 sm:px-4 py-3 sm:py-4 border border-gray-200 rounded-3xl font-sans text-sm sm:text-base transition-all focus:outline-none focus:border-primary focus:ring-3 focus:ring-primary/20"
-                  />
-                  {!showConfirmPassword ? (
-                    <FaEye
-                      onClick={() => {
-                        setShowConfirmPassword(true);
-                      }}
-                      className="absolute right-3 sm:right-4 top-7 transform -translate-y-1/2 text-gray-500 cursor-pointer hover:text-gray-900 transition-colors"
-                    />
-                  ) : (
-                    <FaEyeSlash
-                      onClick={() => {
-                        setShowConfirmPassword(false);
-                      }}
-                      className="absolute right-3 sm:right-4 top-7 transform -translate-y-1/2 text-gray-500 cursor-pointer hover:text-gray-900 transition-colors"
-                    />
-                  )}
-                </div>
-              </FormControl>
-              <FormMessage className="text-xs sm:text-sm text-red-500 mt-2" />
-            </FormItem>
-          )}
-        />
-
-        <div className="flex flex-col gap-2 mb-4 sm:mb-6">
-          <button
-            type="submit"
-            className="w-full py-3 sm:py-4 bg-primary text-white rounded-3xl font-semibold cursor-pointer transition-colors hover:bg-primary-hover disabled:opacity-70 disabled:cursor-not-allowed mb-3 sm:mb-4"
-            id="signup-button"
-            disabled={form.formState.isSubmitting}
-          >
-            {!form.formState.isSubmitting ? "Create User" : "User creating ....."}
-          </button>
-
-          <OAuthButton
-            disabled={isGoogleLoading || form.formState.isSubmitting}
-            onClick={handleGoogleAuth}
-            label={isGoogleLoading ? "Connecting..." : "Continue with Google"}
-            icon={<FcGoogle />}
-          />
-        </div>
-
-        <div className="text-center">
-          <p className="text-xs sm:text-sm text-gray-600">
-            Already have an account?{" "}
-            <Link
-              href="/signIn"
-              className="text-primary font-medium hover:text-primary-hover hover:underline transition-colors"
+            <Button
+              variant="outline"
+              type="button"
+              className="w-full"
+              onClick={handleGoogleAuth}
+              disabled={isGoogleLoading || form.formState.isSubmitting}
             >
-              Log in
-            </Link>
-          </p>
-        </div>
-      </form>
-    </Form>
+              {isGoogleLoading ? (
+                "Connecting..."
+              ) : (
+                <>
+                  <FcGoogle className="mr-2 h-4 w-4" />
+                  Continue with Google
+                </>
+              )}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+      <CardFooter className="flex justify-center">
+        <p className="text-sm text-center text-muted-foreground">
+          Already have an account?{" "}
+          <Link
+            href="/signIn"
+            className="text-primary font-medium hover:text-primary-hover hover:underline"
+          >
+            Log in
+          </Link>
+        </p>
+      </CardFooter>
+    </Card>
   );
 }

@@ -1,5 +1,5 @@
 import { ImageTransform } from "@/src/app/types/feed";
-import { default_ImageTransform, filters } from "@/src/constents/feed";
+import { default_ImageTransform, filters } from "@/src/constants/feed";
 
 
 export const getImageStyle = (

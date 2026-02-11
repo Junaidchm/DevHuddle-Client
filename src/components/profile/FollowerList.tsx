@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import FollowerItem from './FollowerItem';
 import { useAuthHeaders } from '@/src/customHooks/useAuthHeaders';
-import { PROFILE_DEFAULT_URL } from '@/src/constents';
+import { PROFILE_DEFAULT_URL } from '@/src/constants';
 import { queryKeys } from '@/src/lib/queryKeys';
 import { fetchFollowers, fetchFollowing } from '@/src/services/api/follow.service';
 import Pagination from './Pagination';

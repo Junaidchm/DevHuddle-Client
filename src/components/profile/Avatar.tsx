@@ -2,7 +2,7 @@
 'use client';
 import React from 'react';
 import { cn } from '@/src/lib/utils';
-import { PROFILE_DEFAULT_URL } from '@/src/constents';
+import { PROFILE_DEFAULT_URL } from '@/src/constants';
 
 interface AvatarProps {
   src: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Button } from "../ui/button";
 
 interface ProjectFiltersProps {
   filter: "trending" | "top" | "newest";
@@ -16,39 +16,33 @@ export default function ProjectFilters({
   onPeriodChange,
 }: ProjectFiltersProps) {
   return (
-    <div className="flex flex-wrap gap-4 mb-6">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
       {/* Filter Tabs */}
-      <div className="flex gap-2 border-b">
-        <button
+      <div className="flex gap-1 p-1 bg-muted rounded-lg">
+        <Button
+          variant={filter === "trending" ? "secondary" : "ghost"}
+          size="sm"
           onClick={() => onFilterChange("trending")}
-          className={`px-4 py-2 font-medium ${
-            filter === "trending"
-              ? "border-b-2 border-blue-600 text-blue-600"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
+          className={filter === "trending" ? "bg-background shadow-xs text-primary font-semibold" : "text-muted-foreground"}
         >
           Trending
-        </button>
-        <button
-          onClick={() => onFilterChange("top")}
-          className={`px-4 py-2 font-medium ${
-            filter === "top"
-              ? "border-b-2 border-blue-600 text-blue-600"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
+        </Button>
+        <Button
+           variant={filter === "top" ? "secondary" : "ghost"}
+           size="sm"
+           onClick={() => onFilterChange("top")}
+           className={filter === "top" ? "bg-background shadow-xs text-primary font-semibold" : "text-muted-foreground"}
         >
           Top Projects
-        </button>
-        <button
-          onClick={() => onFilterChange("newest")}
-          className={`px-4 py-2 font-medium ${
-            filter === "newest"
-              ? "border-b-2 border-blue-600 text-blue-600"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
+        </Button>
+        <Button
+           variant={filter === "newest" ? "secondary" : "ghost"}
+           size="sm"
+           onClick={() => onFilterChange("newest")}
+           className={filter === "newest" ? "bg-background shadow-xs text-primary font-semibold" : "text-muted-foreground"}
         >
           Newest
-        </button>
+        </Button>
       </div>
 
       {/* Period Filter */}
@@ -56,7 +50,7 @@ export default function ProjectFilters({
         <select
           value={period}
           onChange={(e) => onPeriodChange(e.target.value)}
-          className="px-4 py-2 border rounded-lg"
+          className="px-3 py-1.5 text-sm border border-input rounded-md bg-background hover:bg-muted/50 focus:ring-2 focus:ring-ring focus:outline-none transition-colors"
         >
           <option value="day">Today</option>
           <option value="week">This Week</option>

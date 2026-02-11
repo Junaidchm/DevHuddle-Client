@@ -1,5 +1,5 @@
 import { MappedNotification, NotificationActor } from "./types";
-import { PROFILE_DEFAULT_URL } from "@/src/constents/index";
+import { PROFILE_DEFAULT_URL } from "@/src/constants/index";
 import { GetNotificationsResult } from "@/src/app/types";
 
 /**

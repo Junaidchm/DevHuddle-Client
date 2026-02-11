@@ -46,6 +46,26 @@ export interface Message {
   
   // Optimistic updates
   dedupeId?: string;
+
+  // WhatsApp Features
+  isForwarded?: boolean;
+  forwardedFrom?: string;
+  replyToId?: string;
+  replyTo?: Message;
+  formattedContent?: string;
+  isStarred?: boolean;
+  isPinned?: boolean;
+
+  // Reactions
+  reactions?: MessageReaction[];
+}
+
+export interface MessageReaction {
+  id: string;
+  messageId: string;
+  userId: string;
+  emoji: string;
+  createdAt: string;
 }
 
 export interface Conversation {
@@ -75,6 +95,8 @@ export type WebSocketMessageType =
   | 'error'
   | 'heartbeat'
   | 'heartbeat_ack'
+  | 'ping' 
+  | 'pong' 
   // Notification types
   | 'new_notification'
   | 'unread_count';
@@ -104,9 +126,15 @@ export interface GetConversationsResponse {
 }
 
 export interface GetMessagesResponse {
-  messages: Message[];
-  total: number;
-  hasMore: boolean;
+  success?: boolean; // Added for consistency with API response structure
+  data?: Message[]; // Sometimes API returns { data: [], pagination: {} }
+  messages?: Message[]; // Sometimes API returns { messages: [] } - checking usage
+  pagination?: {
+      limit: number;
+      nextCursor?: string | null;
+      count: number;
+  };
+  hasMore?: boolean; // Legacy
 }
 
 export interface SendMessagePayload {

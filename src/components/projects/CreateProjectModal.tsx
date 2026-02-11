@@ -1,10 +1,17 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { X, Image, Link as LinkIcon, Tag } from "lucide-react";
+import { X, Image as ImageIcon, Link as LinkIcon, Tag, UploadCloud, Loader2 } from "lucide-react";
 import { useCreateProjectMutation } from "./hooks/useCreateProjectMutation";
 import useProjectMediaUpload from "./hooks/useProjectMediaUpload";
 import toast from "react-hot-toast";
+
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/src/components/ui/dialog";
+import { Button } from "@/src/components/ui/button";
+import { Input } from "@/src/components/ui/input";
+import { Textarea } from "@/src/components/ui/textarea";
+import { Badge } from "@/src/components/ui/badge";
+import { Label } from "@/src/components/ui/label";
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -122,274 +129,150 @@ export default function CreateProjectModal({
     });
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
-          <h2 className="text-2xl font-bold">Create New Project</h2>
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            aria-label="Close modal"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-6">
+        <DialogHeader className="px-1">
+          <DialogTitle className="text-2xl font-bold">Create New Project</DialogTitle>
+          <DialogDescription>
+            Share your latest work with the community.
+          </DialogDescription>
+        </DialogHeader>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto pr-2 space-y-6 mt-4">
           {/* Title */}
-          <div>
-            <label className="block text-sm font-medium mb-2">Project Title *</label>
-            <input
-              type="text"
+          <div className="space-y-2">
+            <Label htmlFor="title">Project Title <span className="text-destructive">*</span></Label>
+            <Input
+              id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter project title"
+              placeholder="e.g. AI-Powered Task Manager"
               required
             />
           </div>
 
           {/* Description */}
-          <div>
-            <label className="block text-sm font-medium mb-2">Description *</label>
-            <textarea
+          <div className="space-y-2">
+            <Label htmlFor="description">Description <span className="text-destructive">*</span></Label>
+            <Textarea
+              id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              rows={6}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              rows={5}
               placeholder="Describe your project (Markdown supported)"
               required
+              className="resize-y min-h-[120px]"
             />
           </div>
 
           {/* Repository URLs */}
-          <div>
-            <label className="block text-sm font-medium mb-2">Repository URLs</label>
+          <div className="space-y-3">
+             <div className="flex items-center justify-between">
+                <Label>Repository URLs</Label>
+                <Button type="button" variant="ghost" size="sm" onClick={handleAddRepositoryUrl} className="h-8 text-xs">
+                    <LinkIcon className="w-3.5 h-3.5 mr-1.5" />
+                    Add Another URL
+                </Button>
+             </div>
             {repositoryUrls.map((url, index) => (
-              <div key={index} className="flex gap-2 mb-2">
-                <input
-                  type="url"
-                  value={url}
-                  onChange={(e) => handleRepositoryUrlChange(index, e.target.value)}
-                  className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="https://github.com/username/repo"
-                />
-                {index === repositoryUrls.length - 1 && (
-                  <button
-                    type="button"
-                    onClick={handleAddRepositoryUrl}
-                    className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
-                  >
-                    <LinkIcon className="w-5 h-5" />
-                  </button>
-                )}
-              </div>
+              <Input
+                key={index}
+                type="url"
+                value={url}
+                onChange={(e) => handleRepositoryUrlChange(index, e.target.value)}
+                placeholder="https://github.com/username/repo"
+                className="font-mono text-sm"
+              />
             ))}
           </div>
 
           {/* Demo URL */}
-          <div>
-            <label className="block text-sm font-medium mb-2">Demo URL</label>
-            <input
+          <div className="space-y-2">
+            <Label htmlFor="demoUrl">Demo URL</Label>
+            <Input
+              id="demoUrl"
               type="url"
               value={demoUrl}
               onChange={(e) => setDemoUrl(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="https://your-demo.com"
             />
           </div>
 
           {/* Tech Stack */}
-          <div>
-            <label className="block text-sm font-medium mb-2">Tech Stack</label>
-            <div className="flex gap-2 mb-2">
-              <input
-                type="text"
+          <div className="space-y-3">
+            <Label>Tech Stack</Label>
+            <div className="flex gap-2">
+              <Input
                 value={techInput}
                 onChange={(e) => setTechInput(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTech())}
-                className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Add technology (e.g., React, Node.js)"
+                className="flex-1"
               />
-              <button
-                type="button"
-                onClick={handleAddTech}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
+              <Button type="button" onClick={handleAddTech} variant="secondary">
                 Add
-              </button>
+              </Button>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {techStack.map((tech) => (
-                <span
-                  key={tech}
-                  className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
-                >
-                  {tech}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveTech(tech)}
-                    className="hover:text-blue-900"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
+            
+            <div className="flex flex-wrap gap-2 min-h-[32px] p-2 border border-dashed rounded-md bg-muted/30">
+                {techStack.length === 0 && <span className="text-xs text-muted-foreground self-center">No technologies added</span>}
+                {techStack.map((tech) => (
+                    <Badge key={tech} variant="secondary" className="pl-2 pr-1 py-1 flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-100">
+                    {tech}
+                    <button
+                        type="button"
+                        onClick={() => handleRemoveTech(tech)}
+                        className="p-0.5 hover:bg-blue-200 rounded-full transition-colors ml-1"
+                    >
+                        <X className="w-3 h-3" />
+                    </button>
+                    </Badge>
+                ))}
             </div>
           </div>
 
           {/* Tags */}
-          <div>
-            <label className="block text-sm font-medium mb-2">Tags</label>
-            <div className="flex gap-2 mb-2">
-              <input
-                type="text"
+          <div className="space-y-3">
+            <Label>Tags</Label>
+            <div className="flex gap-2">
+              <Input
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTag())}
-                className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Add tag"
+                placeholder="Add tag (e.g., open-source, web3)"
+                className="flex-1"
               />
-              <button
-                type="button"
-                onClick={handleAddTag}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-              >
-                <Tag className="w-5 h-5" />
-              </button>
+               <Button type="button" onClick={handleAddTag} variant="outline" size="icon">
+                  <Tag className="w-4 h-4" />
+               </Button>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
-                >
-                  #{tag}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveTag(tag)}
-                    className="hover:text-gray-900"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
+            
+            <div className="flex flex-wrap gap-2 min-h-[32px] p-2 border border-dashed rounded-md bg-muted/30">
+                {tags.length === 0 && <span className="text-xs text-muted-foreground self-center">No tags added</span>}
+                {tags.map((tag) => (
+                    <Badge key={tag} variant="outline" className="pl-2 pr-1 py-1 flex items-center gap-1">
+                    #{tag}
+                    <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        className="p-0.5 hover:bg-muted-foreground/20 rounded-full transition-colors ml-1"
+                    >
+                        <X className="w-3 h-3" />
+                    </button>
+                    </Badge>
+                ))}
             </div>
           </div>
 
-          {/* Media Upload */}
-          {/* <div>
-            <label className="block text-sm font-medium mb-2">Media</label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept="image/*,video/*"
-              onChange={(e) => {
-                const files = Array.from(e.target.files || []);
-                if (files.length === 0) return;
-                
-                // Validate file types and sizes
-                const validFiles = files.filter((file) => {
-                  const isImage = file.type.startsWith("image/");
-                  const isVideo = file.type.startsWith("video/");
-                  const isValidType = isImage || isVideo;
-                  
-                  if (!isValidType) {
-                    toast.error(`${file.name} is not a valid image or video file`);
-                    return false;
-                  }
-                  
-                  // Check file size (5MB for images, 100MB for videos)
-                  const maxSize = isImage ? 5 * 1024 * 1024 : 100 * 1024 * 1024;
-                  if (file.size > maxSize) {
-                    toast.error(`${file.name} is too large (max ${isImage ? "5MB" : "100MB"})`);
-                    return false;
-                  }
-                  
-                  return true;
-                });
-
-                if (validFiles.length > 0) {
-                  startUpload(validFiles);
-                }
-                
-                // Reset input to allow selecting the same file again
-                if (fileInputRef.current) {
-                  fileInputRef.current.value = "";
-                }
-              }}
-              className="hidden"
-              disabled={isUploading}
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className="w-full px-4 py-2 border border-dashed rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Image className="w-5 h-5 text-gray-500" />
-              <span className="text-gray-600">
-                {isUploading ? "Uploading..." : "Add Images/Videos"}
-              </span>
-            </button>
-            {attachments.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {attachments.map((attachment, index) => (
-                  <div key={index} className="relative w-20 h-20 rounded overflow-hidden group border border-gray-200">
-                    {attachment.file.type.startsWith("image") ? (
-                      <img
-                        src={URL.createObjectURL(attachment.file)}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                        <span className="text-xs text-gray-600">Video</span>
-                      </div>
-                    )}
-                    {attachment.isUploading && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <div className="text-center">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mx-auto mb-1"></div>
-                          <span className="text-white text-xs">Uploading...</span>
-                        </div>
-                      </div>
-                    )}
-                    {attachment.mediaId && !attachment.isUploading && (
-                      <div className="absolute top-1 right-1 bg-green-500 rounded-full p-1">
-                        <span className="text-white text-xs">✓</span>
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => removeAttachment(attachment.file.name)}
-                      className="absolute top-1 left-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      aria-label="Remove media"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <p className="text-xs text-gray-500 mt-1">
-              Images up to 5MB, Videos up to 100MB. Max 10 files.
-            </p>
-          </div> */}
-
           {/* Visibility */}
-          <div>
-            <label className="block text-sm font-medium mb-2">Visibility</label>
+          <div className="space-y-2">
+            <Label htmlFor="visibility">Visibility</Label>
             <select
+              id="visibility"
               value={visibility}
               onChange={(e) => setVisibility(e.target.value as typeof visibility)}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 text-sm border border-input rounded-md bg-background hover:bg-accent hover:text-accent-foreground focus:ring-2 focus:ring-ring focus:outline-none transition-colors"
             >
               <option value="PUBLIC">Public</option>
               <option value="VISIBILITY_CONNECTIONS">Connections Only</option>
@@ -397,26 +280,33 @@ export default function CreateProjectModal({
             </select>
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-4 pt-4 border-t">
-            <button
+        </form>
+
+        <DialogFooter className="pt-4 border-t border-border mt-4">
+            <Button
               type="button"
+              variant="outline"
               onClick={handleClose}
-              className="flex-1 px-6 py-2 border rounded-lg hover:bg-gray-50"
+              disabled={createMutation.isPending || isUploading}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
+              onClick={handleSubmit}
               disabled={createMutation.isPending || isUploading}
-              className="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="min-w-[140px]"
             >
-              {createMutation.isPending ? "Creating..." : "Create Project"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+              {createMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+              ) : "Create Project"}
+            </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

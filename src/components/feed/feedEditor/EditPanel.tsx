@@ -12,9 +12,9 @@ import { useState } from "react";
 import { TabButton } from "./TabButton";
 import { ImageTransform } from "@/src/app/types/feed";
 import { update } from "lodash";
-import { FLIP_VERTICAL } from "@/src/constents/svg";
+import { FLIP_VERTICAL } from "@/src/constants/svg";
 import { SliderControl } from "./SliderControl";
-import { filters } from "@/src/constents/feed";
+import { filters } from "@/src/constants/feed";
 import { TextButton } from "../../ui/TextButton";
 import { GradientButton } from "../../ui/GradientButton";
 

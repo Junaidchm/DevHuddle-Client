@@ -77,6 +77,8 @@ class WebSocketManager {
   private token: string | null = null;
   private userId: string | null = null;
   private queryClient: any = null;
+  // ✅ FIX: Track processed message IDs to prevent duplication
+  private processedMessageIds = new Set<string>();
 
   private constructor() {
     // Setup visibility API listener
@@ -149,6 +151,16 @@ class WebSocketManager {
         this.updateState("connected");
         this.reconnectAttempts = 0;
         this.startHeartbeat();
+
+        // ✅ REFETCH DATA ON RECONNECT
+        // We might have missed events while offline/connecting
+        // BUT: Do not aggressively invalidate chat messages as it causes race conditions with optimistic updates
+        if (this.queryClient) {
+            console.log("[WebSocket] Refetching notifications/conversations after connection...");
+            // Only refetch notifications/conversations list, not message history to prevent "disappearing message" bug
+            this.queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+            this.queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.all }); 
+        }
       };
 
       socket.onmessage = (event) => {
@@ -156,6 +168,13 @@ class WebSocketManager {
       };
 
       socket.onclose = (event) => {
+        console.error("[WebSocket] ❌ Connection closed!", {
+          code: event.code,
+          reason: event.reason || "No reason provided",
+          wasClean: event.wasClean,
+          timestamp: new Date().toISOString(),
+          intentional: this.isIntentionalClose
+        });
         this.handleClose(event);
       };
 
@@ -295,12 +314,17 @@ class WebSocketManager {
       }
 
       // Handle chat messages (ENHANCED - supports multiple event types)
-      if (message.type === "new_message") {
-        this.handleNewChatMessage(message.data);
+      else if (message.type === "new_message") {
+        // ✅ FIX: Backend sends double-wrapped: {type: "new_message", data: {type: "new_message", data: actualMessage}}
+        // So we need to drill down to message.data.data to get the actual message object
+        const actualMessage = message.data?.data || message.data;
+        console.log("[WebSocket] � Received new_message, extracting actual payload:", actualMessage);
+        this.handleNewChatMessage(actualMessage);
         return;
-      }
-
-      if (message.type === "message_sent") {
+      } else if (message.type === "pong") {
+        // Heartbeat response - connection is alive
+        return;
+      } else if (message.type === "message_sent") {
         this.handleMessageSent(message.data);
         return;
       }
@@ -322,27 +346,121 @@ class WebSocketManager {
       console.error("[WebSocket] Failed to parse message:", error);
     }
   }
-
   /**
    * Handle incoming chat message from another user
    */
   private handleNewChatMessage(messageData: Message): void {
-    if (!this.queryClient) return;
+    if (!this.queryClient) {
+      console.warn("[WebSocket] ⚠️ No queryClient available for handleNewChatMessage");
+      return;
+    }
 
-    console.log("[WebSocket] New chat message received:", messageData);
+    // ✅ FIX: Prevent duplicate processing of the same message ID
+    if (this.processedMessageIds.has(messageData.id)) {
+        console.warn("[WebSocket] ð REJECTED duplicate message event:", messageData.id);
+        return;
+    }
+    this.processedMessageIds.add(messageData.id);
+
+    console.log("[WebSocket] 📨 New chat message received:", {
+      id: messageData.id,
+      conversationId: messageData.conversationId,
+      content: messageData.content,
+      senderId: messageData.senderId,
+      timestamp: messageData.createdAt
+    });
 
     // Update messages cache for this conversation
     if (messageData.conversationId) {
-      this.queryClient.setQueryData(
-        queryKeys.chat.messages.list(messageData.conversationId),
-        (old: Message[] = []) => {
-          // Check for duplicates
-          const exists = old.some((msg) => msg.id === messageData.id);
-          if (exists) return old;
+      const queryKey = queryKeys.chat.messages.list(messageData.conversationId);
+      console.log(`[WebSocket] 🔑 Updating query key: ${JSON.stringify(queryKey)} for conv: ${messageData.conversationId}`);
 
-          return [...old, messageData];
+      // Check if cache exists
+      const currentCache = this.queryClient.getQueryData(queryKey);
+      console.log(`[WebSocket] 📦 Cache exists?`, !!currentCache);
+      
+      this.queryClient.setQueryData(
+        queryKey,
+        (oldData: any) => {
+           console.log("[WebSocket] 📦 Updating Cache. Pages:", oldData?.pages?.length);
+           
+           if (!oldData) {
+             console.warn("[WebSocket] ⚠️ No existing cache data, message won't be added (User might not have opened chat yet)!");
+             return oldData;
+           }
+           
+           const newPages = [...oldData.pages];
+
+           // 1. Check if message already exists (by ID) in any page
+           const exists = newPages.some((page: any) => 
+               page.messages.some((msg: Message) => msg.id === messageData.id)
+           );
+           if (exists) {
+             console.log("[WebSocket] ✅ Message already exists in cache, skipping");
+             return oldData;
+           }
+
+           // 2. Check for dedupeId (Optimistic replacement)
+           let replaced = false;
+           if (messageData.dedupeId) {
+               console.log("[WebSocket] 🔍 Looking for optimistic message with dedupeId:", messageData.dedupeId);
+               for (let i = 0; i < newPages.length; i++) {
+                    const index = newPages[i].messages.findIndex((msg: Message) => 
+                        msg.dedupeId === messageData.dedupeId || (msg.id && msg.id.includes(messageData.dedupeId!))
+                    );
+                    if (index !== -1) {
+                        console.log("[WebSocket] 🔄 Replacing optimistic message at page", i, "index", index);
+                        // ... replacement logic ... (Keeping existing logic below, just ensuring logs)
+                       newPages[i] = {
+                            ...newPages[i],
+                            messages: [
+                                ...newPages[i].messages.slice(0, index),
+                                messageData,
+                                ...newPages[i].messages.slice(index + 1)
+                            ]
+                        };
+                        replaced = true;
+                        break;
+                    }
+                }
+            }
+
+            // 3. If not replaced, prepend to first page (newest message)
+            // We assume first page contains newest messages
+            if (!replaced) {
+                 console.log("[WebSocket] ➕ Prepending new message to first page");
+                 if (newPages.length > 0) {
+                      newPages[0] = {
+                          ...newPages[0],
+                          messages: [messageData, ...newPages[0].messages]
+                      };
+                      console.log("[WebSocket] ✅ Message added! New first page has", newPages[0].messages.length, "messages");
+                 } else {
+                     console.log("[WebSocket] 📄 Initializing first page with message");
+                     newPages.push({
+                         messages: [messageData],
+                         hasMore: false,
+                         total: 1
+                     });
+                 }
+            }
+
+          return {
+            ...oldData,
+            pages: newPages
+          };
         }
       );
+
+      // ✅ SAFETY NET: Invalidate queries to ensure consistency
+      // If setQueryData failed silently or UI didn't update, this ensures we fetch fresh data
+      this.queryClient.invalidateQueries({
+          queryKey: queryKeys.chat.messages.list(messageData.conversationId)
+      });
+      // Also invalidate conversation list to update previews
+      this.queryClient.invalidateQueries({
+          queryKey: queryKeys.chat.conversations.all
+      });
 
       // Send delivery acknowledgment automatically
       if (this.socket && this.socket.readyState === WebSocket.OPEN) {
@@ -350,18 +468,23 @@ class WebSocketManager {
           this.socket.send(JSON.stringify({
             type: "message_delivered",
             messageId: messageData.id,
+            conversationId: messageData.conversationId 
           }));
-          console.log("[WebSocket] Sent delivery ACK for:", messageData.id);
+          console.log("[WebSocket] ✉️  Sent delivery ACK for:", messageData.id);
         } catch (error) {
-          console.error("[WebSocket] Failed to send delivery ACK:", error);
+          console.error("[WebSocket] ❌ Failed to send delivery ACK:", error);
         }
       }
+    } else {
+      console.error("[WebSocket] ❌ Message has no conversationId!", messageData);
     }
 
-    // Invalidate conversations list (update last message)
-    this.queryClient.invalidateQueries({
-      queryKey: queryKeys.chat.conversations.all,
-      refetchType: "active",
+    // ✅ FIX: Force immediate refetch of conversations list to update last message preview
+    // Previously used invalidateQueries which only marks as stale without refetching
+    console.log("[WebSocket] 🔄 Refetching conversations list to update preview");
+    this.queryClient.refetchQueries({
+      queryKey: queryKeys.chat.conversations.list(),
+      type: "active",
     });
   }
 
@@ -377,22 +500,43 @@ class WebSocketManager {
     if (data.conversationId && data.id) {
       this.queryClient.setQueryData(
         queryKeys.chat.messages.list(data.conversationId),
-        (old: any[] = []) => {
-          // Replace temp message (dedupeId match) or add if missing
-          // Optimistic updates usually use temp-ID, so we check for that
-          const index = old.findIndex((msg) =>
-            msg.dedupeId === data.dedupeId || msg.id === `temp-${data.dedupeId}`
-          );
+        (oldData: any) => {
+           if (!oldData) return oldData;
+           const newPages = [...oldData.pages];
 
-          if (index !== -1) {
-            // Replace temp message with real one
-            const updated = [...old];
-            updated[index] = { ...data, status: 'SENT' };
-            return updated;
-          } else {
-            // Add if not found (edge case)
-            return [...old, { ...data, status: 'SENT' }];
-          }
+           // Replace temp message (dedupeId match)
+           for (let i = 0; i < newPages.length; i++) {
+               const index = newPages[i].messages.findIndex((msg: Message) =>
+                    msg.dedupeId === data.dedupeId || (msg.id && msg.id.includes(data.dedupeId))
+               );
+
+               if (index !== -1) {
+                   const updatedMessages = [...newPages[i].messages];
+                   // Merge real data status but keep local optimistic fields if needed
+                   updatedMessages[index] = { ...data, status: 'SENT' }; 
+                   newPages[i] = { ...newPages[i], messages: updatedMessages };
+                   
+                   return {
+                       ...oldData,
+                       pages: newPages
+                   };
+               }
+           }
+           
+           // If not found in any page (could be looking at older page?),
+           // we might want to prepend it to first page or just ignore (assume handleNewChatMessage catches it)
+           // For now, let's prepend to ensure it shows up if it was a ghost message
+            if (newPages.length > 0) {
+                 newPages[0] = {
+                     ...newPages[0],
+                     messages: [{ ...data, status: 'SENT' }, ...newPages[0].messages]
+                 };
+            }
+
+            return {
+                ...oldData,
+                pages: newPages
+            };
         }
       );
     }
@@ -413,72 +557,52 @@ class WebSocketManager {
 
     console.log("[WebSocket] Message status update:", data);
 
-    if (data.messageId && data.conversationId) {
-      // We know the conversation ID, so update directly
-      this.queryClient.setQueryData(
+    const updateMessagesInPages = (oldData: any) => {
+        if (!oldData || !oldData.pages) return oldData;
+        
+        const newPages = oldData.pages.map((page: any) => ({
+            ...page,
+            messages: page.messages.map((msg: Message) => {
+                 // 1. Single Message Update
+                 if (data.messageId && msg.id === data.messageId) {
+                     return {
+                        ...msg,
+                        status: data.status,
+                        deliveredAt: data.deliveredAt || msg.deliveredAt,
+                        readAt: data.readAt || msg.readAt,
+                     };
+                 }
+                 // 2. Bulk Read Update (up to lastReadMessageId)
+                 if (data.lastReadMessageId && data.conversationId) {
+                      if (msg.senderId !== this.userId && msg.id <= data.lastReadMessageId) {
+                          // Only update if not already read to avoid renders? Actually React handles equality check.
+                          return { ...msg, status: 'READ', readAt: data.readAt };
+                      }
+                 }
+                 return msg;
+            })
+        }));
+        
+        return { ...oldData, pages: newPages };
+    };
+
+    if (data.conversationId) {
+       this.queryClient.setQueryData(
         queryKeys.chat.messages.list(data.conversationId),
-        (old: any[] = []) => {
-          return old.map((msg) =>
-            msg.id === data.messageId
-              ? {
-                ...msg,
-                status: data.status,
-                deliveredAt: data.deliveredAt || msg.deliveredAt,
-                readAt: data.readAt || msg.readAt,
-              }
-              : msg
-          );
-        }
+        (oldData: any) => updateMessagesInPages(oldData)
       );
     } else if (data.messageId) {
-      // Fallback: Scan all message queries if conversationId is missing (less efficient)
-      const queryCache = this.queryClient.getQueryCache();
-      // Inspect keys to match ["chat", "messages", "list", conversationId]
-      const messageQueries = queryCache.findAll({
-        predicate: (query) =>
-          Array.isArray(query.queryKey) &&
-          query.queryKey[0] === 'chat' &&
-          query.queryKey[1] === 'messages'
-      });
-
-      messageQueries.forEach((query: any) => {
-        if (query.state.data) {
-          const messages = query.state.data as any[];
-          const hasMessage = messages.some((msg) => msg.id === data.messageId);
-
-          if (hasMessage) {
-            // Update this specific message
-            this.queryClient.setQueryData(query.queryKey, (old: any[] = []) => {
-              return old.map((msg) =>
-                msg.id === data.messageId
-                  ? {
-                    ...msg,
-                    status: data.status,
-                    deliveredAt: data.deliveredAt || msg.deliveredAt,
-                    readAt: data.readAt || msg.readAt,
-                  }
-                  : msg
-              );
-            });
-          }
-        }
-      });
-    }
-
-    // Handle bulk read receipts (conversationId + lastReadMessageId)
-    if (data.conversationId && data.lastReadMessageId) {
-      this.queryClient.setQueryData(
-        queryKeys.chat.messages.list(data.conversationId),
-        (old: any[] = []) => {
-          return old.map((msg) => {
-            // Mark all messages up to lastReadMessageId as READ
-            if (msg.senderId !== this.userId && msg.id <= data.lastReadMessageId) {
-              return { ...msg, status: 'READ', readAt: data.readAt };
-            }
-            return msg;
-          });
-        }
-      );
+         // Fallback: Scan all chats
+        const queryCache = this.queryClient.getQueryCache();
+        const messageQueries = queryCache.findAll({
+            predicate: (query: import('@tanstack/react-query').Query) =>
+            Array.isArray(query.queryKey) &&
+            query.queryKey[0] === 'chat' &&
+            query.queryKey[1] === 'messages'
+        });
+        messageQueries.forEach((query: any) => {
+             this.queryClient.setQueryData(query.queryKey, (old: any) => updateMessagesInPages(old));
+        });
     }
   }
 
@@ -598,8 +722,20 @@ class WebSocketManager {
 
   private startHeartbeat(): void {
     this.stopHeartbeat();
-    // Server handles heartbeat via ping/pong, client just needs to respond
-    // No action needed here as browser WebSocket API handles pong automatically
+    
+    // ✅ FIX: Send active heartbeat pings to keep connection alive
+    // This prevents the server from timing out our connection
+    this.heartbeatInterval = setInterval(() => {
+      if (this.socket?.readyState === WebSocket.OPEN) {
+        try {
+          // Send heartbeat ping to server
+          this.socket.send(JSON.stringify({ type: 'ping' }));
+          console.log("[WebSocket] Heartbeat ping sent");
+        } catch (error) {
+          console.error("[WebSocket] Failed to send heartbeat:", error);
+        }
+      }
+    }, 25000); // Every 25 seconds (before server's 30s timeout)
   }
 
   private stopHeartbeat(): void {

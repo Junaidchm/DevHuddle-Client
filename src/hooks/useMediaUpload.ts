@@ -9,7 +9,7 @@ import {
   MediaType,
 } from "@/src/services/api/media.service";
 import { Media } from "@/src/app/types/feed";
-import { default_ImageTransform } from "@/src/constents/feed";
+import { default_ImageTransform } from "@/src/constants/feed";
 
 export interface UploadedMediaResult {
   mediaId: string;

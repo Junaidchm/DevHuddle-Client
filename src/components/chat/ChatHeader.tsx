@@ -1,6 +1,6 @@
 import React from "react";
 import { Phone, Video, MoreVertical } from "lucide-react";
-import { PROFILE_DEFAULT_URL } from "@/src/constents";
+import { PROFILE_DEFAULT_URL } from "@/src/constants";
 
 interface ChatHeaderProps {
   name: string;

@@ -5,7 +5,7 @@ import { TaggedUsersList } from "./TaggedUsersList";
 import { useState } from "react";
 import { useMedia } from "@/src/contexts/MediaContext";
 
-import { PROFILE_DEFAULT_URL } from "@/src/constents";
+import { PROFILE_DEFAULT_URL } from "@/src/constants";
 
 interface MentionPanelProps {
   users: User[];

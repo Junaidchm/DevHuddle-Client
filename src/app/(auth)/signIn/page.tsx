@@ -2,12 +2,6 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import {
-  ErrorMessage,
-  InputField,
-  OAuthButton,
-  PrimaryButton,
-} from "@/src/components/layouts/auth";
 import useRedirectIfAuthenticated from "@/src/customHooks/useRedirectIfAuthenticated";
 import { googleAuth } from "@/src/store/actions/authActions";
 import { AppDispatch } from "@/src/store/store";
@@ -20,6 +14,13 @@ import toast from "react-hot-toast";
 import { FcGoogle } from "react-icons/fc";
 import { z } from "zod";
 import { useEffect, useState } from "react";
+
+import { Button } from "@/src/components/ui/button";
+import { Input } from "@/src/components/ui/input";
+import { PasswordInput } from "@/src/components/ui/password-input";
+import { Label } from "@/src/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/src/components/ui/card";
+// import { Separator } from "@/src/components/ui/separator"; // Need to create separator too maybe, or just use di
 
 const signInSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -101,85 +102,94 @@ export default function SignIn() {
   };
 
   return (
-    <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
-      <div className="bg-white rounded-3xl shadow-lg w-full max-w-[90%] sm:max-w-[450px] p-6 sm:p-8 animate-fadeIn">
-        <h1 className="text-center text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-900">
-          Welcome back
-        </h1>
-        <p className="text-center text-sm sm:text-base text-gray-600 mb-6 sm:mb-8">
+    <Card className="w-full max-w-[400px] shadow-lg animate-fadeIn border-0 sm:border">
+      <CardHeader className="space-y-1 text-center">
+        <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
+        <CardDescription>
           Log in to your DevHuddle account
-        </p>
-
-        <form id="login-form" onSubmit={handleSubmit(onSubmit)}>
-          <InputField
-            label="Email"
-            id="email"
-            type="email"
-            autoFocus
-            placeholder="you@example.com"
-            error={errors.email?.message}
-            {...register("email")}
-          />
-
-          <InputField
-            label="Password"
-            type="password"
-            id="password"
-            placeholder="••••••••"
-            showToggleIcon
-            error={errors.password?.message}
-            {...register("password")}
-          />
-
-          <ErrorMessage
-            id="credentials-error"
-            message="Incorrect email or password. Please try again."
-          />
-
-          <PrimaryButton
-            id="login-button"
-            type="submit"
-            disabled={isSubmitting || !isValid}
-            label={isSubmitting ? "Logging in..." : "Log In"}
-          />
-
-          <div className="text-center mb-4 sm:mb-6">
-            <Link
-              href="/forgotPassword"
-              className="text-xs sm:text-sm text-primary hover:text-primary-hover hover:underline transition-colors"
-            >
-              Forgot password?
-            </Link>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              autoFocus
+              {...register("email")}
+            />
+            {errors.email && (
+              <p className="text-sm text-destructive">{errors.email.message}</p>
+            )}
           </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              <Link
+                href="/forgotPassword"
+                className="text-xs text-primary hover:text-primary-hover hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
+            <PasswordInput
+              id="password"
+              placeholder="••••••••"
+              {...register("password")}
+            />
+            {errors.password && (
+              <p className="text-sm text-destructive">{errors.password.message}</p>
+            )}
+          </div>
+
+          <Button 
+            className="w-full" 
+            type="submit" 
+            disabled={isSubmitting || !isValid}
+          >
+            {isSubmitting ? "Logging in..." : "Log In"}
+          </Button>
         </form>
 
-        <div className="flex items-center my-4 sm:my-6">
-          <div className="flex-1 h-px bg-gray-200"></div>
-          <span className="px-4 text-xs sm:text-sm text-gray-500">OR</span>
-          <div className="flex-1 h-px bg-gray-200"></div>
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-muted" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-card px-2 text-muted-foreground">Or</span>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-3 mb-4 sm:mb-6">
-          <OAuthButton
-            disabled={isGoogleLoading}
-            onClick={handleGoogleAuth}
-            label={isGoogleLoading ? "Connecting..." : "Continue with Google"}
-            icon={<FcGoogle />}
-          />
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={handleGoogleAuth}
+          disabled={isGoogleLoading}
+        >
+          {isGoogleLoading ? (
+            "Connecting..."
+          ) : (
+            <>
+              <FcGoogle className="mr-2 h-4 w-4" />
+              Continue with Google
+            </>
+          )}
+        </Button>
+      </CardContent>
+      <CardFooter className="flex justify-center flex-col space-y-2">
+        <div className="text-sm text-center text-muted-foreground">
+          Don't have an account?{" "}
+          <Link
+            href="/signup"
+            className="text-primary hover:text-primary-hover font-medium hover:underline"
+          >
+            Sign up
+          </Link>
         </div>
-
-        <div className="text-center">
-          <p className="text-xs sm:text-sm">
-            Don't have an account?{" "}
-            <Link
-              href="signup"
-              className="text-primary font-medium hover:text-primary-hover hover:underline transition-colors"
-            >
-              Sign up
-            </Link>
-          </p>
-        </div>
-      </div>
-    </main>
+      </CardFooter>
+    </Card>
   );
 }

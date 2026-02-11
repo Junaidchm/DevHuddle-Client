@@ -10,7 +10,7 @@ import { ThumbnailGallery } from "./ThumbnailGallery";
 import { EditPanel } from "./EditPanel";
 import { MentionPanel } from "./MentionPanel";
 import ErrorModal from "../../ui/ErrorModal";
-import { default_ImageTransform } from "@/src/constents/feed";
+import { default_ImageTransform } from "@/src/constants/feed";
 import { getImageStyle } from "@/lib/feed/getImageStyle";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";

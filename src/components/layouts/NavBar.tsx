@@ -1,17 +1,62 @@
 "use client";
 
-import { NavLink } from "@/src/app/(main)/profile/update/[username]/components";
 import { useUnreadCount } from "@/src/customHooks/useNotifications";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { PROFILE_DEFAULT_URL } from "@/src/constents";
+import { usePathname } from "next/navigation";
+import { PROFILE_DEFAULT_URL } from "@/src/constants";
 import UserSearch from "@/src/components/UserSearch";
 import { useState, useEffect } from "react";
-// WebSocket is now managed at root level via WebSocketProvider
-// No need to import or call hook here
+import { 
+  Home, 
+  Briefcase, 
+  MessageSquare, 
+  Bell, 
+  User, 
+  Menu,
+  MoreHorizontal
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "../ui/button";
+
+interface NavLinkProps {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  isActive: boolean;
+  count?: number;
+}
+
+const NavLink = ({ href, icon, label, isActive, count }: NavLinkProps) => {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "flex flex-col items-center justify-center px-3 py-1 min-w-[70px] relative group transition-colors",
+        isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+      )}
+    >
+      <div className="relative">
+        <div className={cn("transition-transform duration-200", isActive ? "scale-110" : "group-hover:scale-110")}>
+           {icon}
+        </div>
+        {count ? (
+          <span className="absolute -top-1 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground animate-in zoom-in">
+            {count > 9 ? "9+" : count}
+          </span>
+        ) : null}
+      </div>
+      <span className="text-[10px] sm:text-xs mt-1 font-medium hidden md:block">{label}</span>
+      {isActive && (
+        <span className="absolute bottom-0 left-0 w-full h-[2px] bg-primary rounded-t-full" />
+      )}
+    </Link>
+  );
+};
 
 export default function NavBar() {
   const { data: session } = useSession();
+  const pathname = usePathname();
   const profileImageUrl = session?.user?.image;
   const [avatarSrc, setAvatarSrc] = useState(PROFILE_DEFAULT_URL);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -26,109 +71,99 @@ export default function NavBar() {
   const unreadCount = unreadData?.unreadCount || 0;
 
   return (
-    <nav className="bg-white/95 backdrop-blur-md shadow sticky top-0 z-[100] px-4 sm:px-6 py-3">
-      <div className="flex justify-between items-center gap-4 sm:gap-8">
-        {/* Logo and Desktop Nav */}
-        <div className="flex items-center gap-4 sm:gap-8 flex-1">
+    <nav className="bg-white border-b border-border sticky top-0 z-[100]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-[52px] md:h-14 flex items-center justify-between gap-4">
+        {/* Logo and Search */}
+        <div className="flex items-center gap-4">
           <Link
             href="/"
-            className="logo flex items-center font-bold text-lg sm:text-xl text-indigo-600 flex-shrink-0"
+            className="flex-shrink-0"
           >
-            <span className="bg-gradient-to-r from-indigo-600 to-cyan-500 bg-clip-text text-transparent">
-              Dev
-            </span>
-            Huddle
+            <div className="bg-primary text-primary-foreground font-bold text-xl rounded p-1 w-8 h-8 flex items-center justify-center tracking-tighter">
+              DH
+            </div>
           </Link>
           
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex gap-4 xl:gap-6 items-center">
-            <NavLink
-              href="/community-feed"
-              label="Community Feed"
-              isActive={true}
-            />
-            <NavLink href="/projects" label="Projects" isActive={false} />
-            <NavLink href="/domain-hubs" label="Domain Hubs" isActive={false} />
-            <NavLink href="/events" label="Events" isActive={false} />
-            <NavLink href="/portfolios" label="Portfolios" isActive={false} />
-            <NavLink
-              href="/projects/create"
-              label="Submit Project"
-              isActive={false}
-            />
+          <div className="hidden md:block w-[240px]">
+             {session?.user && <UserSearch />}
           </div>
         </div>
 
-        {/* Search - Hidden on small screens */}
-        <div className="hidden md:block flex-shrink-0">
-          {session?.user && <UserSearch />}
+        {/* Desktop Navigation */}
+        <div className="flex items-center gap-1 sm:gap-6 flex-1 justify-end md:justify-center">
+            <NavLink
+              href="/"
+              label="Home"
+              icon={<Home className="w-5 h-5 sm:w-6 sm:h-6" />}
+              isActive={pathname === "/"}
+            />
+            <NavLink 
+              href="/projects" 
+              label="Projects" 
+              icon={<Briefcase className="w-5 h-5 sm:w-6 sm:h-6" />}
+              isActive={pathname.startsWith("/projects")} 
+            />
+            <NavLink 
+              href="/chat" 
+              label="Messaging" 
+              icon={<MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />}
+              isActive={pathname.startsWith("/chat")} 
+            /> 
+             <NavLink
+               href="/notification"
+               label="Notifications"
+               icon={<Bell className="w-5 h-5 sm:w-6 sm:h-6" />}
+               isActive={pathname === "/notification"}
+               count={unreadCount}
+             />
+             
+             {/* Profile Dropdown Logic - simplified for now */}
+             <div className="hidden md:flex flex-col items-center justify-center px-2 cursor-pointer group relative">
+                <Link href={session?.user?.username ? `/profile/${session.user.username}` : "#"} className="flex flex-col items-center">
+                    <img
+                        src={avatarSrc}
+                        alt="Profile"
+                        onError={() => setAvatarSrc(PROFILE_DEFAULT_URL)}
+                        className="w-6 h-6 rounded-full object-cover border border-border"
+                    />
+                    <span className="text-[10px] sm:text-xs mt-1 text-muted-foreground font-medium group-hover:text-foreground flex items-center gap-0.5">
+                        Me <MoreHorizontal className="w-3 h-3" />
+                    </span>
+                 </Link>
+             </div>
         </div>
 
-        {/* Right Side Actions */}
-        <div className="flex items-center gap-2 sm:gap-4">
-          {session?.user && (
-            <>
-              <Link href="/notification" className="flex-shrink-0">
-                <button className="relative bg-transparent border-none cursor-pointer text-gray-600 hover:text-indigo-600 transition-colors p-2">
-                  <i className="fas fa-bell text-lg sm:text-xl"></i>
-                  {unreadCount > 0 && (
-                    <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
-                      {unreadCount}
-                    </span>
-                  )}
-                </button>
-              </Link>
-              <Link href={`/profile/${session.user.username}`} className="flex-shrink-0">
-                <button className="profile-btn flex items-center gap-2 bg-transparent border-none cursor-pointer">
-                  <img
-                    src={avatarSrc}
-                    alt="Profile"
-                     onError={() => setAvatarSrc(PROFILE_DEFAULT_URL)}
-                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-indigo-600"
-                  />
-                </button>
-              </Link>
-            </>
-          )}
-          
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden p-2 text-gray-600 hover:text-indigo-600 transition-colors"
-            aria-label="Toggle menu"
-          >
-            <i className={`fas ${isMobileMenuOpen ? 'fa-times' : 'fa-bars'} text-xl`}></i>
-          </button>
+        {/* Mobile Search - Visible only on mobile */}
+        <div className="md:hidden flex-1 max-w-[200px]">
+            {session?.user && <UserSearch />}
         </div>
+        
+        {/* Mobile Menu Toggle */}
+         <div className="md:hidden">
+            <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+                <Menu className="w-6 h-6" />
+            </Button>
+         </div>
+
       </div>
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden mt-4 pb-4 border-t border-gray-200 pt-4">
-          {/* Mobile Search */}
-          {session?.user && (
-            <div className="mb-4 md:hidden">
-              <UserSearch />
-            </div>
-          )}
-          
-          {/* Mobile Navigation Links */}
-          <div className="flex flex-col gap-2">
-            <NavLink
-              href="/community-feed"
-              label="Community Feed"
-              isActive={true}
-            />
-            <NavLink href="/projects" label="Projects" isActive={false} />
-            <NavLink href="/domain-hubs" label="Domain Hubs" isActive={false} />
-            <NavLink href="/events" label="Events" isActive={false} />
-            <NavLink href="/portfolios" label="Portfolios" isActive={false} />
-            <NavLink
-              href="/projects/create"
-              label="Submit Project"
-              isActive={false}
-            />
-          </div>
+        <div className="md:hidden border-t border-border bg-white p-4 absolute w-full shadow-lg">
+           <div className="flex flex-col gap-4">
+                <Link href={session?.user?.username ? `/profile/${session.user.username}` : "#"} className="flex items-center gap-3 p-2 hover:bg-muted rounded-md" onClick={() => setIsMobileMenuOpen(false)}>
+                    <img
+                        src={avatarSrc}
+                        alt="Profile"
+                        className="w-10 h-10 rounded-full object-cover"
+                    />
+                     <div className="flex flex-col">
+                        <span className="font-semibold">{session?.user?.name}</span>
+                        <span className="text-sm text-muted-foreground">View Profile</span>
+                     </div>
+                </Link>
+                {/* Add other mobile links here if needed */}
+           </div>
         </div>
       )}
     </nav>

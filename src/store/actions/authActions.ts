@@ -23,7 +23,8 @@ export const register = createAsyncThunk<
   { rejectValue: string }
 >("auth/register", async (data, { rejectWithValue }) => {
   try {
-    await userSignup(data);
+    const { name, username, email, password } = data;
+    await userSignup({ name, username, email, password });
     localStorage.setItem("signupEmail", data.email);
   } catch (error: any) {
     return rejectWithValue(

@@ -9,9 +9,9 @@ export default function RootLayout({
 
 
   return (
-    <>
+    <div className="min-h-screen bg-[#F3F2EF] font-sans">
       <NavBar />
-      <div>{children}</div>
-    </>
+      <div className="py-6">{children}</div>
+    </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { MappedNotification, NotificationType } from "./types";
 import { cn } from "@/src/lib/utils";
+import { Button } from "@/src/components/ui/button";
 
 // LinkedIn-style filter tabs
 const FILTERS: { id: NotificationType | "all"; label: string }[] = [
@@ -38,32 +39,34 @@ export const NotificationFilters = ({
   }, [notifications]);
 
   return (
-    <div className="border-b border-gray-200 mb-4">
-      <div className="flex gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+    <div className="border-b border-border mb-4">
+      <div className="flex gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {FILTERS.map((filter) => {
           const count = unreadCounts[filter.id] || 0;
           const isActive = activeFilter === filter.id;
           
           return (
-            <button
+            <Button
               key={filter.id}
               onClick={() => setActiveFilter(filter.id)}
+              variant={isActive ? "secondary" : "ghost"}
               className={cn(
-                "relative px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap",
-                "border-b-2 border-transparent",
+                "rounded-full h-9 px-4 text-sm font-medium transition-all whitespace-nowrap",
                 isActive
-                  ? "text-blue-600 border-blue-600 bg-transparent"
-                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50",
-                "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-t-md"
+                  ? "bg-primary/10 text-primary hover:bg-primary/20"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               {filter.label}
               {count > 0 && (
-                <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
+                <span className={cn(
+                    "ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold",
+                    isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                )}>
                   {count}
                 </span>
               )}
-            </button>
+            </Button>
           );
         })}
       </div>

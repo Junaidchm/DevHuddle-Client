@@ -1,6 +1,7 @@
 import PostComposer from "@/src/components/feed/feedEditor/PostComposer";
 import FeedContainer from "@/src/components/feed/feedEditor/FeedContainer";
 import Sidebar from "@/src/components/feed/feedEditor/SideBar"
+import LeftSidebar from "@/src/components/layouts/LeftSidebar";
 import { auth } from "@/auth";
 
 interface CommunityFeedProps {
@@ -13,12 +14,22 @@ export default async function CommunityFeed({ params }: CommunityFeedProps) {
   const session = await auth();
 
   return (
-    <div className="max-w-6xl mx-auto my-8 px-[5%] flex gap-8 flex-wrap">
-      <main className="flex-1 min-w-0">
+    <div className="max-w-[1128px] mx-auto px-0 sm:px-4 md:px-0 flex justify-center gap-6">
+      {/* Left Sidebar - Hidden on mobile */}
+      <aside className="hidden md:block w-[225px] flex-shrink-0">
+         <LeftSidebar />
+      </aside>
+
+      {/* Main Feed */}
+      <main className="flex-1 w-full max-w-[555px] min-w-0 flex flex-col gap-2">
         <PostComposer userId={userId} />
+        {/* Separator or just spacing */}
+        <div className="w-full h-px bg-border my-2 md:hidden"></div>
         <FeedContainer userid={session?.user.id as string}/> 
       </main>
-      <aside className="w-[300px] flex-shrink-0 hidden md:block">
+
+      {/* Right Sidebar - Hidden on tablet/mobile */}
+      <aside className="hidden lg:block w-[300px] flex-shrink-0">
         <Sidebar />
       </aside>
     </div>

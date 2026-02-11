@@ -2,7 +2,7 @@
 'use client';
 import React from 'react';
 import Avatar from './Avatar';
-import { PROFILE_DEFAULT_URL } from '@/src/constents';
+import { PROFILE_DEFAULT_URL } from '@/src/constants';
 import { UserProfile } from '@/src/types/user.type';
 import { useRouter } from 'next/navigation';
 import { FollowButton } from '../FollowButton';

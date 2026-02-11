@@ -1,6 +1,6 @@
 import { User } from "@/src/app/types/feed";
 import React from "react";
-import { PROFILE_DEFAULT_URL } from "@/src/constents";
+import { PROFILE_DEFAULT_URL } from "@/src/constants";
 
 interface TaggedUsersListProps {
   taggedUsers: User[];

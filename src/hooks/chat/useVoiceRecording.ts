@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { useMediaUpload } from './useMediaUpload';
+import { CHAT_CONFIG } from '@/src/constants/chat.constants';
 
 type RecordingState = 'idle' | 'recording' | 'paused' | 'preview';
 
@@ -47,17 +48,24 @@ export function useVoiceRecording() {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.8;
+      analyser.fftSize = CHAT_CONFIG.VOICE.FFT_SIZE;
+      analyser.smoothingTimeConstant = CHAT_CONFIG.VOICE.SMOOTHING_TIME_CONSTANT;
       source.connect(analyser);
       
       // Store in refs
       audioContextRef.current = audioContext;
       analyserRef.current = analyser;
 
+      // Check supported mime types
+      let mimeType = CHAT_CONFIG.VOICE.MIME_TYPE;
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        console.warn(`${mimeType} not supported, falling back to default`);
+        mimeType = ''; // Let browser choose default
+      }
+
       // Create MediaRecorder
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus',
+        mimeType: mimeType || undefined,
       });
 
       audioChunksRef.current = [];
@@ -68,7 +76,7 @@ export function useVoiceRecording() {
         }
       };
 
-      mediaRecorder.start(100); // Collect chunks every 100ms
+      mediaRecorder.start(CHAT_CONFIG.VOICE.CHUNK_INTERVAL_MS); // Collect chunks
       mediaRecorderRef.current = mediaRecorder;
 
       // Start duration timer

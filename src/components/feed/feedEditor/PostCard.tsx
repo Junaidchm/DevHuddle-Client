@@ -5,7 +5,11 @@ import { PostIntract } from "./PostIntract";
 import { formatRelativeDate } from "@/src/utils/formateRelativeDate";
 import DeletePostDialog from "./DeletePostModal";
 import { useCopyPostLink } from "./Hooks/useCopyPostLink";
-import { PROFILE_DEFAULT_URL } from "@/src/constents";
+import { PROFILE_DEFAULT_URL } from "@/src/constants";
+import { Card } from "@/src/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
+import { MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import Link from "next/link";
 
 interface PostProp {
   post: NewPost;
@@ -337,62 +341,51 @@ export default function PostCard({ post, onDeletePost,userid }: PostProp) {
 
   return (
     <>
-      <article className="bg-white rounded-xl border border-slate-200 shadow-sm transition-transform-shadow duration-200 ease-in-out hover:-translate-y-0.5 hover:shadow-lg-hover relative">
-        {/* Three-dot menu */}
-        <div className="absolute top-4 right-4 z-10">
-          <button
-            ref={buttonRef}
-            onClick={() => setShowMenu(!showMenu)}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200"
-            aria-label="Post options"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="text-gray-500"
-            >
-              <circle cx="12" cy="12" r="1" fill="currentColor" />
-              <circle cx="19" cy="12" r="1" fill="currentColor" />
-              <circle cx="5" cy="12" r="1" fill="currentColor" />
-            </svg>
-          </button>
-        </div>
+      <Card className="border-none shadow-sm overflow-hidden mb-2 hover:shadow-md transition-shadow">
+        <div className="p-3">
+            <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                     <Link href={`/profile/${post.user?.username}`}>
+                        <Avatar className="h-10 w-10 border border-border cursor-pointer">
+                            <AvatarImage 
+                                src={post.user?.avatar ? `${process.env.NEXT_PUBLIC_IMAGE_PATH}${post.user?.avatar}` : PROFILE_DEFAULT_URL} 
+                                alt={post.user?.name || "User"} 
+                                onError={(e) => {
+                                (e.target as HTMLImageElement).src = PROFILE_DEFAULT_URL;
+                                }}
+                            />
+                            <AvatarFallback>{post.user?.name?.charAt(0) || "U"}</AvatarFallback>
+                        </Avatar>
+                     </Link>
+                    <div className="flex flex-col">
+                        <Link href={`/profile/${post.user?.username}`}>
+                           <span className="font-semibold text-sm text-foreground hover:underline cursor-pointer">
+                                {post.user?.name}
+                           </span>
+                        </Link>
+                        <span className="text-xs text-muted-foreground">
+                            {/* Placeholder headline */}
+                            @{post.user?.username} • {formatRelativeDate(new Date(post.createdAt))}
+                        </span>
+                    </div>
+                </div>
 
-        <div className="p-4 flex items-center gap-3 border-b border-slate-100">
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <img
-                src={post.user?.avatar ? `${process.env.NEXT_PUBLIC_IMAGE_PATH}${post.user?.avatar}` : PROFILE_DEFAULT_URL}
-                alt=""
-                className="w-8 h-8 rounded-full object-cover"
-                aria-label="Author avatar"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = PROFILE_DEFAULT_URL;
-                }}
-              />
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-base text-gray-900">
-                    @{post.user?.username}
-                  </span>
-                </div>
-                <div className="text-xs text-slate-500">
-                  {formatRelativeDate(new Date(post.createdAt))}
-                </div>
-              </div>
+                <button
+                    ref={buttonRef}
+                    onClick={() => setShowMenu(!showMenu)}
+                    className="p-1 rounded-full hover:bg-muted text-muted-foreground transition-colors"
+                    aria-label="Post options"
+                >
+                    <MoreHorizontal className="h-5 w-5" />
+                </button>
             </div>
-          </div>
-        </div>
 
-        <div className="p-4">
-          <p className="mb-4 text-sm text-slate-700 leading-relaxed">
-            {post.content}
-          </p>
-
-          {/* Media Attachments Section (Images and Videos) */}
+            <div className="mt-3 mb-3">
+                 <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                    {post.content}
+                </p>
+            </div>
+             {/* Media Attachments Section (Images and Videos) */}
           {post.attachments && post.attachments.length > 0 && (
             <div className="mb-4 space-y-4">
               {/* Render Images */}
@@ -402,10 +395,12 @@ export default function PostCard({ post, onDeletePost,userid }: PostProp) {
               <VideoPlayer attachments={post.attachments} />
             </div>
           )}
+          
+           <div className="border-t border-border -mx-3 mb-0 pt-0"></div>
 
           <PostIntract post={post} />  
         </div>
-      </article>
+      </Card>
 
       {/* Dropdown menu rendered in fixed position */}
       {showMenu && menuPosition && (
