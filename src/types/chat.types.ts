@@ -40,7 +40,7 @@ export interface Message {
   updatedAt?: string;
   
   // Status
-  status: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+  status: 'sending' | 'sent' | 'delivered' | 'read' | 'failed' | 'SENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED';
   deliveredAt?: string;
   readAt?: string;
   

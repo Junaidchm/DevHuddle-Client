@@ -11,8 +11,9 @@ import { ChatInput } from './ChatInput';
 import { useEffect, useRef, useState } from 'react';
 import { MoreVertical, Phone, Video, Loader2, AlertCircle, MessageCircle } from 'lucide-react';
 import { PROFILE_DEFAULT_URL } from '@/src/constants';
-import { Avatar, AvatarImage, AvatarFallback } from "@/src/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import { Button } from "@/src/components/ui/button";
+import { useWebSocket } from "@/src/contexts/WebSocketContext";
 
 interface ChatWindowProps {
   conversation: Conversation | null;
@@ -39,9 +40,27 @@ export default function ChatWindow({
   onLoadMore,
   isConnected = true,
 }: ChatWindowProps) {
+  const { sendReadReceipt } = useWebSocket();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+
+  // Send read receipt when new messages arrive
+  useEffect(() => {
+    if (!conversation?.id || !messages.length || !isConnected) return;
+
+    // Find the last message that is NOT from the current user
+    // We assume messages are ordered chronologically (oldest to newest)
+    const lastIncomingMessage = [...messages].reverse().find(
+        msg => msg.senderId !== currentUserId
+    );
+
+    if (lastIncomingMessage && lastIncomingMessage.status !== 'READ' && lastIncomingMessage.status !== 'read') {
+        // Send read receipt for this message (backend handles marking previous ones)
+        // console.log("Sending read receipt for:", lastIncomingMessage.id);
+        sendReadReceipt(conversation.id, lastIncomingMessage.id);
+    }
+  }, [messages, conversation?.id, currentUserId, isConnected, sendReadReceipt]);
 
   // Get other participant info
   const otherParticipant = conversation?.participants.find(

@@ -49,6 +49,7 @@ export interface WebSocketContextType {
   sendMessage: (message: WebSocketMessage) => void;
   isConnected: boolean;
   reconnect: () => void;
+  sendReadReceipt: (conversationId: string, messageId: string) => void;
 }
 
 // ==================== Configuration ====================
@@ -223,6 +224,34 @@ class WebSocketManager {
     }
   }
 
+  /**
+   * Send delivery receipt for a specific message
+   */
+  private sendDeliveryReceipt(conversationId: string, messageId: string): void {
+      if (!this.userId) return;
+      
+      this.sendMessage({
+          type: 'message_delivered',
+          conversationId,
+          messageId,
+          content: '', // Required by type but unused for status
+      });
+  }
+
+  /**
+   * Send read receipt for a conversation up to a specific message
+   */
+  sendReadReceipt(conversationId: string, messageId: string): void {
+      if (!this.userId || !this.socket || this.socket.readyState !== WebSocket.OPEN) return;
+
+      this.sendMessage({
+          type: 'message_read',
+          conversationId,
+          lastReadMessageId: messageId,
+          content: '',
+      });
+  }
+
   reconnect(): void {
     if (this.token && this.userId && this.queryClient) {
       this.reconnectAttempts = 0;
@@ -369,6 +398,11 @@ class WebSocketManager {
       senderId: messageData.senderId,
       timestamp: messageData.createdAt
     });
+
+    // ✅ FIX: Send delivery receipt if message is from another user
+    if (this.userId && messageData.senderId !== this.userId) {
+        this.sendDeliveryReceipt(messageData.conversationId, messageData.id);
+    }
 
     // Update messages cache for this conversation
     if (messageData.conversationId) {
@@ -574,8 +608,9 @@ class WebSocketManager {
                  }
                  // 2. Bulk Read Update (up to lastReadMessageId)
                  if (data.lastReadMessageId && data.conversationId) {
-                      if (msg.senderId !== this.userId && msg.id <= data.lastReadMessageId) {
-                          // Only update if not already read to avoid renders? Actually React handles equality check.
+                      // ✅ FIX: Update ALL messages up to lastReadMessageId, regardless of sender
+                      // (Crucial for sender to see blue ticks on their own messages)
+                      if (msg.id <= data.lastReadMessageId && msg.status !== 'READ') {
                           return { ...msg, status: 'READ', readAt: data.readAt };
                       }
                  }
@@ -886,11 +921,18 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const sendReadReceipt = useCallback((conversationId: string, messageId: string) => {
+    if (managerRef.current) {
+      managerRef.current.sendReadReceipt(conversationId, messageId);
+    }
+  }, []);
+
   const value: WebSocketContextType = {
     connectionState,
     sendMessage,
     isConnected: connectionState === "connected",
     reconnect,
+    sendReadReceipt,
   };
 
   return (

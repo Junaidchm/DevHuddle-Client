@@ -29,11 +29,11 @@ export function MessageBubble({ message, isOwn, showAvatar, senderName, senderAv
   const renderStatus = () => {
     if (!isOwn) return null;
     
-    if (message.status === "read") {
+    if (message.status === "read" || message.status === "READ") {
       return <CheckCheck className="w-4 h-4 text-blue-400" />; // Blue checkmarks for read
-    } else if (message.status === "delivered") {
+    } else if (message.status === "delivered" || message.status === "DELIVERED") {
       return <CheckCheck className="w-4 h-4 text-gray-400" />; // Gray double checkmark
-    } else if (message.status === "sent") {
+    } else if (message.status === "sent" || message.status === "SENT") {
       return <Check className="w-4 h-4 text-gray-400" />; // Gray single checkmark
     }
     return <Check className="w-4 h-4 text-gray-300" />; // Sending
