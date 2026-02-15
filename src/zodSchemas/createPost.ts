@@ -1,5 +1,5 @@
 import z from "zod"
 
-const postSchema = z.object({
+export const postSchema = z.object({
     
 })

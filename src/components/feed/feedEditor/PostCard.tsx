@@ -10,6 +10,15 @@ import { Card } from "@/src/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import { MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+import { PostCreationProvider } from "@/src/contexts/PostCreationContext";
+import { MediaProvider } from "@/src/contexts/MediaContext";
+import { getMediaUrl } from "@/src/utils/media";
+
+// Lazy load CreatePostModal
+const LazyCreatePostModal = dynamic(() => import("./CreatePostModal"), {
+  ssr: false,
+});
 
 interface PostProp {
   post: NewPost;
@@ -25,6 +34,7 @@ type:string;
 url: string,
 createdAt: string
 }
+
 
 // ✅ Video Player Component
 const VideoPlayer = ({ attachments }: { attachments: Attachment[] }) => {
@@ -61,7 +71,7 @@ const VideoPlayer = ({ attachments }: { attachments: Attachment[] }) => {
         {/* Video Container */}
         <video
           ref={videoRef}
-          src={videoAttachments[currentVideoIndex].url.startsWith("http") ? videoAttachments[currentVideoIndex].url : `${process.env.NEXT_PUBLIC_IMAGE_PATH}${videoAttachments[currentVideoIndex].url}`}
+          src={getMediaUrl(videoAttachments[currentVideoIndex].url)}
           controls
           className="w-full h-auto max-h-[700px] object-contain block"
           style={{
@@ -174,12 +184,7 @@ const ImageCarousel = ({ attachments }: { attachments: Attachment[] }) => {
   };
 
 
-  // Helper to construct media URL
-  const getMediaUrl = (url: string) => {
-    if (!url) return "";
-    if (url.startsWith("http") || url.startsWith("blob:")) return url;
-    return `${process.env.NEXT_PUBLIC_IMAGE_PATH}${url}`;
-  };
+
 
   return (
     <div className="relative w-full bg-gray-100 rounded-lg overflow-hidden">
@@ -319,6 +324,7 @@ export default function PostCard({ post, onDeletePost,userid }: PostProp) {
 
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false); // ✅ NEW: Edit modal state
   const [menuPosition, setMenuPosition] = useState<{
     top: number;
     left: number;
@@ -331,6 +337,11 @@ export default function PostCard({ post, onDeletePost,userid }: PostProp) {
     setShowDeleteDialog(true);
   };
 
+  const handleEditClick = () => {
+    setShowMenu(false);
+    setShowEditModal(true);
+  };
+
   // Position menu relative to button
   useEffect(() => {
     if (showMenu && buttonRef.current) {
@@ -341,14 +352,14 @@ export default function PostCard({ post, onDeletePost,userid }: PostProp) {
 
   return (
     <>
-      <Card className="border-none shadow-sm overflow-hidden mb-2 hover:shadow-md transition-shadow">
+      <Card id={`post-${post.id}`} className="border-none shadow-sm overflow-hidden mb-2 hover:shadow-md transition-shadow">
         <div className="p-3">
             <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                      <Link href={`/profile/${post.user?.username}`}>
                         <Avatar className="h-10 w-10 border border-border cursor-pointer">
                             <AvatarImage 
-                                src={post.user?.avatar ? `${process.env.NEXT_PUBLIC_IMAGE_PATH}${post.user?.avatar}` : PROFILE_DEFAULT_URL} 
+                                src={getMediaUrl(post.user?.avatar || "") || PROFILE_DEFAULT_URL} 
                                 alt={post.user?.name || "User"} 
                                 onError={(e) => {
                                 (e.target as HTMLImageElement).src = PROFILE_DEFAULT_URL;
@@ -418,7 +429,7 @@ export default function PostCard({ post, onDeletePost,userid }: PostProp) {
             {/* Edit post */}
             {post.userId === userid && (
               <button
-                onClick={() => setShowMenu(false)}
+                onClick={handleEditClick}
                 className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
               >
                 <svg
@@ -502,6 +513,19 @@ export default function PostCard({ post, onDeletePost,userid }: PostProp) {
           open={showDeleteDialog}
           onClose={() => setShowDeleteDialog(false)}
         />
+      )}
+
+      {/* ✅ NEW: Edit Modal - wrapped in providers */}
+      {showEditModal && (
+        <PostCreationProvider>
+          <MediaProvider>
+            <LazyCreatePostModal
+              isOpen={showEditModal}
+              onClose={() => setShowEditModal(false)}
+              postToEdit={post}
+            />
+          </MediaProvider>
+        </PostCreationProvider>
       )}
     </>
   );

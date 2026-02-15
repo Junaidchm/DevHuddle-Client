@@ -11,7 +11,10 @@ import { NextResponse } from "next/server";
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
-  const isAuthenticated = !!req.auth?.user;
+  
+  // Check both NextAuth session AND cookies (for Google OAuth flow)
+  const hasAuthCookie = req.cookies.get('access_token');
+  const isAuthenticated = !!req.auth?.user || !!hasAuthCookie;
   const userRole = req.auth?.user?.role;
 
   // Public routes that don't need authentication

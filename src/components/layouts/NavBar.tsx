@@ -109,6 +109,12 @@ export default function NavBar() {
               icon={<MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />}
               isActive={pathname.startsWith("/chat")} 
             /> 
+            <NavLink 
+              href="/hubs" 
+              label="Hubs" 
+              icon={<div className="font-bold text-lg leading-none">#</div>}
+              isActive={pathname.startsWith("/hubs")} 
+            /> 
              <NavLink
                href="/notification"
                label="Notifications"

@@ -5,9 +5,11 @@
 
 'use client';
 
-import { Message, Conversation } from '@/src/types/chat.types';
+import { Message, ConversationWithMetadata } from '@/src/types/chat.types';
 import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
+import { ChatHeader } from './ChatHeader';
+import { ChatDetails } from './ChatDetails';
 import { useEffect, useRef, useState } from 'react';
 import { MoreVertical, Phone, Video, Loader2, AlertCircle, MessageCircle } from 'lucide-react';
 import { PROFILE_DEFAULT_URL } from '@/src/constants';
@@ -16,7 +18,7 @@ import { Button } from "@/src/components/ui/button";
 import { useWebSocket } from "@/src/contexts/WebSocketContext";
 
 interface ChatWindowProps {
-  conversation: Conversation | null;
+  conversation: ConversationWithMetadata | null;
   messages: Message[];
   currentUserId: string;
   onSendMessage: (content: string) => void;
@@ -44,10 +46,11 @@ export default function ChatWindow({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const [showDetails, setShowDetails] = useState(false);
 
   // Send read receipt when new messages arrive
   useEffect(() => {
-    if (!conversation?.id || !messages.length || !isConnected) return;
+    if (!conversation?.conversationId || !messages.length || !isConnected) return;
 
     // Find the last message that is NOT from the current user
     // We assume messages are ordered chronologically (oldest to newest)
@@ -58,15 +61,14 @@ export default function ChatWindow({
     if (lastIncomingMessage && lastIncomingMessage.status !== 'READ' && lastIncomingMessage.status !== 'read') {
         // Send read receipt for this message (backend handles marking previous ones)
         // console.log("Sending read receipt for:", lastIncomingMessage.id);
-        sendReadReceipt(conversation.id, lastIncomingMessage.id);
+        sendReadReceipt(conversation.conversationId, lastIncomingMessage.id);
     }
-  }, [messages, conversation?.id, currentUserId, isConnected, sendReadReceipt]);
+  }, [messages, conversation?.conversationId, currentUserId, isConnected, sendReadReceipt]);
 
-  // Get other participant info
+  // Get other participant info (flat structure in ConversationWithMetadata)
   const otherParticipant = conversation?.participants.find(
     (p) => p.userId !== currentUserId
   );
-  const otherUser = otherParticipant?.user;
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -104,53 +106,12 @@ export default function ChatWindow({
   return (
     <div className="flex-1 flex flex-col bg-background h-full">
       {/* Header */}
-      <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
-        <div className="flex items-center gap-3">
-          {/* Avatar */}
-            <Avatar className="w-10 h-10 border border-border">
-                <AvatarImage src={otherUser?.profileImage || PROFILE_DEFAULT_URL} alt={otherUser?.username || 'User'} className="object-cover" />
-                <AvatarFallback>{otherUser?.username?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
-            </Avatar>
-
-          {/* User Info */}
-          <div>
-            <h3 className="font-semibold text-foreground">
-              {otherUser?.username || 'Unknown User'}
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              {otherUser?.isOnline ? (
-                <span className="flex items-center gap-1 text-green-600">
-                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                  Online
-                </span>
-              ) : (
-                'Offline'
-              )}
-            </p>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          {/* Connection Status */}
-          {!isConnected && (
-            <div className="flex items-center gap-2 text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-1 rounded-full text-xs mr-2">
-              <AlertCircle className="w-3 h-3" />
-              Disconnected
-            </div>
-          )}
-
-          <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground">
-            <Phone className="w-5 h-5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground">
-            <Video className="w-5 h-5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground">
-            <MoreVertical className="w-5 h-5" />
-          </Button>
-        </div>
-      </div>
+      <ChatHeader 
+        conversation={conversation}
+        currentUserId={currentUserId}
+        isConnected={isConnected}
+        onViewInfo={() => setShowDetails(true)}
+      />
 
       {/* Messages */}
       <div
@@ -182,23 +143,35 @@ export default function ChatWindow({
             <p className="text-sm">No messages yet. Start the conversation!</p>
           </div>
         ) : (
-          messages.filter(msg => !!msg).map((message) => (
-            <MessageBubble
-              key={message.id || Math.random().toString()}
-              message={message}
-              isOwn={message.senderId === currentUserId}
-              senderName={
-                message.senderId === currentUserId
-                  ? undefined
-                  : otherUser?.username
-              }
-              senderAvatar={
-                message.senderId === currentUserId
-                  ? undefined
-                  : otherUser?.profileImage
-              }
-            />
-          ))
+          messages.filter(msg => !!msg).map((message) => {
+            // Determine sender details
+            const isOwn = message.senderId === currentUserId;
+            
+            // Try to find sender in participants if message.sender is missing
+             const senderParticipant = !message.sender 
+                ? conversation?.participants.find((p) => p.userId === message.senderId)
+                : null;
+            
+             // For groups, we always want to show name/avatar for others
+             // For direct, we might already show it in header, but bubble handles it nicely usually
+             const senderName = isOwn 
+                ? 'You' 
+                : message.sender?.username || senderParticipant?.username || 'Unknown';
+                
+             const senderAvatar = isOwn
+                ? undefined
+                : message.sender?.profileImage || senderParticipant?.profilePhoto || undefined;
+
+            return (
+                <MessageBubble
+                key={message.id || Math.random().toString()}
+                message={message}
+                isOwn={isOwn}
+                senderName={senderName}
+                senderAvatar={senderAvatar}
+                />
+            );
+          })
         )}
 
         {/* Scroll Anchor */}
@@ -206,10 +179,29 @@ export default function ChatWindow({
       </div>
 
       {/* Input */}
-      <ChatInput
-        disabled={!isConnected}
-        conversationId={conversation?.id || ''}
-      />
+      {(() => {
+        // Permission Check
+        const myPart = conversation?.participants.find((p: any) => p.userId === currentUserId);
+        const isAdmin = myPart?.role === 'ADMIN' || conversation?.ownerId === currentUserId;
+        const isGroup = conversation?.type === 'GROUP';
+        const canPost = !isGroup || !conversation?.onlyAdminsCanPost || isAdmin;
+
+        return (
+          <ChatInput
+            disabled={!isConnected || !canPost}
+            placeholder={!canPost ? "Only admins can send messages" : undefined}
+            conversationId={conversation?.conversationId || ''}
+          />
+        );
+      })()}
+      
+      {showDetails && conversation && (
+          <ChatDetails 
+             conversation={conversation} 
+             currentUserId={currentUserId}
+             onClose={() => setShowDetails(false)}
+          />
+      )}
     </div>
   );
 }

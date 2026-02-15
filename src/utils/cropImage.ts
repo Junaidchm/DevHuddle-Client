@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function getCroppedImg(imageSrc: string, crop: any) {
   const image = await createImage(imageSrc);
   const canvas = document.createElement("canvas");

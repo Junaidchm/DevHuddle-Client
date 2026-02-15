@@ -1,8 +1,10 @@
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { InfiniteData, useMutation, useQueryClient } from "@tanstack/react-query";
 import { submitPost } from "../feedEditor/actions/submitPost";
-import { queryKeys } from "@/src/lib/queryKeys";
 import { AudienceType, CommentControl } from "@/src/contexts/PostCreationContext";
+import { useSession } from "next-auth/react";
+import { NewPost, PostsPage } from "@/src/app/types/feed";
+import { toast } from "sonner"; 
 
 interface CreatePostPayload {
   content: string;
@@ -13,6 +15,7 @@ interface CreatePostPayload {
 
 export function useSubmitPostMutation() {
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
 
   return useMutation({
     mutationFn: async (payload: CreatePostPayload) => {
@@ -23,10 +26,70 @@ export function useSubmitPostMutation() {
       }
       return result;
     },
-    onSuccess: () => {
-      // Invalidate feed query to show new post
-      // Using array for feed key as it might be used elsewhere without the object const
-      // TODO: Centralize feed keys if not already done, but for now matching existing pattern
+    // Optimistic Update: Update UI before server response
+    onMutate: async (payload: CreatePostPayload) => {
+      // 1. Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ["post-feed", "for-you"] });
+
+      // 2. Snapshot the previous value
+      const previousFeed = queryClient.getQueryData<InfiniteData<PostsPage>>(["post-feed", "for-you"]);
+
+      // 3. Optimistically update to the new value
+      if (session?.user) {
+        const optimisticPost: NewPost = {
+          id: Date.now().toString(), // Temporary ID
+          content: payload.content,
+          mediaIds: payload.mediaIds,
+          userId: session.user.id,
+          createdAt: new Date().toISOString(),
+          user: {
+            name: session.user.name || "Unknown",
+            username: session.user.email?.split("@")[0] || "unknown", // Fallback username
+            avatar: session.user.image || "",
+          },
+          visibility: payload.visibility,
+          commentControl: payload.commentControl,
+          attachments: [], // We can't render local images easily without object URLs, keeping empty for now or pass if available
+          engagement: {
+            likesCount: 0,
+            commentsCount: 0,
+            sharesCount: 0,
+            isLiked: false,
+            isShared: false,
+          },
+        };
+
+        queryClient.setQueryData<InfiniteData<PostsPage>>(["post-feed", "for-you"], (old) => {
+          if (!old) return old;
+          
+          return {
+            ...old,
+            pages: old.pages.map((page, index) => {
+              if (index === 0) {
+                // Add to the first page
+                return {
+                  ...page,
+                  posts: [optimisticPost, ...page.posts],
+                };
+              }
+              return page;
+            }),
+          };
+        });
+      }
+
+      // Return a context object with the snapshotted value
+      return { previousFeed };
+    },
+    // If the mutation fails, use the context returned from onMutate to roll back
+    onError: (err, newPost, context) => {
+      if (context?.previousFeed) {
+        queryClient.setQueryData(["post-feed", "for-you"], context.previousFeed);
+      }
+      toast.error("Failed to create post");
+    },
+    // Always refetch after error or success:
+    onSettled: () => {
       queryClient.invalidateQueries({
         queryKey: ["post-feed", "for-you"],
       });

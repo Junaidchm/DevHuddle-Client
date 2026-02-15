@@ -8,9 +8,34 @@ import { ConversationWithMetadata } from "@/src/types/chat.types";
 import { useSession } from "next-auth/react";
 import { MessageCircle } from "lucide-react";
 
+import { useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { getConversationById } from "@/src/services/api/chat.service";
+import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
+
 export default function ChatPage() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const conversationId = searchParams.get("id");
+  const headers = useAuthHeaders();
+  
   const [selectedConversation, setSelectedConversation] = useState<ConversationWithMetadata | null>(null);
+
+  // Fetch conversation by ID if present in URL
+  const { data: fetchedConversation } = useQuery({
+    queryKey: ["conversation", conversationId],
+    queryFn: () => getConversationById(conversationId!, headers),
+    enabled: !!conversationId && !!headers.Authorization,
+  });
+
+  // Set selected conversation when fetched
+  React.useEffect(() => {
+    if (fetchedConversation) {
+        // We need to ensure it matches ConversationWithMetadata structure if getConversationById returns Conversation
+        // Assuming getConversationById returns correct type or compatible
+        setSelectedConversation(fetchedConversation as any as ConversationWithMetadata);
+    }
+  }, [fetchedConversation]);
   
   const { 
     data: messages = [], 
@@ -26,26 +51,96 @@ export default function ChatPage() {
     setSelectedConversation(conversation);
   };
 
-  // Map ConversationWithMetadata to Conversation for ChatWindow
-  const currentConversation = selectedConversation ? {
-    id: selectedConversation.conversationId,
-    createdAt: new Date().toISOString(), // Fallback as it might be missing in metadata
-    participants: selectedConversation.participants.map(p => ({
-        userId: p.userId,
-        conversationId: selectedConversation.conversationId,
-        createdAt: new Date().toISOString(),
-        lastReadAt: new Date().toISOString(),
-        user: {
-            id: p.userId,
-            username: p.username,
-            email: "", // Not available in metadata
-            profileImage: p.profilePhoto || undefined,
-            isOnline: false // Todo: Real online status
+  // Listen for real-time updates to the selected conversation
+  React.useEffect(() => {
+    if (!selectedConversation) return;
+
+    const handleGroupUpdated = (e: CustomEvent) => {
+        const data = e.detail;
+        if (data.conversationId === selectedConversation.conversationId) {
+             const updates = data.updates || data;
+             setSelectedConversation(prev => prev ? ({ ...prev, ...updates }) : null);
         }
-    })),
-    lastMessageAt: selectedConversation.lastMessageAt,
-    unreadCount: selectedConversation.unreadCount
-  } : null;
+    };
+
+    // For participants changes, we might want to re-fetch or assume the list update will handle it?
+    // But since selectedConversation is local state, we should probably update it too if we have the data.
+    // However, the event data for participants_added might not have full conversation metadata.
+    // So simpler approach: If participants change, and it's the valid conversation, 
+    // we might need to fetch the fresh conversation data or let the user re-select.
+    // Improving UX: We can listen to the React Query cache update instead?
+    // Or just listen to the event and update if simple enough.
+    
+    const handleParticipantsAdded = (e: CustomEvent) => {
+        const data = e.detail;
+        if (data.conversationId === selectedConversation.conversationId) {
+             const newParticipants = data.participants || [];
+             setSelectedConversation(prev => {
+                if (!prev) return null;
+                // Filter out any duplicates just in case
+                const existingIds = new Set(prev.participants.map(p => p.userId));
+                const uniqueNew = newParticipants.filter((p: any) => !existingIds.has(p.userId));
+                
+                return {
+                    ...prev,
+                    participants: [...prev.participants, ...uniqueNew]
+                };
+             });
+        }
+    };
+
+    const handleParticipantRemoved = (e: CustomEvent) => {
+        const data = e.detail;
+        if (data.conversationId === selectedConversation.conversationId) {
+             const removedId = data.removedUserId || data.userId;
+             setSelectedConversation(prev => {
+                if (!prev) return null;
+                // If current user is removed, deselect conversation?
+                if (removedId === session?.user?.id) {
+                    return null; 
+                }
+                return {
+                    ...prev,
+                    participants: prev.participants.filter(p => p.userId !== removedId)
+                };
+             });
+        }
+    };
+
+    const handleRoleUpdated = (e: CustomEvent) => {
+         const data = e.detail;
+         if (data.conversationId === selectedConversation.conversationId) {
+              const { userId, role } = data;
+              setSelectedConversation(prev => {
+                  if (!prev) return null;
+                  return {
+                      ...prev,
+                      participants: prev.participants.map(p => 
+                          p.userId === userId ? { ...p, role } : p
+                      )
+                  };
+              });
+         }
+    };
+
+    // For now, let's just handle metadata updates (name, icon)
+    window.addEventListener('group_updated', handleGroupUpdated as EventListener);
+    window.addEventListener('participants_added', handleParticipantsAdded as EventListener);
+    window.addEventListener('participant_removed', handleParticipantRemoved as EventListener); // handling remove by admin
+    window.addEventListener('participant_left', handleParticipantRemoved as EventListener); // handling self leave (same logic)
+    window.addEventListener('role_updated', handleRoleUpdated as EventListener);
+
+    return () => {
+        window.removeEventListener('group_updated', handleGroupUpdated as EventListener);
+        window.removeEventListener('participants_added', handleParticipantsAdded as EventListener);
+        window.removeEventListener('participant_removed', handleParticipantRemoved as EventListener);
+        window.removeEventListener('participant_left', handleParticipantRemoved as EventListener);
+        window.removeEventListener('role_updated', handleRoleUpdated as EventListener);
+    };
+  }, [selectedConversation, session?.user?.id]);
+
+  // Use selectedConversation directly - no transformation needed
+  const currentConversation = selectedConversation;
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] md:h-[calc(100vh-4rem)] max-w-7xl mx-auto bg-background shadow-sm rounded-lg overflow-hidden border border-border my-2 md:my-4">

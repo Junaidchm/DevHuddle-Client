@@ -32,6 +32,7 @@ import React, {
 } from "react";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
+import { mapNotificationToLinkedInStyle } from "@/src/components/notification/notificationMapper";
 import { queryKeys } from "@/src/lib/queryKeys";
 import { Message, WebSocketMessage } from "@/src/types/chat.types";
 
@@ -65,7 +66,8 @@ const VISIBILITY_PAUSE_DELAY = 5000; // Pause connection after 5s of being hidde
 
 class WebSocketManager {
   private static instance: WebSocketManager | null = null;
-  private socket: WebSocket | null = null;
+  private chatSocket: WebSocket | null = null;
+  private notificationSocket: WebSocket | null = null;
   private connectionState: ConnectionState = "disconnected";
   private listeners: Set<(state: ConnectionState) => void> = new Set();
   private reconnectTimeout: NodeJS.Timeout | null = null;
@@ -78,7 +80,7 @@ class WebSocketManager {
   private token: string | null = null;
   private userId: string | null = null;
   private queryClient: any = null;
-  // ✅ FIX: Track processed message IDs to prevent duplication
+  // Track processed message IDs to prevent duplication
   private processedMessageIds = new Set<string>();
 
   private constructor() {
@@ -110,23 +112,9 @@ class WebSocketManager {
   }
 
   connect(token: string, userId: string, queryClient: any): void {
-    // Don't connect if already connected/connecting
-    if (
-      this.socket?.readyState === WebSocket.OPEN ||
-      this.socket?.readyState === WebSocket.CONNECTING
-    ) {
-      return;
-    }
-
-    // Don't connect if tab is hidden (will connect when visible)
-    if (!this.isTabVisible) {
-      console.log("[WebSocket] Tab hidden, deferring connection");
-      return;
-    }
-
-    // Don't connect if offline
-    if (!this.isOnline) {
-      console.log("[WebSocket] Offline, deferring connection");
+    // Don't connect if tab is hidden or offline
+    if (!this.isTabVisible || !this.isOnline) {
+      console.log("[WebSocket] Connection deferred: tab hidden or offline");
       return;
     }
 
@@ -134,59 +122,79 @@ class WebSocketManager {
     this.userId = userId;
     this.queryClient = queryClient;
     this.isIntentionalClose = false;
-    this.isAuthenticated = false;
 
-    this.updateState(
-      this.reconnectAttempts > 0 ? "reconnecting" : "connecting"
-    );
+    this.updateState(this.reconnectAttempts > 0 ? "reconnecting" : "connecting");
 
+    // Connect to both services
+    this.connectChat();
+    this.connectNotifications();
+  }
+
+  private connectChat(): void {
+    if (this.chatSocket?.readyState === WebSocket.OPEN || this.chatSocket?.readyState === WebSocket.CONNECTING) return;
+    
     try {
-      const wsUrl = this.getWebSocketUrl();
-      const socket = new WebSocket(wsUrl);
-      this.socket = socket;
+      const url = this.getWebSocketUrl('chat');
+      const socket = new WebSocket(url);
+      this.chatSocket = socket;
 
       socket.onopen = () => {
-        console.log("[WebSocket] Connection established (Authenticated via Gateway)");
-        // Gateway has already validated the token. Connection open means success.
-        this.isAuthenticated = true;
-        this.updateState("connected");
-        this.reconnectAttempts = 0;
-        this.startHeartbeat();
-
-        // ✅ REFETCH DATA ON RECONNECT
-        // We might have missed events while offline/connecting
-        // BUT: Do not aggressively invalidate chat messages as it causes race conditions with optimistic updates
-        if (this.queryClient) {
-            console.log("[WebSocket] Refetching notifications/conversations after connection...");
-            // Only refetch notifications/conversations list, not message history to prevent "disappearing message" bug
-            this.queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
-            this.queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.all }); 
-        }
+        console.log("[WebSocket] Chat connection established");
+        this.isAuthenticated = true; // Gateway handshake success
+        this.updateConnectionStatus();
       };
 
-      socket.onmessage = (event) => {
-        this.handleMessage(event);
-      };
-
-      socket.onclose = (event) => {
-        console.error("[WebSocket] ❌ Connection closed!", {
-          code: event.code,
-          reason: event.reason || "No reason provided",
-          wasClean: event.wasClean,
-          timestamp: new Date().toISOString(),
-          intentional: this.isIntentionalClose
-        });
-        this.handleClose(event);
-      };
-
+      socket.onmessage = (event) => this.handleMessage(event);
+      socket.onclose = (event) => this.handleClose(event);
       socket.onerror = (error) => {
-        console.error("[WebSocket] Error:", error);
-        this.updateState("disconnected");
+        console.error("[WebSocket] Chat Error:", error);
+        this.updateConnectionStatus();
       };
     } catch (error) {
-      console.error("[WebSocket] Failed to create connection:", error);
+      console.error("[WebSocket] Failed to connect Chat:", error);
+    }
+  }
+
+  private connectNotifications(): void {
+    if (this.notificationSocket?.readyState === WebSocket.OPEN || this.notificationSocket?.readyState === WebSocket.CONNECTING) return;
+
+    try {
+      const url = this.getWebSocketUrl('notifications');
+      const socket = new WebSocket(url);
+      this.notificationSocket = socket;
+
+      socket.onopen = () => {
+        console.log("[WebSocket] Notification connection established");
+        this.updateConnectionStatus();
+      };
+
+      socket.onmessage = (event) => this.handleMessage(event);
+      socket.onclose = (event) => this.handleClose(event);
+      socket.onerror = (error) => {
+        console.error("[WebSocket] Notification Error:", error);
+        this.updateConnectionStatus();
+      };
+    } catch (error) {
+      console.error("[WebSocket] Failed to connect Notifications:", error);
+    }
+  }
+
+  private updateConnectionStatus(): void {
+    const isChatOpen = this.chatSocket?.readyState === WebSocket.OPEN;
+    const isNotifOpen = this.notificationSocket?.readyState === WebSocket.OPEN;
+
+    if (isChatOpen || isNotifOpen) {
+      this.updateState("connected");
+      this.reconnectAttempts = 0;
+      this.startHeartbeat();
+
+      if (this.queryClient && isNotifOpen) {
+        console.log("[WebSocket] Refreshing queries after connection...");
+        this.queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+        this.queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.all });
+      }
+    } else {
       this.updateState("disconnected");
-      this.scheduleReconnect();
     }
   }
 
@@ -195,9 +203,13 @@ class WebSocketManager {
     this.clearTimers();
     this.stopHeartbeat();
 
-    if (this.socket) {
-      this.socket.close(1000, "Intentional disconnect");
-      this.socket = null;
+    if (this.chatSocket) {
+      this.chatSocket.close(1000, "Intentional disconnect");
+      this.chatSocket = null;
+    }
+    if (this.notificationSocket) {
+      this.notificationSocket.close(1000, "Intentional disconnect");
+      this.notificationSocket = null;
     }
 
     this.isAuthenticated = false;
@@ -209,13 +221,14 @@ class WebSocketManager {
   }
 
   sendMessage(message: WebSocketMessage): void {
+    const socket = this.chatSocket; // Chat messages go to chat socket
     if (
-      this.socket &&
-      this.socket.readyState === WebSocket.OPEN &&
+      socket &&
+      socket.readyState === WebSocket.OPEN &&
       this.isAuthenticated
     ) {
       try {
-        this.socket.send(JSON.stringify(message));
+        socket.send(JSON.stringify(message));
       } catch (error) {
         console.error("[WebSocket] Failed to send message:", error);
       }
@@ -242,7 +255,7 @@ class WebSocketManager {
    * Send read receipt for a conversation up to a specific message
    */
   sendReadReceipt(conversationId: string, messageId: string): void {
-      if (!this.userId || !this.socket || this.socket.readyState !== WebSocket.OPEN) return;
+      if (!this.userId || !this.chatSocket || this.chatSocket.readyState !== WebSocket.OPEN) return;
 
       this.sendMessage({
           type: 'message_read',
@@ -324,8 +337,11 @@ class WebSocketManager {
         console.error("[WebSocket] Authentication failed (Service rejected):", message.error);
         this.isAuthenticated = false;
         this.updateState("disconnected");
-        if (this.socket) {
-          this.socket.close(4001, "Authentication failed");
+        if (this.chatSocket) {
+          this.chatSocket.close(4001, "Authentication failed");
+        }
+        if (this.notificationSocket) {
+          this.notificationSocket.close(4001, "Authentication failed");
         }
         return;
       }
@@ -338,6 +354,7 @@ class WebSocketManager {
 
       // Handle notification messages (existing)
       if (message.type === "new_notification" || message.type === "unread_count") {
+        console.log(`[WebSocket] 🔔 Routing notification message: ${message.type}`);
         this.handleNotificationMessage(message);
         return;
       }
@@ -346,9 +363,9 @@ class WebSocketManager {
       else if (message.type === "new_message") {
         // ✅ FIX: Backend sends double-wrapped: {type: "new_message", data: {type: "new_message", data: actualMessage}}
         // So we need to drill down to message.data.data to get the actual message object
-        const actualMessage = message.data?.data || message.data;
-        console.log("[WebSocket] � Received new_message, extracting actual payload:", actualMessage);
-        this.handleNewChatMessage(actualMessage);
+        const actualMessage = (message.data?.data || message.data) as any;
+        console.log("[WebSocket] Received new_message, extracting actual payload:", actualMessage);
+        this.handleNewChatMessage(actualMessage as Message);
         return;
       } else if (message.type === "pong") {
         // Heartbeat response - connection is alive
@@ -359,7 +376,7 @@ class WebSocketManager {
       }
 
       if (message.type === "message_status_updated") {
-        this.handleMessageStatusUpdate(message.data);
+        this.handleMessageStatusUpdate(message.data as any);
         return;
       }
 
@@ -367,6 +384,40 @@ class WebSocketManager {
       if (message.event === "message:new") {
         this.handleNewChatMessage(message.data);
         return;
+      }
+
+      // Handle Group Events
+      const groupEvents = [
+          'group_created', 
+          'group_updated', 
+          'participants_added', 
+          'participant_removed',
+          'participant_left',
+          'role_updated'
+      ];
+
+      if (groupEvents.includes(message.type)) {
+          console.log(`[WebSocket] 👥 Group Event Received: ${message.type}`, message.data);
+          this.handleGroupEvent(message.type, message.data);
+          return;
+      }
+
+      // Handle Call Events
+      const callEvents = [
+          'call:incoming', 
+          'call:participant_joined', 
+          'call:participant_left', 
+          'call:signal', 
+          'call:ended', 
+          'call:participants', 
+          'call:media_toggled'
+      ];
+
+      if (callEvents.includes(message.type)) {
+          console.log(`[WebSocket] 📞 Call Event Received: ${message.type}`, message);
+          // For call events sent directly via ws.send() in backend, the message IS the payload
+          this.handleCallEvent(message.type, message as any); 
+          return;
       }
 
       // Unknown message type
@@ -497,9 +548,9 @@ class WebSocketManager {
       });
 
       // Send delivery acknowledgment automatically
-      if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      if (this.chatSocket && this.chatSocket.readyState === WebSocket.OPEN) {
         try {
-          this.socket.send(JSON.stringify({
+          this.chatSocket.send(JSON.stringify({
             type: "message_delivered",
             messageId: messageData.id,
             conversationId: messageData.conversationId 
@@ -646,33 +697,55 @@ class WebSocketManager {
 
     switch (message.type) {
       case "new_notification":
-        // ✅ FIXED: Force refetch immediately instead of just invalidating
-        this.queryClient.invalidateQueries({
-          queryKey: ["notifications", this.userId],
-          refetchType: "active", // Only refetch active queries
+        console.log("[WebSocket] 🔔 New notification received:", message.data);
+        
+        // 1. Update Notification List Cache (Prepend to Infinite Query)
+        const listQueryKey = queryKeys.notifications.list(this.userId);
+        this.queryClient.setQueryData(listQueryKey, (oldData: any) => {
+          if (!oldData || !oldData.pages) return oldData;
+          
+          // Ensure createdAt exists to avoid RangeError in date-fns
+          const notificationData = { ...(message.data as any) };
+          const d = notificationData.createdAt ? new Date(notificationData.createdAt) : new Date();
+          notificationData.createdAt = isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+          notificationData.time = isNaN(d.getTime()) ? new Date() : d;
+          
+          // Prepend to the first page
+          const newPages = [...oldData.pages];
+          if (newPages.length > 0) {
+            console.log("[WebSocket] 📥 Prepending new notification to cache list");
+            newPages[0] = {
+              ...newPages[0],
+              notifications: [notificationData, ...newPages[0].notifications],
+              total: (newPages[0].total || 0) + 1
+            };
+          } else {
+            console.warn("[WebSocket] ⚠️ No pages found in notification cache to prepend to");
+          }
+          
+          return { ...oldData, pages: newPages };
         });
+
+        // 2. Refresh count query
         this.queryClient.invalidateQueries({
-          queryKey: ["unread-count", this.userId],
+          queryKey: queryKeys.notifications.count(this.userId),
           refetchType: "active",
         });
 
-        // ✅ FIXED: Also refetch if notifications page is open
-        this.queryClient.refetchQueries({
-          queryKey: ["notifications", this.userId],
+        // 3. Fallback: Invalidate list to ensure consistency if setQueryData didn't match something
+        this.queryClient.invalidateQueries({
+          queryKey: listQueryKey,
+          refetchType: "none", // Background refetch if needed
         });
         break;
 
       case "unread_count":
-        if (
-          message.data &&
-          typeof message.data.unreadCount === "number"
-        ) {
-          // ✅ FIXED: Update cache immediately
+        const unreadData = message.data as any;
+        if (unreadData && typeof unreadData.unreadCount === "number") {
+          console.log("[WebSocket] 🔢 Unread count updated:", unreadData.unreadCount);
           this.queryClient.setQueryData(
-            ["unread-count", this.userId],
-            {
-              unreadCount: message.data.unreadCount,
-            }
+            queryKeys.notifications.count(this.userId),
+            { unreadCount: unreadData.unreadCount }
           );
         }
         break;
@@ -707,70 +780,74 @@ class WebSocketManager {
   }
 
   private handleClose(event: CloseEvent): void {
-    console.log("[WebSocket] Connection closed", {
-      code: event.code,
-      reason: event.reason,
-      wasClean: event.wasClean,
-    });
+    if (this.isIntentionalClose) {
+      this.updateConnectionStatus();
+      return;
+    }
 
-    this.clearTimers();
-    this.stopHeartbeat();
-    this.updateState("disconnected");
-    this.socket = null;
-    this.isAuthenticated = false;
+    console.warn(`[WebSocket] Connection closed (code: ${event.code})`);
+    this.updateConnectionStatus();
 
-    // Reconnect logic
-    if (
-      !this.isIntentionalClose &&
-      event.code !== 1000 && // Normal closure
-      event.code !== 4001 && // Auth error
-      event.code !== 4002 && // Auth timeout
-      this.reconnectAttempts < MAX_RECONNECT_ATTEMPTS &&
-      this.token &&
-      this.isTabVisible &&
-      this.isOnline
-    ) {
+    // Abnormal closure or service-initiated closure - attempt reconnect
+    if (event.code !== 1000 && event.code !== 1001) {
       this.scheduleReconnect();
-    } else if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      console.error("[WebSocket] Max reconnection attempts reached");
-      this.updateState("disconnected");
     }
   }
 
   private scheduleReconnect(): void {
-    const delay = Math.min(
-      BASE_RECONNECT_DELAY * Math.pow(2, this.reconnectAttempts),
-      MAX_RECONNECT_DELAY
-    );
+    if (this.reconnectTimeout || this.isIntentionalClose) return;
 
     this.reconnectAttempts++;
-    console.log(
-      `[WebSocket] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`
-    );
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
 
+    console.log(`[WebSocket] Reconnecting in ${delay}ms (Attempt ${this.reconnectAttempts})...`);
+    
     this.reconnectTimeout = setTimeout(() => {
+      this.reconnectTimeout = null;
       if (this.token && this.userId && this.queryClient) {
         this.connect(this.token, this.userId, this.queryClient);
       }
     }, delay);
   }
 
+  /**
+   * Handle group-related events by dispatching custom window events
+   * This allows hooks like useGroupSocketEvents to listen without accessing the socket directly
+   */
+  private handleGroupEvent(type: string, data: any): void {
+      if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent(type, { detail: data }));
+          
+          // Also perform general cache invalidation here as a fallback/safeguard
+          if (this.queryClient) {
+             // Invalidate conversation list for all group events
+             this.queryClient.invalidateQueries({
+                 queryKey: queryKeys.chat.conversations.all
+             });
+          }
+      }
+  }
+
+  /**
+   * Handle call-related events by dispatching custom window events
+   * This allows VideoCallContext to listen without accessing the socket directly
+   */
+  private handleCallEvent(type: string, data: any): void {
+      if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent(type, { detail: data }));
+      }
+  }
+
   private startHeartbeat(): void {
     this.stopHeartbeat();
-    
-    // ✅ FIX: Send active heartbeat pings to keep connection alive
-    // This prevents the server from timing out our connection
     this.heartbeatInterval = setInterval(() => {
-      if (this.socket?.readyState === WebSocket.OPEN) {
-        try {
-          // Send heartbeat ping to server
-          this.socket.send(JSON.stringify({ type: 'ping' }));
-          console.log("[WebSocket] Heartbeat ping sent");
-        } catch (error) {
-          console.error("[WebSocket] Failed to send heartbeat:", error);
-        }
+      if (this.chatSocket?.readyState === WebSocket.OPEN) {
+        this.chatSocket.send(JSON.stringify({ type: "ping" }));
       }
-    }, 25000); // Every 25 seconds (before server's 30s timeout)
+      if (this.notificationSocket?.readyState === WebSocket.OPEN) {
+        this.notificationSocket.send(JSON.stringify({ type: "ping" }));
+      }
+    }, 30000); // 30 seconds
   }
 
   private stopHeartbeat(): void {
@@ -789,56 +866,35 @@ class WebSocketManager {
 
   // ==================== Event Handlers ====================
 
-  private handleVisibilityChange = (): void => {
-    const isVisible = !document.hidden;
-    this.isTabVisible = isVisible;
+  private handleVisibilityChange(): void {
+    this.isTabVisible = document.visibilityState === "visible";
+    console.log("[WebSocket] Tab visibility changed:", this.isTabVisible);
 
-    if (isVisible) {
-      // Tab became visible - reconnect if needed
-      console.log("[WebSocket] Tab visible, checking connection...");
-      if (
-        this.token &&
-        this.userId &&
-        this.queryClient &&
-        (!this.socket ||
-          this.socket.readyState === WebSocket.CLOSED ||
-          this.socket.readyState === WebSocket.CLOSING)
-      ) {
-        console.log("[WebSocket] Reconnecting after tab visibility...");
-        this.reconnectAttempts = 0;
-        this.connect(this.token, this.userId, this.queryClient);
+    if (this.isTabVisible) {
+      if (this.token && this.userId && this.queryClient) {
+        const isChatOpen = this.chatSocket?.readyState === WebSocket.OPEN;
+        const isNotifOpen = this.notificationSocket?.readyState === WebSocket.OPEN;
+        
+        if (!isChatOpen || !isNotifOpen) {
+          console.log("[WebSocket] Tab visible, reconnecting missing sockets...");
+          this.connect(this.token, this.userId, this.queryClient);
+        }
       }
     } else {
-      // Tab hidden - pause connection after delay
-      console.log("[WebSocket] Tab hidden, will pause connection...");
-      setTimeout(() => {
-        if (!this.isTabVisible && this.socket) {
-          console.log("[WebSocket] Pausing connection (tab hidden)");
-          // Don't close, just mark as paused - connection will resume when visible
-        }
-      }, VISIBILITY_PAUSE_DELAY);
+      // Optional: disconnect or reduce frequency when tab is hidden
+      // For now, keep connected but maybe stop some background tasks
     }
-  };
+  }
 
-  private handleOnline = (): void => {
-    console.log("[WebSocket] Network online");
+  private handleOnline(): void {
     this.isOnline = true;
-    if (
-      this.token &&
-      this.userId &&
-      this.queryClient &&
-      (!this.socket ||
-        this.socket.readyState === WebSocket.CLOSED ||
-        this.socket.readyState === WebSocket.CLOSING)
-    ) {
-      console.log("[WebSocket] Reconnecting after network online...");
-      this.reconnectAttempts = 0;
+    console.log("[WebSocket] Network back online");
+    if (this.token && this.userId && this.queryClient) {
       this.connect(this.token, this.userId, this.queryClient);
     }
   };
 
-  private handleOffline = (): void => {
-    console.log("[WebSocket] Network offline");
+  private handleOffline(): void {
     this.isOnline = false;
     // Connection will close automatically, no need to force it
   };

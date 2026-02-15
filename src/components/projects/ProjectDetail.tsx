@@ -15,6 +15,7 @@ import { Card, CardContent } from "@/src/components/ui/card";
 import { Badge } from "@/src/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/src/components/ui/avatar";
 import { Button } from "@/src/components/ui/button";
+import { getMediaUrl } from "@/src/utils/media";
 
 interface ProjectDetailProps {
   project: Project;
@@ -26,15 +27,6 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
     project.id
   );
 
-  // Helper function to get author avatar URL
-  const getAuthorAvatarUrl = (avatar: string | undefined): string => {
-    if (!avatar) return PROFILE_DEFAULT_URL;
-    if (avatar.startsWith("http") || avatar.startsWith("https")) return avatar;
-    const imagePath = process.env.NEXT_PUBLIC_IMAGE_PATH || "";
-    const cleanImagePath = imagePath.endsWith("/") ? imagePath.slice(0, -1) : imagePath;
-    const cleanAvatar = avatar.startsWith("/") ? avatar.slice(1) : avatar;
-    return cleanImagePath ? `${cleanImagePath}/${cleanAvatar}` : `/${cleanAvatar}`;
-  };
 
   // Track view on mount
   useEffect(() => {
@@ -62,7 +54,7 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
                 {/* Author */}
                 <div className="flex items-center gap-3">
                     <Avatar className="w-10 h-10 border border-border">
-                        <AvatarImage src={getAuthorAvatarUrl(project.author.avatar)} alt={project.author.name} className="object-cover" />
+                         <AvatarImage src={getMediaUrl(project.author.avatar) || PROFILE_DEFAULT_URL} alt={project.author.name} className="object-cover" />
                         <AvatarFallback>{project.author.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div>

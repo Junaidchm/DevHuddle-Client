@@ -1,12 +1,11 @@
 "use server";
 
-import { serverFetchSilent } from "@/src/app/lib/serverFetch";
 import { serverFetch } from "@/src/app/lib/serverFetch";
 import { API_ROUTES } from "@/src/constants/api.routes";
 
 export async function deletePost(Id: string) {
   try {
-    const res = await serverFetch(API_ROUTES.FEED.DELETE, {
+    const res = await serverFetch(API_ROUTES.FEED.DELETE_BODY, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

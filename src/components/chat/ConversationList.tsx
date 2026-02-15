@@ -8,6 +8,7 @@ import { NewChatModal } from "./NewChatModal";
 import { EmptyState } from "./EmptyState";
 import { ConversationListSkeleton } from "./ConversationListSkeleton";
 import { useConversations, useCreateConversation } from "@/src/hooks/chat/useConversationQuery";
+import { useGroupSocketEvents } from "@/src/hooks/chat/useGroupSocketEvents";
 
 import { ConversationWithMetadata } from "@/src/types/chat.types";
 import { PROFILE_DEFAULT_URL } from "@/src/constants";
@@ -37,14 +38,31 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
     isFetchingNextPage 
   } = useConversations();
 
+  // Listen for real-time group events
+  useGroupSocketEvents();
+
   // Create conversation hook with selection callback
   const createConversation = useCreateConversation((conversation) => {
     // Select the newly created conversation
     onSelect(conversation);
   });
 
-  // Flatten pages into single array
-  const conversations = data?.pages.flatMap(page => page.data) ?? [];
+  // Flatten pages and deduplicate by conversationId
+  const conversations = (() => {
+    const allConversations = data?.pages.flatMap(page => page.data) ?? [];
+    const seenIds = new Set<string>();
+    const uniqueConversations: typeof allConversations = [];
+    
+    for (const conv of allConversations) {
+      if (!conv || !conv.conversationId) continue;
+      if (!seenIds.has(conv.conversationId)) {
+        seenIds.add(conv.conversationId);
+        uniqueConversations.push(conv);
+      }
+    }
+    
+    return uniqueConversations;
+  })();
 
   // Get current user ID
   const currentUserId = session?.user?.id || '';
@@ -182,9 +200,10 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
       <div className="flex-1 overflow-y-auto">
         {filteredConversations.map((conv, index) => {
           // Get the other participant (not current user)
+          // If no other participant found (e.g. self chat), fall back to the first participant
           const otherParticipant = conv.participants.find(
-            p => p.userId !== currentUserId
-          ) || conv.participants[0];
+            p => p.userId !== (currentUserId || session?.user?.id)
+          ) || conv.participants[0] || { name: 'Unknown User', username: 'unknown', profilePhoto: null, userId: '' };
 
           // Format time
           const timeAgo = conv.lastMessageAt 
@@ -193,6 +212,10 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
 
           const isLast = index === filteredConversations.length - 1;
           const isSelected = selectedId === conv.conversationId;
+          
+          const displayName = conv.type === 'GROUP' 
+            ? (conv.name || "Group Chat")
+            : (otherParticipant.name || otherParticipant.username || "Unknown User");
 
           return (
             <div 
@@ -208,19 +231,28 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
               >
                 {/* Avatar */}
                 <div className="relative flex-shrink-0">
-                    <Avatar className="w-12 h-12 border border-border">
-                        <AvatarImage src={otherParticipant.profilePhoto || PROFILE_DEFAULT_URL} alt={otherParticipant.name} className="object-cover" />
-                        <AvatarFallback className="bg-primary/10 text-primary">
-                            {otherParticipant.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                    </Avatar>
+                    {conv.type === 'GROUP' ? (
+                        <Avatar className="w-12 h-12 border border-border">
+                            <AvatarImage src={conv.icon || undefined} alt={displayName || "Group"} className="object-cover" />
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                                {(conv.name || "G").charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                        </Avatar>
+                    ) : (
+                        <Avatar className="w-12 h-12 border border-border">
+                            <AvatarImage src={otherParticipant.profilePhoto || PROFILE_DEFAULT_URL} alt={displayName} className="object-cover" />
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                                {displayName.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                        </Avatar>
+                    )}
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 min-w-0 text-left">
                   <div className="flex items-center justify-between mb-1">
                     <h3 className={cn("font-medium text-sm truncate", isSelected ? "text-foreground" : "text-foreground/90")}>
-                      {otherParticipant.name}
+                      {displayName}
                     </h3>
                     <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
                       {timeAgo}
@@ -228,12 +260,43 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                   </div>
                   <div className="flex items-center justify-between">
                     <p className={cn("text-xs truncate flex-1", conv.unreadCount > 0 ? "font-medium text-foreground" : "text-muted-foreground")}>
-                      {conv.lastMessage?.content || 'No messages yet'}
+                      {(() => {
+                        const lastMsg = conv.lastMessage;
+                        if (!lastMsg) return 'No messages yet';
+
+                        // If we have content, show it
+                        if (lastMsg.content && lastMsg.content.trim().length > 0) {
+                          return lastMsg.content;
+                        }
+
+                        // Map message type to preview text
+                        // Backend might send 'IMAGE', 'VIDEO' etc. or 'CHAT_IMAGE' (check types)
+                        const type = (lastMsg as any).type || 'TEXT';
+                        
+                        switch (type) {
+                          case 'IMAGE':
+                          case 'CHAT_IMAGE':
+                            return '📷 Photo';
+                          case 'VIDEO':
+                          case 'CHAT_VIDEO':
+                            return '🎥 Video';
+                          case 'AUDIO':
+                          case 'CHAT_AUDIO':
+                            return '🎵 Audio';
+                          case 'FILE':
+                          case 'CHAT_FILE':
+                            return '📄 File';
+                          case 'STICKER':
+                            return '💟 Sticker';
+                          default:
+                            return 'No messages yet';
+                        }
+                      })()}
                     </p>
                     {conv.unreadCount > 0 && (
-                        <Badge variant="default" className="ml-2 h-5 min-w-[20px] px-1.5 flex items-center justify-center text-[10px]">
-                            {conv.unreadCount > 99 ? '99+' : conv.unreadCount}
-                        </Badge>
+                      <Badge variant="default" className="ml-2 h-5 min-w-[20px] px-1.5 flex items-center justify-center text-[10px]">
+                        {conv.unreadCount > 99 ? '99+' : conv.unreadCount}
+                      </Badge>
                     )}
                   </div>
                 </div>
@@ -254,6 +317,10 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
         isOpen={isNewChatModalOpen}
         onClose={() => setIsNewChatModalOpen(false)}
         onUserSelect={handleNewConversation}
+        onConversationSelect={(conversation) => {
+            onSelect(conversation);
+            setIsNewChatModalOpen(false);
+        }}
       />
     </div>
   );

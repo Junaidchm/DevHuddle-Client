@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '@/src/store/store';
-import { GetUser } from '@/src/store/actions/authActions';
+import { getUser } from '@/src/store/actions/authActions';
 
 export default function AuthCallback() {
   const router = useRouter();
@@ -14,11 +14,11 @@ export default function AuthCallback() {
     const handleCallback = async () => {
       try {
         // Fetch user data after OAuth callback sets cookies
-        await dispatch(GetUser()).unwrap();
+        await dispatch(getUser()).unwrap();
         await new Promise((res,rej)=> setTimeout(res,1000))
         router.push('/');
       } catch (err) {
-        router.push('/login?error=OAuth%20failed');
+        router.push('/signIn?error=OAuth%20failed');
       }
     };
     handleCallback();

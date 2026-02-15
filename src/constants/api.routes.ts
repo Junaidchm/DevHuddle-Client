@@ -90,11 +90,13 @@ export const API_ROUTES = {
   },
 
   FEED: {
-    LIST: "/feed/list",
-    SUBMIT: "/feed/submit",
-    DELETE: "/feed/delete",
-    MEDIA: "/feed/media",
-    EDIT_POST: (postId: string) => `${API_VERSION}/feed/posts/${postId}`,
+    LIST: `${API_VERSION}/feed/list`,
+    SUBMIT: `${API_VERSION}/feed/submit`,
+    DELETE_BODY: `${API_VERSION}/feed/delete`,
+    MEDIA: `${API_VERSION}/feed/media`,
+    DETAILS: (postId: string) => `${API_VERSION}/feed/${postId}`,
+    DELETE_POST: (postId: string) => `${API_VERSION}/feed/${postId}`,
+    EDIT_POST: (postId: string) => `${API_VERSION}/feed/${postId}`,
     POST_VERSIONS: (postId: string) => `${API_VERSION}/feed/posts/${postId}/versions`,
     RESTORE_VERSION: (postId: string, versionNumber: number) =>
       `${API_VERSION}/feed/posts/${postId}/versions/${versionNumber}/restore`,
@@ -197,8 +199,25 @@ export const API_ROUTES = {
     SEND_MESSAGE: (conversationId: string) =>
       `${API_VERSION}/chat/conversations/${conversationId}/messages`,
 
+    // Groups
+    GROUPS: `${API_VERSION}/chat/groups`,
+    GROUP_DETAILS: (groupId: string) => `${API_VERSION}/chat/groups/${groupId}`,
+    GROUP_PARTICIPANTS: (groupId: string) => `${API_VERSION}/chat/groups/${groupId}/participants`,
+    GROUP_ADMINS: (groupId: string, userId: string) => `${API_VERSION}/chat/groups/${groupId}/admins/${userId}`,
+    GROUP_LEAVE: (groupId: string) => `${API_VERSION}/chat/groups/${groupId}/leave`,
+    GROUP_DELETE: (groupId: string) => `${API_VERSION}/chat/groups/${groupId}`,
+
     // WebSocket
     WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3003',
+  },
+
+  HUBS: {
+    CREATE: `${API_VERSION}/chat/hubs`,
+    MY_HUBS: `${API_VERSION}/chat/hubs/me`,
+    SEARCH: `${API_VERSION}/chat/hubs/search`,
+    DETAILS: (hubId: string) => `${API_VERSION}/chat/hubs/${hubId}`,
+    JOIN: (hubId: string) => `${API_VERSION}/chat/hubs/${hubId}/join`,
+    CREATE_CHANNEL: (hubId: string) => `${API_VERSION}/chat/hubs/${hubId}/channels`,
   },
 } as const;
 
@@ -215,6 +234,7 @@ export const getApiBaseUrl = (): string => {
       process.env.LOCAL_APIGATEWAY_URL ||
       process.env.API_GATEWAY ||
       process.env.NEXT_PUBLIC_API_URL ||
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
       "http://localhost:8080";
 
     // Ensure URL doesn't end with slash
@@ -224,10 +244,11 @@ export const getApiBaseUrl = (): string => {
   // Client-side (browser)
   const url =
     process.env.NEXT_PUBLIC_API_URL ||
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
     "http://localhost:8080";
 
   // Log warning if falling back to default
-  if (!process.env.NEXT_PUBLIC_API_URL && process.env.NODE_ENV === 'development') {
+  if (!process.env.NEXT_PUBLIC_API_URL && !process.env.NEXT_PUBLIC_API_BASE_URL && process.env.NODE_ENV === 'development') {
     console.warn('[API] NEXT_PUBLIC_API_URL not set, using fallback:', url);
   }
 

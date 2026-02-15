@@ -27,13 +27,28 @@ export function useSendMessage() {
   const queryClient = useQueryClient();
   const { data: session } = useSession();
 
-  const sendMessage = useCallback(async ({
-    conversationId,
-    content,
-    type = 'TEXT',
-    mediaDetails,
-    replyToId
-  }: SendMessageOptions) => {
+  const sendMessage = useCallback(async (options: SendMessageOptions) => {
+    console.log("[useSendMessage] RAW OPTIONS RECEIVED:", options);
+    
+    const {
+      conversationId,
+      content,
+      type = 'TEXT',
+      mediaDetails,
+      replyToId
+    } = options;
+
+    // ✅ DEBUG: Log ALL parameters at function entry
+    console.log("[useSendMessage] Destructured parameters:", {
+      conversationId,
+      content,
+      type,
+      mediaDetails,
+      replyToId,
+      hasMediaDetails: !!mediaDetails,
+      mediaDetailsKeys: mediaDetails ? Object.keys(mediaDetails) : []
+    });
+    
     if (!isConnected || !session?.user?.id) {
         console.warn('[useSendMessage] Cannot send: Disconnected or no session');
         return false;
@@ -148,20 +163,50 @@ export function useSendMessage() {
       }
     );
 
+
     // 3. Send via WebSocket
-    sendWsMessage({
+    console.log("[useSendMessage] Preparing WebSocket payload:", {
       type: WS_EVENTS.SEND_MESSAGE,
       conversationId,
       content,
       dedupeId,
-      // Spread the rest of the payload required by backend
-      // Note: Backend DTOs must match these fields
-      ...({
-        messageType: type,
-        replyToId,
-        ...mediaDetails
-      } as any) 
+      messageType: type,
+      mediaDetails
     });
+    
+    // ✅ FIX: Robust payload construction
+    // 1. Explicitly extract media fields if they exist
+    // 2. Remove undefined/null values to prevent backend validation errors
+    const rawPayload = {
+      type: WS_EVENTS.SEND_MESSAGE,
+      conversationId,
+      content,
+      dedupeId,
+      messageType: type,
+      replyToId,
+      
+      // Only include media fields if they exist
+      ...(mediaDetails ? {
+        mediaId: mediaDetails.mediaId,
+        mediaUrl: mediaDetails.mediaUrl,
+        mediaName: mediaDetails.fileName, // Backend expects mediaName
+        mediaSize: mediaDetails.fileSize,
+        mediaDuration: mediaDetails.duration,
+        mediaMimeType: mediaDetails.mimeType,
+      } : {})
+    };
+
+    // Clean payload to remove any undefined values
+    const wsPayload = Object.fromEntries(
+      Object.entries(rawPayload).filter(([_, v]) => v !== undefined && v !== null)
+    );
+    
+    console.log("[useSendMessage] Final WebSocket payload:", wsPayload);
+    sendWsMessage(wsPayload as any);
+    
+    console.log("[useSendMessage] Final WebSocket payload:", wsPayload);
+    sendWsMessage(wsPayload as any);
+
 
     return true;
   }, [isConnected, session, queryClient, sendWsMessage]);

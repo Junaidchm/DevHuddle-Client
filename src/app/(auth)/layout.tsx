@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   description: "Join DevHuddle to connect, collaborate, and grow with other developers.",
 };
 
-export default function RootLayout({
+export default function AuthLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;

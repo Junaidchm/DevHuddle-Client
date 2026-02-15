@@ -2,9 +2,7 @@
 import { Provider } from "react-redux";
 import { persistor, store } from "./store";
 import {
-  QueryClient,
   QueryClientProvider,
-  HydrationBoundary,
 } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { PersistGate } from "redux-persist/integration/react";
@@ -12,6 +10,8 @@ import { useState } from "react";
 import { SessionProvider } from "next-auth/react";
 import SessionProviderWrapper from "./SessionProviderWrapper";
 import { WebSocketProvider } from "../contexts/WebSocketContext";
+import { VideoCallProvider } from "../contexts/VideoCallContext";
+import { CallModal } from "../components/chat/call/CallModal";
 
 import { createQueryClient } from "@/src/lib/query-client";
 
@@ -29,8 +29,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <SessionProviderWrapper>
             <QueryClientProvider client={queryClient}>
               <WebSocketProvider>
-                {children}
-                <ReactQueryDevtools initialIsOpen={false} />
+                <VideoCallProvider>
+                  {children}
+                  <CallModal />
+                  <ReactQueryDevtools initialIsOpen={false} />
+                </VideoCallProvider>
               </WebSocketProvider>
             </QueryClientProvider>
           </SessionProviderWrapper>

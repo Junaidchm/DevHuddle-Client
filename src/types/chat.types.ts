@@ -17,14 +17,16 @@ export interface Participant {
   createdAt: string;
   lastReadAt: string;
   user?: User;
+  role?: 'ADMIN' | 'MEMBER';
 }
 
-export type MessageType = 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO' | 'FILE' | 'STICKER';
+export type MessageType = 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO' | 'FILE' | 'STICKER' | 'CHAT_IMAGE' | 'CHAT_VIDEO' | 'CHAT_AUDIO' | 'CHAT_FILE';
 
 export interface Message {
   id: string;
   conversationId: string;
   senderId: string;
+  sender?: User; // Populated for group/hub chats
   content: string;
   type: MessageType;
   
@@ -71,10 +73,50 @@ export interface MessageReaction {
 export interface Conversation {
   id: string;
   createdAt: string;
+  // ✅ FIX: Add missing fields used by ChatHeader
+  type?: 'DIRECT' | 'GROUP';
+  name?: string;
+  description?: string;
+  icon?: string;
+  ownerId?: string;
+  
+  // Permissions
+  onlyAdminsCanPost?: boolean;
+  onlyAdminsCanEditInfo?: boolean;
+
+  // Hubs feature
+  topics?: string[];
+
   lastMessageAt?: string;
   participants: Participant[];
   lastMessage?: Message;
   unreadCount?: number;
+}
+// ...
+export interface ConversationWithMetadata {
+  conversationId: string;
+  type: 'DIRECT' | 'GROUP';
+  name?: string;
+  icon?: string;
+  description?: string;
+  ownerId?: string;
+  // Group permissions
+    onlyAdminsCanPost?: boolean;
+    onlyAdminsCanEditInfo?: boolean;
+
+  // Hubs feature
+  topics?: string[];
+
+  participantIds: string[];
+  participants: ConversationParticipant[];
+  lastMessage: {
+    content: string;
+    senderId: string;
+    senderName: string;
+    createdAt: string;
+  } | null;
+  lastMessageAt: string;
+  unreadCount: number;
 }
 
 /**
@@ -99,9 +141,22 @@ export type WebSocketMessageType =
   | 'pong' 
   // Notification types
   | 'new_notification'
-  | 'unread_count';
+  | 'unread_count'
+  // Call types
+  | 'call:start'
+  | 'call:join'
+  | 'call:signal'
+  | 'call:leave'
+  | 'call:end'
+  | 'call:toggle_media'
+  | 'call:incoming'
+  | 'call:participant_joined'
+  | 'call:participant_left'
+  | 'call:ended'
+  | 'call:participants'
+  | 'call:media_toggled';
 
-export interface WebSocketMessage<T = any> {
+export interface WebSocketMessage<T = unknown> {
   type: WebSocketMessageType;
   data?: T;
   token?: string;
@@ -115,26 +170,69 @@ export interface WebSocketMessage<T = any> {
   messageId?: string;
   lastReadMessageId?: string;
   event?: string; // Legacy support
+  // Call specific fields
+  isVideoCall?: boolean;
+  targetUserId?: string;
+  signalType?: 'offer' | 'answer' | 'ice-candidate';
+  signalData?: unknown;
+  mediaType?: 'audio' | 'video' | 'screen';
+  isEnabled?: boolean;
 }
 
 /**
  * API Response Types
  */
-export interface GetConversationsResponse {
-  conversations: Conversation[];
-  total: number;
+// Participant with user profile
+export interface ConversationParticipant {
+  userId: string;
+  username: string;
+  name: string;
+  profilePhoto: string | null;
+  role?: 'ADMIN' | 'MEMBER';
+}
+
+// Enriched conversation with metadata
+export interface ConversationWithMetadata {
+  conversationId: string;
+  type: 'DIRECT' | 'GROUP';
+  name?: string;
+  icon?: string;
+  description?: string;
+  ownerId?: string;
+  // Group permissions
+    onlyAdminsCanPost?: boolean;
+    onlyAdminsCanEditInfo?: boolean;
+  participantIds: string[];
+  participants: ConversationParticipant[];
+  lastMessage: {
+    content: string;
+    senderId: string;
+    senderName: string;
+    createdAt: string;
+  } | null;
+  lastMessageAt: string;
+  unreadCount: number;
+}
+
+// Check conversation response
+export interface CheckConversationResponse {
+  success: boolean;
+  data: {
+    exists: boolean;
+    conversationId?: string;
+  };
 }
 
 export interface GetMessagesResponse {
-  success?: boolean; // Added for consistency with API response structure
-  data?: Message[]; // Sometimes API returns { data: [], pagination: {} }
-  messages?: Message[]; // Sometimes API returns { messages: [] } - checking usage
+  success?: boolean; 
+  data?: Message[];
+  messages?: Message[]; 
   pagination?: {
       limit: number;
       nextCursor?: string | null;
       count: number;
   };
-  hasMore?: boolean; // Legacy
+  hasMore?: boolean; 
 }
 
 export interface SendMessagePayload {
@@ -147,36 +245,6 @@ export interface SendMessageResponse {
   conversationId: string;
 }
 
-
-// Participant with user profile
-export interface ConversationParticipant {
-  userId: string;
-  username: string;
-  name: string;
-  profilePhoto: string | null;
-}
-// Enriched conversation with metadata
-export interface ConversationWithMetadata {
-  conversationId: string;
-  participantIds: string[];
-  participants: ConversationParticipant[];
-  lastMessage: {
-    content: string;
-    senderId: string;
-    senderName: string;
-    createdAt: string;
-  } | null;
-  lastMessageAt: string;
-  unreadCount: number;
-}
-// Check conversation response
-export interface CheckConversationResponse {
-  success: boolean;
-  data: {
-    exists: boolean;
-    conversationId?: string;
-  };
-}
 // Updated GetConversationsResponse
 export interface GetConversationsResponse {
   success: boolean;

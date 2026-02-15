@@ -8,6 +8,8 @@ interface UpdatePostPayload {
   content?: string;
   addAttachmentIds?: string[];
   removeAttachmentIds?: string[];
+  visibility?: string;
+  commentControl?: string;
 }
 
 export function useUpdatePostMutation() {
@@ -19,6 +21,8 @@ export function useUpdatePostMutation() {
         content: payload.content,
         addAttachmentIds: payload.addAttachmentIds,
         removeAttachmentIds: payload.removeAttachmentIds,
+        visibility: payload.visibility,
+        commentControl: payload.commentControl,
       });
 
       if (!result.success) {

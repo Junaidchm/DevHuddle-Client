@@ -90,10 +90,11 @@ export const getUser = createAsyncThunk<User, void, { rejectValue: string }>(
   async (_, { rejectWithValue }) => {
     try {
       const session = await getSession();
-      if (!session?.user?.accessToken) {
-        throw new Error("Not authenticated");
-      }
-      const headers = { Authorization: `Bearer ${session.user.accessToken}` };
+      // If session exists, use the token from it
+      const headers: Record<string, string> = session?.user?.accessToken 
+        ? { Authorization: `Bearer ${session.user.accessToken}` }
+        : {}; // If no session, send empty headers and let cookies do the work
+
       const response = await getUserFromApi(headers);
       return response.data;
     } catch (err: any) {

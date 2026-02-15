@@ -7,13 +7,11 @@ import CommentSection from "./CommentSection";
 import { CommentPreview } from "./CommentPreview";
 import SendPostModal from "./SendPostModal";
 import ReportPostModal from "./ReportPostModal";
-import CreatePostModal from "./CreatePostModal";
-import { MediaProvider } from "@/src/contexts/MediaContext";
 import { useLikeMutation } from "../mutations/useLikeMutation";
 import { useQueryClient, InfiniteData } from "@tanstack/react-query";
 import { PostsPage } from "@/src/app/types/feed";
 import { useCopyPostLink } from "./Hooks/useCopyPostLink";
-import { MoreHorizontal, Link2, Flag, Edit, Send, ThumbsUp, MessageSquare, Share2 } from "lucide-react";
+import { MoreHorizontal, Link2, Flag, Edit, ThumbsUp, MessageSquare, Share2 } from "lucide-react";
 import toast from "react-hot-toast";
 import useGetUserData from "@/src/customHooks/useGetUserData";
 import { Button } from "@/src/components/ui/button";
@@ -68,7 +66,6 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
   const [showComments, setShowComments] = useState(false);
   const [showSendDialog, setShowSendDialog] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
   const [showPostMenu, setShowPostMenu] = useState(false);
 
   const likeMutation = useLikeMutation();
@@ -79,6 +76,15 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
   // Get current user ID
   const currentUserId = user?.id || "";
   const isOwnPost = post.userId === currentUserId;
+
+  // Auto-expand comments if commentId is present in URL
+  React.useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const commentId = searchParams.get("commentId");
+    if (commentId && !showComments) {
+      setShowComments(true);
+    }
+  }, [showComments]);
 
   // Get engagement data from post, with reactive cache updates
   const engagement: PostEngagement = useMemo(() => {
@@ -106,7 +112,9 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
     return {
     likesCount: 0,
     commentsCount: 0,
+    sharesCount: 0,
     isLiked: false,
+    isShared: false,
   };
   }, [post, queryClient]);
 
@@ -148,11 +156,6 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
     setShowPostMenu(false);
   };
 
-  const handleEdit = () => {
-    setShowEditDialog(true);
-    setShowPostMenu(false);
-  };
-
   return (
     <>
       <div className="border-t border-border pt-2 mt-2">
@@ -187,16 +190,18 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
                 onClick={handleComment}
                 isActive={showComments}
             />
-             <SocialActionButton
+            <SocialActionButton
                 icon={<Share2 className="w-5 h-5" />}
                 label="Share"
                 onClick={handleSend}
             />
-             <SocialActionButton
-                icon={<Send className="w-5 h-5" />}
-                label="Send"
-                onClick={handleSend}
-            />
+            {!isOwnPost && (
+              <SocialActionButton
+                icon={<Flag className="w-5 h-5" />}
+                label="Report"
+                onClick={handleReport}
+              />
+            )}
         </div>
       </div>
 
@@ -205,6 +210,7 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
         <CommentPreview
           postId={post.id}
           postAuthorId={post.userId}
+          commentControl={post.commentControl}
           onLoadMore={() => setShowComments(true)}
         />
       )}
@@ -214,6 +220,7 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
         <CommentSection
           postId={post.id}
           postAuthorId={post.userId}
+          commentControl={post.commentControl}
           onClose={() => setShowComments(false)}
         />
       )}
@@ -233,20 +240,9 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
         <ReportPostModal
           isOpen={showReportDialog}
           onClose={() => setShowReportDialog(false)}
-          postId={post.id}
+          targetId={post.id}
           targetType="POST"
         />
-      )}
-
-      {/* ✅ FIXED: Use CreatePostModal for editing - reuses same UI */}
-      {showEditDialog && post && (
-        <MediaProvider>
-          <CreatePostModal
-            isOpen={showEditDialog}
-            onClose={() => setShowEditDialog(false)}
-            postToEdit={post}
-          />
-        </MediaProvider>
       )}
 
       {/* Close menu when clicking outside */}

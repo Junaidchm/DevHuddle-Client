@@ -1,6 +1,7 @@
 
 
 import { axiosInstance } from "@/src/axios/axios";
+import { API_ROUTES } from "@/src/constants/api.routes";
 
 /**
  * ✅ FIXED: Feed service
@@ -8,10 +9,15 @@ import { axiosInstance } from "@/src/axios/axios";
  * Protected API calls now accept headers as parameters.
  */
 
-export const fetchFeed = async (cursor: string | null, headers: Record<string, string>, authorId?: string) => {
+export const fetchFeed = async (
+  cursor: string | null,
+  headers: Record<string, string>,
+  authorId?: string,
+  sortBy: "RECENT" | "TOP" = "RECENT"
+) => {
   try {
-    const res = await axiosInstance.get("feed/list", {
-      params: { cursor, authorId },
+    const res = await axiosInstance.get(API_ROUTES.FEED.LIST, {
+      params: { cursor, authorId, sortBy },
       headers,
     });
 
@@ -31,7 +37,7 @@ export const uploadMedia = async (
   headers: Record<string, string>
 ) => {
   try {
-    const res = await axiosInstance.post("feed/media", data, {
+    const res = await axiosInstance.post(API_ROUTES.FEED.MEDIA, data, {
       headers,
     });
 
@@ -51,7 +57,7 @@ export interface CreatePostPayload {
 
 export const submitPost = async (postData: CreatePostPayload) => {
   try {
-    const res = await axiosInstance.post("feed/submit", postData);
+    const res = await axiosInstance.post(API_ROUTES.FEED.SUBMIT, postData);
     return res.data;
   } catch (err: any) {
     throw new Error(err.response?.data?.message || "Failed to create post");
@@ -59,14 +65,31 @@ export const submitPost = async (postData: CreatePostPayload) => {
 };
 
 export const updatePost = async ({ postId, data }: { postId: string; data: any }) => {
-  throw new Error("Post editing is temporarily unavailable (Backend not implemented).");
+  try {
+    const res = await axiosInstance.patch(API_ROUTES.FEED.EDIT_POST(postId), data);
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.message || "Failed to update post");
+  }
 };
 
 export const deletePost = async (postId: string) => {
   try {
-    const res = await axiosInstance.delete(`feed/${postId}`);
+    const res = await axiosInstance.delete(API_ROUTES.FEED.DELETE_POST(postId));
     return res.data;
   } catch (err: any) {
     throw new Error(err.response?.data?.message || "Failed to delete post");
   }
 };
+
+export const fetchPostById = async (postId: string, headers: Record<string, string>) => {
+  try {
+    const res = await axiosInstance.get(API_ROUTES.FEED.DETAILS(postId), {
+      headers,
+    });
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.message || "Failed to fetch post details");
+  }
+};
+

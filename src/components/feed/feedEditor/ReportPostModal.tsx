@@ -8,7 +8,7 @@ import Modal from "@/src/components/ui/Modal";
 interface ReportPostModalProps {
   isOpen: boolean;
   onClose: () => void;
-  postId: string;
+  targetId: string;
   targetType?: "POST" | "COMMENT";
 }
 
@@ -26,7 +26,7 @@ const REPORT_REASONS: { value: ReportReason; label: string; description: string 
 export default function ReportPostModal({
   isOpen,
   onClose,
-  postId,
+  targetId,
   targetType = "POST",
 }: ReportPostModalProps) {
   const [selectedReason, setSelectedReason] = useState<ReportReason | null>(null);
@@ -43,7 +43,8 @@ export default function ReportPostModal({
 
     try {
       await reportMutation.mutateAsync({
-        postId,
+        targetId,
+        targetType,
         reason: selectedReason,
         description: description.trim() || undefined,
       });

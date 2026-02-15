@@ -1,7 +1,7 @@
 import { User } from "@/src/types/auth";
 import { createSlice } from "@reduxjs/toolkit";
 import { register, loginUser, googleAuth, requestPasswordReset, resetPassword, verifyOtp, getUser } from "../actions/authActions";
-import { error } from "console";
+
 
 
 interface UserState {
@@ -11,6 +11,8 @@ interface UserState {
   error: string | null | undefined;
   success: boolean;
 }
+// ...
+
 
 const initialState: UserState = {
   user: null,
@@ -51,7 +53,7 @@ const userSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(register.fulfilled, (state, { payload }) => {
+      .addCase(register.fulfilled, (state) => {
         state.loading = true;
         state.error = null; 
       })

@@ -1,7 +1,6 @@
 import PostComposer from "@/src/components/feed/feedEditor/PostComposer";
 import FeedContainer from "@/src/components/feed/feedEditor/FeedContainer";
 import Sidebar from "@/src/components/feed/feedEditor/SideBar"
-import LeftSidebar from "@/src/components/layouts/LeftSidebar";
 import { auth } from "@/auth";
 
 interface CommunityFeedProps {
@@ -15,11 +14,6 @@ export default async function CommunityFeed({ params }: CommunityFeedProps) {
 
   return (
     <div className="max-w-[1128px] mx-auto px-0 sm:px-4 md:px-0 flex justify-center gap-6">
-      {/* Left Sidebar - Hidden on mobile */}
-      <aside className="hidden md:block w-[225px] flex-shrink-0">
-         <LeftSidebar />
-      </aside>
-
       {/* Main Feed */}
       <main className="flex-1 w-full max-w-[555px] min-w-0 flex flex-col gap-2">
         <PostComposer userId={userId} />

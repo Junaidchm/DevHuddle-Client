@@ -7,13 +7,16 @@ import PostCard from "./PostCard";
 import { fetchFeed } from "@/src/services/api/feed.service";
 import InfiniteScorllContainer from "../../layouts/InfiniteScrollContainer";
 import { Loader2 } from "lucide-react";
-import PostsLoadingSkeleton from "./PostsLoadingSkeleton ";
+import PostsLoadingSkeleton from "./PostsLoadingSkeleton";
 import { NewPost } from "@/src/app/types/feed";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
+
+import FeedSortDropdown from "./FeedSortDropdown";
 
 export default function FeedContainer({userid}:{userid:string}) {
   const { data: session, status: sessionStatus } = useSession();
   const authHeaders = useAuthHeaders();
+  const [sortBy, setSortBy] = React.useState<"RECENT" | "TOP">("RECENT");
   
   const {
     data,
@@ -23,8 +26,13 @@ export default function FeedContainer({userid}:{userid:string}) {
     isLoading,
     status,
   } = useInfiniteQuery({
-    queryKey: ["post-feed", "for-you"],
-    queryFn: ({ pageParam }) => fetchFeed(pageParam, authHeaders as Record<string, string>),
+    queryKey: ["post-feed", "for-you", { sortBy }], // ✅ Include sortBy in query key
+    queryFn: ({ pageParam }) => fetchFeed(
+      pageParam, 
+      authHeaders as Record<string, string>, 
+      undefined, 
+      sortBy
+    ),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: sessionStatus !== "loading" && !!authHeaders.Authorization, // Only fetch when session is loaded and authenticated
@@ -48,9 +56,13 @@ export default function FeedContainer({userid}:{userid:string}) {
 
   if (status === "success" && !posts?.length && !hasNextPage) {
     return (
-      <p className="text-center text-muted-foreground">
-        No one has posted anything yet.
-      </p>
+      <div className="flex flex-col gap-2">
+         {/* Dropdown even when empty to allow switching back if needed */}
+         <FeedSortDropdown sortBy={sortBy} onSortChange={setSortBy} />
+         <p className="text-center text-muted-foreground py-8">
+           No posts found.
+         </p>
+      </div>
     );
   }
 
@@ -63,14 +75,17 @@ export default function FeedContainer({userid}:{userid:string}) {
   }
 
   return (
-    <InfiniteScorllContainer
-      className="flex flex-col gap-2"
-      onBottomReached={() => !isLoading && hasNextPage && fetchNextPage()}
-    >
-      {posts?.map((post) => (
-        <PostCard userid={userid} key={post.id} post={post} />
-      ))}
-      {isFetchingNextPage && <Loader2 className="mx-auto my-3 animate-spin" />}
-    </InfiniteScorllContainer>
+    <div className="flex flex-col gap-2">
+      <FeedSortDropdown sortBy={sortBy} onSortChange={setSortBy} />
+      <InfiniteScorllContainer
+        className="flex flex-col gap-2"
+        onBottomReached={() => !isLoading && hasNextPage && fetchNextPage()}
+      >
+        {posts?.map((post) => (
+          <PostCard userid={userid} key={post.id} post={post} />
+        ))}
+        {isFetchingNextPage && <Loader2 className="mx-auto my-3 animate-spin" />}
+      </InfiniteScorllContainer>
+    </div>
   );
 }

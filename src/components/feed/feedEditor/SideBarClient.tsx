@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
 import { PROFILE_DEFAULT_URL } from "@/src/constants";
 import { Info } from "lucide-react";
+import { getMediaUrl } from "@/src/utils/media";
 
 export default function SidebarClient({id}: { id: string }) {
-  const data = useQuery({
+  const { data } = useQuery({
     queryKey: ["suggestions", id],
     queryFn: () => getSuggestedUsersWithFollowerInfo(),
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -17,8 +18,8 @@ export default function SidebarClient({id}: { id: string }) {
     refetchOnMount: true,
   });
 
-  // Assume the data is already the array of users to follow
-  const usersToFollow: SuggestedFollower[] | [] = data?.data?.suggestions ?? [];
+  // Extract suggestions from the server action result: { suggestions: [...] }
+  const usersToFollow: SuggestedFollower[] | [] = data?.suggestions ?? [];
   
   if (!usersToFollow.length) {
     return (
@@ -46,7 +47,7 @@ export default function SidebarClient({id}: { id: string }) {
             <div key={user.id} className="flex items-start gap-3">
                <Avatar className="h-12 w-12 border border-border">
                   <AvatarImage 
-                    src={user.profilePicture ? `${process.env.NEXT_PUBLIC_IMAGE_PATH}${user.profilePicture}` : PROFILE_DEFAULT_URL} 
+                    src={getMediaUrl(user.profilePicture) || PROFILE_DEFAULT_URL} 
                     alt={user.name} 
                     className="object-cover"
                   />

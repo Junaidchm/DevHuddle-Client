@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { MappedNotification, NotificationType } from "./types";
 import { PROFILE_DEFAULT_URL } from "@/src/constants";
+import { useRouter } from "next/navigation";
 
 // LinkedIn-style icon mapping with proper colors
 const getNotificationIcon = (type: NotificationType): React.ReactNode => {
@@ -91,12 +92,54 @@ interface NotificationRowProps {
 }
 
 export const NotificationRow = ({ notification, onMarkAsRead, isLast }: NotificationRowProps) => {
+  const router = useRouter();
   const actorNames = formatActorNames(
     notification.actors, 
     notification.aggregatedCount || notification.actors.length,
     notification.title
   );
   const timeAgo = formatDistanceToNow(notification.time, { addSuffix: true });
+
+  const handleClick = () => {
+    if (!notification.isRead) {
+      onMarkAsRead(notification.id);
+    }
+
+    // Redirection Logic
+    switch (notification.type) {
+      case "follow": {
+        const primaryActor = notification.actors[0];
+        // Navigate to profile using username if available, fallback to ID
+        const profileIdentifier = primaryActor?.username || primaryActor?.id;
+        if (profileIdentifier) {
+          router.push(`/profile/${profileIdentifier}`);
+        }
+        break;
+      }
+      case "message":
+        router.push("/chat");
+        break;
+      case "system":
+        // System notifications could have a target route in metadata
+        // Fallback to home if no specific route provided
+        router.push("/");
+        break;
+      case "like":
+      case "comment":
+      case "reply":
+      case "mention":
+      default:
+        if (notification.postId) {
+          // Navigate to post detail page with commentId highlight if exists
+          const query = notification.commentId ? `?commentId=${notification.commentId}` : "";
+          router.push(`/post/${notification.postId}${query}`);
+        } else if (notification.type === "support" || notification.type === "event") {
+          // Add other specific routes as needed
+          router.push("/");
+        }
+        break;
+    }
+  };
 
   return (
     <div 
@@ -105,11 +148,7 @@ export const NotificationRow = ({ notification, onMarkAsRead, isLast }: Notifica
         { "border-b border-border": !isLast },
         { "bg-primary/5": !notification.isRead }
       )}
-      onClick={() => {
-        if (!notification.isRead) {
-          onMarkAsRead(notification.id);
-        }
-      }}
+      onClick={handleClick}
     >
       {/* Unread indicator - blue dot on the left */}
       {!notification.isRead && (

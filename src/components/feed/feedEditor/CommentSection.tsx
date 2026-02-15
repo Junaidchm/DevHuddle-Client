@@ -11,6 +11,7 @@ import {
 import { useCommentLikeMutation } from "../mutations/useCommentLikeMutation";
 import { Comment } from "@/src/app/types/feed";
 import { formatRelativeDate } from "@/src/utils/formateRelativeDate";
+import { getMediaUrl } from "@/src/utils/media";
 import {
   Loader2,
   MoreVertical,
@@ -18,12 +19,15 @@ import {
   Trash2,
   Heart,
   MessageCircle,
+  Flag,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import ReportPostModal from "./ReportPostModal";
+import { toast } from "react-hot-toast";
 
 interface CommentSectionProps {
   postId: string;
   postAuthorId?: string; // For showing Author badge
+  commentControl?: "ANYONE" | "CONNECTIONS" | "NOBODY";
   onClose?: () => void;
 }
 
@@ -171,8 +175,9 @@ const CommentMenu: React.FC<{
   currentUserId: string;
   onEdit: () => void;
   onDelete: () => void;
+  onReport: () => void;
   onClose: () => void;
-}> = ({ comment, currentUserId, onEdit, onDelete, onClose }) => {
+}> = ({ comment, currentUserId, onEdit, onDelete, onReport, onClose }) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -186,34 +191,47 @@ const CommentMenu: React.FC<{
   }, [onClose]);
 
   const isOwner = comment.userId === currentUserId;
-
-  if (!isOwner) return null;
-
+  
   return (
     <div
       ref={menuRef}
       className="absolute right-0 top-6 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[120px]"
     >
-      <button
-        onClick={() => {
-          onEdit();
-          onClose();
-        }}
-        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-      >
-        <Edit2 className="w-4 h-4" />
-        Edit
-      </button>
-      <button
-        onClick={() => {
-          onDelete();
-          onClose();
-        }}
-        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 flex items-center gap-2"
-      >
-        <Trash2 className="w-4 h-4" />
-        Delete
-      </button>
+      {isOwner ? (
+        <>
+          <button
+            onClick={() => {
+              onEdit();
+              onClose();
+            }}
+            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+          >
+            <Edit2 className="w-4 h-4" />
+            Edit
+          </button>
+          <button
+            onClick={() => {
+              onDelete();
+              onClose();
+            }}
+            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 flex items-center gap-2"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete
+          </button>
+        </>
+      ) : (
+        <button
+          onClick={() => {
+            onReport();
+            onClose();
+          }}
+          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 flex items-center gap-2"
+        >
+          <Flag className="w-4 h-4" />
+          Report
+        </button>
+      )}
     </div>
   );
 };
@@ -226,6 +244,8 @@ const ReplyItem: React.FC<{
   postAuthorId?: string;
   mainCommentId: string; // LinkedIn-style: Always reply to main comment
   mainCommentAuthorName?: string; // For showing "Reply to [Name]..."
+  commentControl?: "ANYONE" | "CONNECTIONS" | "NOBODY";
+  onReport: (id: string) => void;
 }> = ({
   reply,
   currentUserId,
@@ -233,6 +253,8 @@ const ReplyItem: React.FC<{
   postAuthorId,
   mainCommentId,
   mainCommentAuthorName,
+  commentControl,
+  onReport,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -300,13 +322,9 @@ const ReplyItem: React.FC<{
   }
 
   return (
-    <div className="ml-8 mt-3 flex gap-2">
+    <div id={`comment-${reply.id}`} className="ml-8 mt-3 flex gap-2 transition-all duration-500 rounded-lg p-1">
       <img
-        src={
-          reply.user?.avatar
-            ? `${process.env.NEXT_PUBLIC_IMAGE_PATH}${reply.user.avatar}`
-            : PROFILE_DEFAULT_URL
-        }
+        src={getMediaUrl(reply.user?.avatar) || PROFILE_DEFAULT_URL}
         alt={reply.user?.name || "User"}
         className="w-6 h-6 rounded-full object-cover flex-shrink-0"
       />
@@ -349,32 +367,33 @@ const ReplyItem: React.FC<{
             {reply.likesCount > 0 && reply.likesCount}
             <span>Like</span>
           </button>
-          <button
-            onClick={() => setShowReplyInput(!showReplyInput)}
-            className="text-xs text-gray-600 hover:text-blue-600 font-medium flex items-center gap-1"
-          >
-            <MessageCircle className="w-3 h-3" />
-            Reply
-          </button>
-          {reply.userId === currentUserId && (
-            <div className="relative">
-              <button
-                onClick={() => setShowMenu(!showMenu)}
-                className="text-xs text-gray-600 hover:text-gray-800"
-              >
-                <MoreVertical className="w-3 h-3" />
-              </button>
-              {showMenu && (
-                <CommentMenu
-                  comment={reply}
-                  currentUserId={currentUserId}
-                  onEdit={() => setIsEditing(true)}
-                  onDelete={handleDelete}
-                  onClose={() => setShowMenu(false)}
-                />
-              )}
-            </div>
+          {commentControl !== "NOBODY" && (
+            <button
+              onClick={() => setShowReplyInput(!showReplyInput)}
+              className="text-xs text-gray-600 hover:text-blue-600 font-medium flex items-center gap-1"
+            >
+              <MessageCircle className="w-3 h-3" />
+              Reply
+            </button>
           )}
+          <div className="relative">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="text-xs text-gray-600 hover:text-gray-800"
+            >
+              <MoreVertical className="w-3 h-3" />
+            </button>
+            {showMenu && (
+              <CommentMenu
+                comment={reply}
+                currentUserId={currentUserId}
+                onEdit={() => setIsEditing(true)}
+                onDelete={handleDelete}
+                onReport={() => onReport(reply.id)}
+                onClose={() => setShowMenu(false)}
+              />
+            )}
+          </div>
         </div>
 
         {/* Reply Input - LinkedIn-style: Always reply to main comment */}
@@ -403,7 +422,9 @@ const CommentItem: React.FC<{
   currentUserId: string;
   postId: string;
   postAuthorId?: string;
-}> = ({ comment, currentUserId, postId, postAuthorId }) => {
+  commentControl?: "ANYONE" | "CONNECTIONS" | "NOBODY";
+  onReport: (id: string) => void;
+}> = ({ comment, currentUserId, postId, postAuthorId, commentControl, onReport }) => {
   const [showReplies, setShowReplies] = useState(false);
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -475,14 +496,10 @@ const CommentItem: React.FC<{
   }
 
   return (
-    <div className="py-3 border-b border-gray-100 last:border-b-0">
+    <div id={`comment-${comment.id}`} className="py-3 border-b border-gray-100 last:border-b-0 transition-all duration-500 rounded-lg px-2">
       <div className="flex gap-3">
         <img
-          src={
-            comment.user?.avatar
-              ? `${process.env.NEXT_PUBLIC_IMAGE_PATH}${comment.user.avatar}`
-              : PROFILE_DEFAULT_URL
-          }
+          src={getMediaUrl(comment.user?.avatar) || PROFILE_DEFAULT_URL}
           alt={comment.user?.name || "User"}
           className="w-8 h-8 rounded-full object-cover flex-shrink-0"
         />
@@ -530,32 +547,33 @@ const CommentItem: React.FC<{
               {comment.likesCount > 0 && comment.likesCount}
               <span>Like</span>
             </button>
-            <button
-              onClick={() => setShowReplyInput(!showReplyInput)}
-              className="text-xs text-gray-600 hover:text-blue-600 font-medium flex items-center gap-1"
-            >
-              <MessageCircle className="w-3 h-3" />
-              Reply
-            </button>
-            {comment.userId === currentUserId && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="text-xs text-gray-600 hover:text-gray-800"
-                >
-                  <MoreVertical className="w-3 h-3" />
-                </button>
-                {showMenu && (
-                  <CommentMenu
-                    comment={comment}
-                    currentUserId={currentUserId}
-                    onEdit={() => setIsEditing(true)}
-                    onDelete={handleDelete}
-                    onClose={() => setShowMenu(false)}
-                  />
-                )}
-              </div>
+            {commentControl !== "NOBODY" && (
+              <button
+                onClick={() => setShowReplyInput(!showReplyInput)}
+                className="text-xs text-gray-600 hover:text-blue-600 font-medium flex items-center gap-1"
+              >
+                <MessageCircle className="w-3 h-3" />
+                Reply
+              </button>
             )}
+            <div className="relative">
+                  <button
+                    onClick={() => setShowMenu(!showMenu)}
+                    className="text-xs text-gray-600 hover:text-gray-800"
+                  >
+                    <MoreVertical className="w-3 h-3" />
+                  </button>
+                  {showMenu && (
+                    <CommentMenu
+                      comment={comment}
+                      currentUserId={currentUserId}
+                      onEdit={() => setIsEditing(true)}
+                      onDelete={handleDelete}
+                      onReport={() => onReport(comment.id)}
+                      onClose={() => setShowMenu(false)}
+                    />
+                  )}
+                </div>
           </div>
 
           {/* Replies - LinkedIn-style: Flat structure, no nesting */}
@@ -570,6 +588,8 @@ const CommentItem: React.FC<{
                   postAuthorId={postAuthorId}
                   mainCommentId={comment.id}
                   mainCommentAuthorName={comment.user?.name}
+                  commentControl={commentControl}
+                  onReport={onReport}
                 />
               ))}
               {replies.length > 2 && !showReplies && (
@@ -605,11 +625,13 @@ const CommentItem: React.FC<{
 export default function CommentSection({
   postId,
   postAuthorId,
+  commentControl,
   onClose,
 }: CommentSectionProps) {
   const { data: session } = useSession();
   const currentUserId = session?.user?.id || "";
   const [showCommentInput, setShowCommentInput] = useState(false);
+  const [reportingCommentId, setReportingCommentId] = useState<string | null>(null);
 
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch } =
     useCommentsInfiniteQuery(postId);
@@ -631,23 +653,25 @@ export default function CommentSection({
   return (
     <div className="border-t border-gray-200 bg-white">
       {/* Comment Input Section */}
-      <div className="p-4 border-b border-gray-100">
-        {!showCommentInput ? (
-          <button
-            onClick={() => setShowCommentInput(true)}
-            className="w-full text-left px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 text-gray-500 text-sm transition-colors"
-          >
-            Add a comment...
-          </button>
-        ) : (
-          <CommentInput
-            postId={postId}
-            placeholder="Add a comment..."
-            onSuccess={() => setShowCommentInput(false)}
-            onCancel={() => setShowCommentInput(false)}
-          />
-        )}
-      </div>
+      {commentControl !== "NOBODY" && (
+        <div className="p-4 border-b border-gray-100">
+          {!showCommentInput ? (
+            <button
+              onClick={() => setShowCommentInput(true)}
+              className="w-full text-left px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 text-gray-500 text-sm transition-colors"
+            >
+              Add a comment...
+            </button>
+          ) : (
+            <CommentInput
+              postId={postId}
+              placeholder="Add a comment..."
+              onSuccess={() => setShowCommentInput(false)}
+              onCancel={() => setShowCommentInput(false)}
+            />
+          )}
+        </div>
+      )}
 
       {/* Comments List */}
       <div className="max-h-[500px] overflow-y-auto">
@@ -668,6 +692,8 @@ export default function CommentSection({
                 currentUserId={currentUserId}
                 postId={postId}
                 postAuthorId={postAuthorId}
+                commentControl={commentControl}
+                onReport={(id) => setReportingCommentId(id)}
               />
             ))}
             {hasNextPage && (
@@ -689,6 +715,16 @@ export default function CommentSection({
           </div>
         )}
       </div>
+
+      {/* Report Comment Modal */}
+      {reportingCommentId && (
+        <ReportPostModal
+          isOpen={!!reportingCommentId}
+          onClose={() => setReportingCommentId(null)}
+          targetId={reportingCommentId}
+          targetType="COMMENT"
+        />
+      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/src/components/ui/c
 import { Badge } from "@/src/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/src/components/ui/avatar";
 import { Button } from "@/src/components/ui/button";
+import { getMediaUrl } from "@/src/utils/media";
 
 interface ProjectCardProps {
   project: Project;
@@ -17,23 +18,6 @@ interface ProjectCardProps {
 export default function ProjectCard({ project }: ProjectCardProps) {
   const previewMedia = project.media.find((m) => m.isPreview) || project.media[0];
 
-  // Helper function to get absolute image URL
-  const getImageUrl = (url: string | undefined): string => {
-    if (!url) return "";
-    if (url.startsWith("http") || url.startsWith("https")) return url;
-    if (url.startsWith("/")) return `${process.env.NEXT_PUBLIC_IMAGE_PATH || ""}${url}`;
-    return url;
-  };
-
-  // Helper function to get author avatar URL
-  const getAuthorAvatarUrl = (avatar: string | undefined): string => {
-    if (!avatar) return PROFILE_DEFAULT_URL;
-    if (avatar.startsWith("http") || avatar.startsWith("https")) return avatar;
-    const imagePath = process.env.NEXT_PUBLIC_IMAGE_PATH || "";
-    const cleanImagePath = imagePath.endsWith("/") ? imagePath.slice(0, -1) : imagePath;
-    const cleanAvatar = avatar.startsWith("/") ? avatar.slice(1) : avatar;
-    return cleanImagePath ? `${cleanImagePath}/${cleanAvatar}` : `/${cleanAvatar}`;
-  };
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group h-full flex flex-col border-border/60">
@@ -42,7 +26,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
         <div className="relative w-full h-48 bg-muted overflow-hidden">
         {previewMedia ? (
              <Image
-              src={getImageUrl(previewMedia.thumbnailUrl || previewMedia.url)}
+              src={getMediaUrl(previewMedia.thumbnailUrl || previewMedia.url)}
               alt={project.title}
               fill
               className="object-cover group-hover:scale-105 transition-transform duration-500"
@@ -91,7 +75,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
              {/* Author */}
             <div className="flex items-center gap-2 py-3">
                  <Avatar className="w-6 h-6 border border-border">
-                    <AvatarImage src={getAuthorAvatarUrl(project.author.avatar)} alt={project.author.name} className="object-cover" />
+                    <AvatarImage src={getMediaUrl(project.author.avatar) || PROFILE_DEFAULT_URL} alt={project.author.name} className="object-cover" />
                     <AvatarFallback>{project.author.name.charAt(0)}</AvatarFallback>
                  </Avatar>
                 <div className="flex flex-col">

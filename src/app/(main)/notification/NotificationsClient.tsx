@@ -18,6 +18,7 @@ import {
 } from "@/src/components/notification";
 import { MappedNotification, NotificationType } from "@/src/components/notification/types";
 import { mapNotificationToLinkedInStyle } from "@/src/components/notification/notificationMapper";
+import { queryKeys } from "@/src/lib/queryKeys";
 
 export default function NotificationsClient() {
   const { data: session } = useSession();
@@ -61,8 +62,8 @@ export default function NotificationsClient() {
     if (!userId || unreadCount === 0) return;
     await markAllAsReadMutation.mutateAsync();
     // Invalidate queries to refetch counts and notification states
-    queryClient.invalidateQueries({ queryKey: ["notifications", userId] });
-    queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count", userId] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list(userId) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.count(userId) });
   }, [userId, unreadCount, markAllAsReadMutation, queryClient]);
 
   const handleMarkAsRead = useCallback(async (id: string) => {

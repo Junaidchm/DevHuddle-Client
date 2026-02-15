@@ -3,10 +3,10 @@ import { API_ROUTES } from "@/src/constants/api.routes";
 import {
   GetConversationsResponse,
   GetMessagesResponse,
-  SendMessagePayload,
   SendMessageResponse,
   Conversation,
   CheckConversationResponse,
+  ConversationWithMetadata,
 } from '@/src/types/chat.types';
 
 /**
@@ -53,7 +53,7 @@ export async function getMessages(
       }
     );
     console.log(`[API] getMessages response data:`, response.data); 
-    console.log(`[API] getMessages fetched ${(response.data as any).messages?.length} messages for conv ${conversationId}`);
+    console.log(`[API] getMessages fetched ${response.data.messages?.length} messages for conv ${conversationId}`);
     return response.data;
   } catch (error) {
     console.error('Failed to fetch messages:', error);
@@ -180,4 +180,83 @@ export async function markConversationAsRead(
     console.error('Failed to mark conversation as read:', error);
     throw error;
   }
+}
+
+/**
+ * Create a new group conversation
+ */
+export async function createGroup(
+  name: string,
+  participantIds: string[],
+  icon?: string,
+  topics?: string[],
+  headers?: Record<string, string>
+): Promise<Conversation> {
+  const response = await axiosInstance.post<Conversation>(
+      API_ROUTES.CHAT.GROUPS,
+      { name, participantIds, icon, topics },
+      { headers }
+  );
+  return response.data;
+}
+
+export async function getAllGroups(
+    params: { query?: string; topics?: string[]; limit?: number; offset?: number },
+    headers?: Record<string, string>
+): Promise<ConversationWithMetadata[]> {
+    const response = await axiosInstance.get<ConversationWithMetadata[]>(
+        API_ROUTES.CHAT.GROUPS,
+        { 
+            headers,
+            params: {
+              ...params,
+              topics: params.topics // Axios handles array params properly usually, or we might need serialization
+            }
+        }
+    );
+    return response.data;
+}
+
+export async function joinGroup(groupId: string, userIds: string[], headers?: Record<string, string>): Promise<void> {
+    // Use the new /join endpoint for self-joining groups
+    await axiosInstance.post(`${API_ROUTES.CHAT.GROUPS}/${groupId}/join`, {}, { headers });
+}
+
+export async function addParticipants(groupId: string, userIds: string[], headers?: Record<string, string>): Promise<void> {
+    await axiosInstance.post(`${API_ROUTES.CHAT.GROUPS}/${groupId}/participants`, { userIds }, { headers });
+}
+
+export async function removeParticipant(groupId: string, userId: string, headers?: Record<string, string>): Promise<void> {
+    await axiosInstance.delete(`${API_ROUTES.CHAT.GROUPS}/${groupId}/participants/${userId}`, { headers });
+}
+
+export async function promoteToAdmin(groupId: string, userId: string, headers?: Record<string, string>): Promise<void> {
+    await axiosInstance.post(`${API_ROUTES.CHAT.GROUPS}/${groupId}/admins/${userId}`, {}, { headers });
+}
+
+export async function demoteToMember(groupId: string, userId: string, headers?: Record<string, string>): Promise<void> {
+    await axiosInstance.delete(`${API_ROUTES.CHAT.GROUPS}/${groupId}/admins/${userId}`, { headers });
+}
+
+export async function updateGroupInfo(
+    groupId: string, 
+    data: { 
+        name?: string; 
+        description?: string; 
+        icon?: string;
+        onlyAdminsCanPost?: boolean;
+        onlyAdminsCanEditInfo?: boolean;
+    }, 
+    headers?: Record<string, string>
+): Promise<Conversation> {
+    const response = await axiosInstance.put<Conversation>(`${API_ROUTES.CHAT.GROUPS}/${groupId}`, data, { headers });
+    return response.data;
+}
+
+export async function leaveGroup(groupId: string, headers?: Record<string, string>): Promise<void> {
+    await axiosInstance.post(`${API_ROUTES.CHAT.GROUPS}/${groupId}/leave`, {}, { headers });
+}
+
+export async function deleteGroup(groupId: string, headers?: Record<string, string>): Promise<void> {
+    await axiosInstance.delete(API_ROUTES.CHAT.GROUP_DELETE(groupId), { headers });
 }

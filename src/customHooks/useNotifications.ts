@@ -10,6 +10,7 @@ import {
   markAllAsRead,
   markAsRead,
 } from "../services/api/notification.service";
+import { queryKeys } from "@/src/lib/queryKeys";
 import { GetNotificationsResult } from "../app/types";
 
 const PAGE_SIZE = 20;
@@ -20,7 +21,7 @@ export function useNotificationsInfinite() {
   const userId = session?.user?.id;
 
   return useInfiniteQuery<GetNotificationsResult, Error>({
-    queryKey: ["notifications", userId],
+    queryKey: queryKeys.notifications.list(userId!),
     queryFn: ({ pageParam = 0 }) =>
       getNotificationsPage(userId!, pageParam as number, PAGE_SIZE, authHeaders),
     getNextPageParam: (lastPage, allPages) =>
@@ -40,7 +41,7 @@ export function useUnreadCount() {
   const userId = session?.user?.id;
 
   return useQuery<{ unreadCount: number }, Error>({
-    queryKey: ["unread-count", userId],
+    queryKey: queryKeys.notifications.count(userId!),
     queryFn: () => getUnreadCount(userId!, authHeaders),
     enabled: !!userId && !!authHeaders.Authorization,
     // ✅ FIXED: Reduced staleTime to 0 for instant updates
@@ -59,8 +60,8 @@ export function useMarkAsRead() {
     mutationFn: (notificationId: string) =>
       markAsRead(notificationId, userId!, authHeaders),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["notifications", userId] });
-      qc.invalidateQueries({ queryKey: ["unread-count", userId] });
+      qc.invalidateQueries({ queryKey: queryKeys.notifications.list(userId!) });
+      qc.invalidateQueries({ queryKey: queryKeys.notifications.count(userId!) });
     },
   });
 }
@@ -75,8 +76,8 @@ export function useDeleteNotification() {
     mutationFn: (notificationId: string) =>
       deleteNotification(notificationId, userId!, authHeaders),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["notifications", userId] });
-      qc.invalidateQueries({ queryKey: ["unread-count", userId] });
+      qc.invalidateQueries({ queryKey: queryKeys.notifications.list(userId!) });
+      qc.invalidateQueries({ queryKey: queryKeys.notifications.count(userId!) });
     },
   });
 }
@@ -90,8 +91,8 @@ export function useMarkAllAsRead() {
   return useMutation({
     mutationFn: () => markAllAsRead(userId!, authHeaders),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["notifications", userId] });
-      qc.setQueryData(["unread-count", userId], { unreadCount: 0 });
+      qc.invalidateQueries({ queryKey: queryKeys.notifications.list(userId!) });
+      qc.setQueryData(queryKeys.notifications.count(userId!), { unreadCount: 0 });
     },
   });
 }

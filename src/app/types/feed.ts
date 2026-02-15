@@ -92,7 +92,7 @@ export interface TaggedUsersListProps {
   className?: string;
 }
 
-export type Visibility = "PUBLIC" | "VISIBILITY_CONNECTIONS";
+export type Visibility = "PUBLIC" | "CONNECTIONS";
 
 export type CommentControl = "ANYONE" | "CONNECTIONS" | "NOBODY";
 
@@ -139,8 +139,8 @@ interface FeedResponsePost {
   tags: string[];
   imageMedia: Media[];
   videoMedia: Media[];
-  visibility: "PUBLIC" | "VISIBILITY_CONNECTIONS";
-  commentControl: "ANYONE" | "CONNECTIONS" | "NONE";
+  visibility: "PUBLIC" | "CONNECTIONS";
+  commentControl: "ANYONE" | "CONNECTIONS" | "NOBODY";
   createdAt: string;
   updatedAt: string;
   user: {
@@ -216,7 +216,9 @@ export interface ImageData {
 export interface PostEngagement {
   likesCount: number;
   commentsCount: number;
+  sharesCount: number;
   isLiked: boolean;
+  isShared: boolean;
 }
 
 /**

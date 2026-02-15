@@ -15,6 +15,7 @@ export type NotificationType =
 export interface NotificationActor {
   id?: string;
   name?: string;
+  username?: string;
   profilePicture?: string;
 }
 
@@ -31,6 +32,8 @@ export interface MappedNotification {
   aggregatedCount?: number;
   entityType?: string;
   entityId?: string;
+  postId?: string;
+  commentId?: string;
   preview?: {
     type: "post" | "comment" | "reply";
     content: string;

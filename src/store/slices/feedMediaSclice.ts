@@ -20,7 +20,8 @@ const feedMediaSlice = createSlice({
     //     state.currentImageIndex = 0;
     //   }
     },
-    setMedia: (state, action: PayloadAction<Media[]>) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    setMedia: (_state, _action: PayloadAction<Media[]>) => {
     //   state.currentImageIndex =
     //     action.payload.length > 0 ? 0 : state.currentImageIndex;
     },

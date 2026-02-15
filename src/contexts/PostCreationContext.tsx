@@ -50,6 +50,7 @@ interface PostCreationState {
 
 interface PostCreationContextType extends PostCreationState {
     setContent: (content: string) => void;
+    setStatus: (status: PostCreationStatus) => void;
     addMedia: (files: File[]) => Promise<void>;
     removeMedia: (id: string) => void;
     updateMediaItem: (id: string, updates: Partial<PostMediaItem>) => void;
@@ -155,8 +156,8 @@ export function PostCreationProvider({ children }: { children: ReactNode }) {
         // Hydrate state from existing post
         setContent(post.content || "");
         setSettings({
-            visibility: post.visibility || "PUBLIC",
-            commentControl: post.commentControl || "ANYONE"
+            visibility: (post.visibility as AudienceType) || "PUBLIC",
+            commentControl: (post.commentControl as CommentControl) || "ANYONE"
         });
         
         if (post.attachments?.length) {
@@ -176,6 +177,7 @@ export function PostCreationProvider({ children }: { children: ReactNode }) {
         <PostCreationContext.Provider value={{
             content,
             setContent,
+            setStatus,
             media,
             addMedia,
             removeMedia,

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import { createUploadSession, completeUpload } from "@/src/services/api/media.service";
 import { uploadToS3 } from "@/src/lib/upload";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
@@ -13,6 +14,7 @@ interface UploadProgress {
 export function useMediaUpload() {
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const authHeaders = useAuthHeaders();
+  const { data: session, update } = useSession();
 
   const uploadMedia = useMutation({
     mutationFn: async ({
@@ -24,16 +26,47 @@ export function useMediaUpload() {
       mediaType: "CHAT_IMAGE" | "CHAT_VIDEO" | "CHAT_AUDIO" | "CHAT_FILE";
       caption?: string;
     }) => {
+      // ✅ FIX: Validate auth headers before upload
+      console.log("[useMediaUpload] Starting upload with auth headers:", {
+        hasAuthorization: !!authHeaders.Authorization,
+        hasSession: !!session,
+        hasAccessToken: !!session?.user?.accessToken,
+      });
+
+      // If no auth token, try to refresh session first
+      if (!authHeaders.Authorization) {
+        console.warn("[useMediaUpload] No auth token found, attempting session refresh...");
+        
+        try {
+          await update();
+          
+          // Check again after refresh
+          const refreshedHeaders = useAuthHeaders();
+          if (!refreshedHeaders.Authorization) {
+            throw new Error("Authentication required. Please refresh the page and try again.");
+          }
+          
+          console.log("[useMediaUpload] Session refreshed successfully");
+        } catch (refreshError) {
+          console.error("[useMediaUpload] Session refresh failed:", refreshError);
+          throw new Error("Authentication failed. Please sign in again.");
+        }
+      }
+
       // Step 1: Create upload session
-      const session = await createUploadSession({
+      console.log("[useMediaUpload] Creating upload session...");
+      const uploadSession = await createUploadSession({
         fileName: file.name,
         fileSize: file.size,
         fileType: file.type,
         mediaType,
       }, authHeaders);
 
+      console.log("[useMediaUpload] Upload session created:", uploadSession.mediaId);
+
       // Step 2: Upload to S3
-      await uploadToS3(session.uploadUrl, file, (progressEvent) => {
+      console.log("[useMediaUpload] Uploading to S3...");
+      await uploadToS3(uploadSession.uploadUrl, file, (progressEvent) => {
         setProgress({
           loaded: progressEvent.loaded,
           total: progressEvent.total || file.size,
@@ -41,8 +74,13 @@ export function useMediaUpload() {
         });
       });
 
+      console.log("[useMediaUpload] S3 upload complete");
+
       // Step 3: Complete upload
-      const result = await completeUpload(session.mediaId, authHeaders);
+      console.log("[useMediaUpload] Completing upload...");
+      const result = await completeUpload(uploadSession.mediaId, authHeaders);
+
+      console.log("[useMediaUpload] Upload completed successfully:", result.mediaId);
 
       return {
         mediaId: result.mediaId,
@@ -57,7 +95,7 @@ export function useMediaUpload() {
       setProgress(null);
     },
     onError: (error) => {
-      console.error("Media upload failed:", error);
+      console.error("[useMediaUpload] Media upload failed:", error);
       setProgress(null);
     },
   });

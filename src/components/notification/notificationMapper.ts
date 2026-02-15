@@ -242,8 +242,15 @@ export const mapNotificationToLinkedInStyle = (
     frontendType = "share";
   }
   
-  // Extract actors
-  const actors = extractActors(notification.summary);
+  // Extract actors - Prioritize root actors provided by backend enrichment
+  const actors = (notification as any).actors && (notification as any).actors.length > 0
+    ? (notification as any).actors.map((actor: any) => ({
+        id: actor.id || actor.actorId || actor,
+        name: actor.name || "Unknown User",
+        username: actor.username || "",
+        profilePicture: actor.profilePicture || null,
+      }))
+    : extractActors(notification.summary);
   
   // Get primary actor info
   const primaryActorName = getPrimaryActorName(actors, notification.summary);
@@ -261,7 +268,7 @@ export const mapNotificationToLinkedInStyle = (
   
   // If we have multiple actors with names, format them properly
   if (aggregatedCount > 1) {
-    const namedActors = actors.filter(a => a.name && a.name !== "Someone");
+    const namedActors = actors.filter((a: NotificationActor) => a.name && a.name !== "Someone");
     
     if (namedActors.length >= 2 && aggregatedCount === 2) {
       // "John and Jane"
@@ -281,12 +288,17 @@ export const mapNotificationToLinkedInStyle = (
     isRead: !!notification.readAt || !!notification.read,
     avatarUrl: primaryActorAvatar,
     title,
-    time: new Date(notification.createdAt),
+    time: (() => {
+      const d = notification.createdAt ? new Date(notification.createdAt) : new Date();
+      return isNaN(d.getTime()) ? new Date() : d;
+    })(),
     message: notification.summary?.text || actionText,
     actors: actors.length > 0 ? actors : [{ name: primaryActorName, profilePicture: primaryActorAvatar }],
     aggregatedCount,
     entityType,
     entityId: notification.entityId,
+    postId: notification.metadata?.postId || (notification.entityType === "POST" ? notification.entityId : notification.contextId),
+    commentId: notification.metadata?.commentId || (notification.entityType === "COMMENT" ? notification.entityId : undefined),
     preview,
     actionText,
   };

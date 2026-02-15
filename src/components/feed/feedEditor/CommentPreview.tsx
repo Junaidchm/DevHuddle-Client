@@ -8,6 +8,7 @@ import { formatRelativeDate } from "@/src/utils/formateRelativeDate";
 import { Loader2, Heart, MessageCircle } from "lucide-react";
 import { useCommentLikeMutation } from "../mutations/useCommentLikeMutation";
 import CommentSection from "./CommentSection";
+import { getMediaUrl } from "@/src/utils/media";
 
 import { PROFILE_DEFAULT_URL } from "@/src/constants";
 
@@ -21,12 +22,14 @@ const AuthorBadge: React.FC = () => (
 interface CommentPreviewProps {
   postId: string;
   postAuthorId?: string;
+  commentControl?: "ANYONE" | "CONNECTIONS" | "NOBODY";
   onLoadMore: () => void;
 }
 
 export const CommentPreview: React.FC<CommentPreviewProps> = ({
   postId,
   postAuthorId,
+  commentControl,
   onLoadMore,
 }) => {
   const { data: session } = useSession();
@@ -56,11 +59,7 @@ export const CommentPreview: React.FC<CommentPreviewProps> = ({
       <div className="px-4 pb-3">
         <div className="flex gap-3">
           <img
-            src={
-              comment.user?.avatar
-                ? `${process.env.NEXT_PUBLIC_IMAGE_PATH}${comment.user.avatar}`
-                : PROFILE_DEFAULT_URL
-            }
+            src={getMediaUrl(comment.user?.avatar) || PROFILE_DEFAULT_URL}
             alt={comment.user?.name || "User"}
             className="w-8 h-8 rounded-full object-cover flex-shrink-0"
           />
@@ -108,10 +107,12 @@ export const CommentPreview: React.FC<CommentPreviewProps> = ({
                 {comment.likesCount > 0 && comment.likesCount}
                 <span>Like</span>
               </button>
-              <button className="text-xs text-gray-600 hover:text-blue-600 font-medium flex items-center gap-1">
-                <MessageCircle className="w-3 h-3" />
-                Reply
-              </button>
+              {commentControl !== "NOBODY" && (
+                <button className="text-xs text-gray-600 hover:text-blue-600 font-medium flex items-center gap-1">
+                  <MessageCircle className="w-3 h-3" />
+                  Reply
+                </button>
+              )}
             </div>
           </div>
         </div>

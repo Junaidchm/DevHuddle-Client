@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Search, Loader2 } from "lucide-react";
+import { X, Search, Loader2, Users } from "lucide-react";
 import { useChatSuggestions } from "@/src/hooks/chat/useChatSuggestions";
+import { CreateGroupModal } from "./CreateGroupModal";
 import { PROFILE_DEFAULT_URL } from "@/src/constants";
 import {
   Dialog,
@@ -22,13 +23,16 @@ interface User {
   bio?: string;
 }
 
+import { ConversationWithMetadata } from "@/src/types/chat.types";
+
 interface NewChatModalProps {
   isOpen: boolean;
   onClose: () => void;
   onUserSelect: (userId: string) => void;
+  onConversationSelect?: (conversation: ConversationWithMetadata) => void;
 }
 
-export function NewChatModal({ isOpen, onClose, onUserSelect }: NewChatModalProps) {
+export function NewChatModal({ isOpen, onClose, onUserSelect, onConversationSelect }: NewChatModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   
   // Use TanStack Query hook for fetching
@@ -68,6 +72,34 @@ export function NewChatModal({ isOpen, onClose, onUserSelect }: NewChatModalProp
     setSearchQuery("");
   };
 
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+
+  // If group modal is open, we can hide this modal or render group modal on top.
+  // Better to close this and open group modal, OR render conditionally.
+  // Let's render conditionally inside this component if prop controlled, 
+  // OR we can just have NewChatModal render CreateGroupModal when needed.
+  
+  if (isGroupModalOpen) {
+      return (
+          <CreateGroupModal 
+            isOpen={isGroupModalOpen} 
+            onClose={() => {
+                setIsGroupModalOpen(false);
+                onClose(); // Close parent as well? Or go back? Let's close parent logic for now.
+            }} 
+            onGroupCreated={(group) => {
+                if (onConversationSelect) {
+                    onConversationSelect(group);
+                } else {
+                    // Fallback to onUserSelect if parent doesn't handle groups directly (but try to pass ID)
+                    onUserSelect(group.conversationId);
+                }
+                setIsGroupModalOpen(false);
+            }} 
+          />
+      );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-md p-0 overflow-hidden flex flex-col max-h-[85vh]">
@@ -76,18 +108,28 @@ export function NewChatModal({ isOpen, onClose, onUserSelect }: NewChatModalProp
         </DialogHeader>
 
         {/* Search Input */}
-        <div className="px-6 py-4 border-b border-border">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <div className="px-6 py-2 border-b border-border">
+          <div className="relative mb-3">
+             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Type a name or multiple names"
+              placeholder="Search name or number"
               className="pl-9 bg-muted/40"
               autoFocus
             />
           </div>
+          
+          <button 
+            onClick={() => setIsGroupModalOpen(true)}
+            className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 rounded-lg transition-colors text-left group"
+          >
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <Users className="w-5 h-5 text-primary" />
+              </div>
+              <span className="font-medium text-foreground">New group</span>
+          </button>
         </div>
 
         {/* Suggested Users List */}

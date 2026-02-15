@@ -17,9 +17,10 @@ const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
 interface ChatInputProps {
   conversationId: string;
   disabled?: boolean;
+  placeholder?: string;
 }
 
-export function ChatInput({ conversationId, disabled }: ChatInputProps) {
+export function ChatInput({ conversationId, disabled, placeholder }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
@@ -236,11 +237,13 @@ export function ChatInput({ conversationId, disabled }: ChatInputProps) {
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={
-                !isConnected 
-                  ? "Connecting to chat..." 
-                  : !session?.user?.id
-                  ? "Loading..."
-                  : "Type a message"
+                placeholder || (
+                  !isConnected 
+                    ? "Connecting to chat..." 
+                    : !session?.user?.id
+                    ? "Loading..."
+                    : "Type a message"
+                )
               }
               disabled={isInputDisabled}
               rows={1}
