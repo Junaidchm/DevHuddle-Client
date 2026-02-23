@@ -1,13 +1,18 @@
 // src/app/layout.tsx (NOT just app/(auth)/layout.tsx)
 import { Providers } from "@/src/store/providers";
 import { Toaster } from "react-hot-toast";
+import { Toaster as ShadcnToaster } from "@/src/components/ui/toaster";
 import "./globals.css"
 
-export default function RootLayout({
+import { auth } from "@/auth";
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+
   return (
     <html lang="en">
       <head>
@@ -37,7 +42,8 @@ export default function RootLayout({
            },
          }}
        />
-       <Providers>{children}</Providers>
+       <ShadcnToaster />
+       <Providers session={session}>{children}</Providers>
        {/* {children} */}
 
       </body>

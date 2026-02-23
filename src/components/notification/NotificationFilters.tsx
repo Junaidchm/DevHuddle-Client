@@ -13,6 +13,7 @@ const FILTERS: { id: NotificationType | "all"; label: string }[] = [
   { id: "mention", label: "Mentions" },
   { id: "follow", label: "Follows" },
   { id: "share", label: "Shares" },
+  { id: "report", label: "Reports" },
   { id: "system", label: "System" },
 ];
 

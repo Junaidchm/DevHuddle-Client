@@ -1,10 +1,49 @@
 
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { API_ROUTES, getApiBaseUrl } from "./src/constants/api.routes";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
+    Credentials({
+      id: "google-sync",
+      name: "Google Sync",
+      credentials: {},
+      authorize: async () => {
+        const { cookies } = await import("next/headers");
+        const cookieStore = await cookies();
+        const accessToken = cookieStore.get("access_token")?.value;
+        const refreshToken = cookieStore.get("refresh_token")?.value;
+
+        if (!accessToken) return null;
+
+        try {
+          const res = await fetch(`${getApiBaseUrl()}${API_ROUTES.AUTH.ME}`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+
+          if (!res.ok) return null;
+
+          const data = await res.json();
+          
+          // /auth/me returns the user object directly, not wrapped in { user: ... }
+          if (!data?.id) return null;
+
+          return {
+            id: data.id,
+            username: data.username,
+            email: data.email,
+            role: data.role,
+            image: data.profilePicture ?? null,
+            accessToken,
+            refreshToken,
+          };
+        } catch (error) {
+          console.error("Token sync failed", error);
+          return null;
+        }
+      },
+    }),
     Credentials({
       credentials: {
         email: {
@@ -48,21 +87,34 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             // Extract the exact error message from the backend
             // API Gateway sends: { status: number, message: string }
             // Auth service might send: { message: string } or { error: string }
-            const errorMessage = errorData?.message ||
+            // Extract the exact error message from the backend
+            // API Gateway sends: { status: number, message: string }
+            // Auth service might send: { message: string } or { error: string }
+            const backendMessage = errorData?.message ||
               errorData?.error ||
-              (typeof errorData === 'string' ? errorData : null) ||
-              `Login failed (${res.status})`;
+              (typeof errorData === 'string' ? errorData : null);
 
+            // Map backend messages to specific error codes
+            let errorCode = "login_failed";
+            if (backendMessage === "User not found !") errorCode = "user_not_found";
+            else if (backendMessage === "Invalid Credentials") errorCode = "invalid_credentials";
+            else if (backendMessage === "You are blocked from DevHuddle, Please contact support") errorCode = "user_blocked";
+            else if (backendMessage === "This account was created using Google. Please login using Google.") errorCode = "google_account_only";
+            else if (backendMessage === "Provide Verified Email ID") errorCode = "email_not_verified";
+            else if (backendMessage === "Internel server error") errorCode = "server_error";
+            
             // Log for debugging
             console.error("Login error response:", {
               status: res.status,
-              statusText: res.statusText,
-              errorData,
-              message: errorMessage,
+              backendMessage,
+              errorCode
             });
 
-            // Throw error with the exact message from backend
-            throw new Error(errorMessage);
+            // Throw error with the specific code
+            class InvalidLoginError extends CredentialsSignin {
+              code = errorCode;
+            }
+            throw new InvalidLoginError();
           }
 
           const data = await res.json();
@@ -83,8 +135,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           };
         } catch (err: any) {
           console.error("Login failed:", err);
-          // Return error message that will be shown to user
-          throw new Error(err?.message || "Login failed. Please check your credentials.");
+          
+          // If it's already a CredentialsSignin (our custom error), rethrow it
+          if (err instanceof CredentialsSignin) {
+            throw err;
+          }
+          
+          class GenericLoginError extends CredentialsSignin {
+              code = "something_went_wrong";
+          }
+          throw new GenericLoginError();
         }
       },
     }),
@@ -125,19 +185,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         };
       }
 
+      // ✅ FIXED: Refresh token before it expires (5 minutes buffer)
+      // This prevents 401 errors by refreshing proactively
+      const shouldRefresh = token.expiresAt && Date.now() >= ((token.expiresAt as number) - 5 * 60 * 1000);
+
       // If no token or no refreshToken, return null (sign out)
       if (!token || !token.refreshToken) {
         return null;
       }
-
-      // If token is still valid → return as is
-      if (token.expiresAt && Date.now() < (token.expiresAt as number)) {
-        return token;
-      }
-
-      // ✅ FIXED: Refresh token before it expires (5 minutes buffer)
-      // This prevents 401 errors by refreshing proactively
-      const shouldRefresh = token.expiresAt && Date.now() >= ((token.expiresAt as number) - 5 * 60 * 1000);
 
       // Otherwise try to refresh (only if refreshToken exists)
       if (!token.refreshToken) {
@@ -145,7 +200,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return null; // No refresh token, sign out
       }
 
-      // Only refresh if token is expired or about to expire
+      // Only return if token is valid AND we don't need to refresh yet
       if (!shouldRefresh && token.expiresAt && Date.now() < (token.expiresAt as number)) {
         return token;
       }

@@ -1,12 +1,11 @@
 "use client";
 
-import { Bell, Settings, CheckCheck } from "lucide-react";
+import { Bell, CheckCheck } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 
 interface NotificationHeaderProps {
   unreadCount: number;
   onMarkAllAsRead: () => void;
-  onOpenSettings: () => void;
   isMarkingAllAsRead: boolean;
 }
 
@@ -31,10 +30,6 @@ export const NotificationHeader = ({
         <Button variant="outline" size="sm" onClick={onMarkAllAsRead} disabled={isMarkingAllAsRead || unreadCount === 0}>
           <CheckCheck className="w-4 h-4 mr-2" />
           Mark all as read
-        </Button>
-        <Button variant="outline" size="sm" onClick={onOpenSettings}>
-          <Settings className="w-4 h-4 mr-2" />
-          Settings
         </Button>
       </div>
     </div>

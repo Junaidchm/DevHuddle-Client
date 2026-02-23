@@ -76,6 +76,28 @@ export default function SignIn() {
     mode: "onChange",
   });
 
+  const getErrorMessage = (error: string) => {
+    switch (error) {
+      case "user_not_found":
+        return "User not found. Please check your email or sign up.";
+      case "invalid_credentials":
+        return "Invalid email or password. Please try again.";
+      case "user_blocked":
+        return "Your account has been blocked. Please contact support.";
+      case "google_account_only":
+        return "This account uses Google login. Please click 'Continue with Google'.";
+      case "email_not_verified":
+        return "Please verify your email before logging in.";
+      case "CredentialsSignin":
+        return "Invalid email or password.";
+      case "something_went_wrong":
+      case "server_error":
+        return "A server error occurred. Please try again later.";
+      default:
+        return "Login failed. Please check your credentials.";
+    }
+  };
+
   const onSubmit = async (data: SignInSchema) => {
     try {
       // Use NextAuth signIn
@@ -86,7 +108,7 @@ export default function SignIn() {
       })) as { error?: string };
 
       if (result?.error) {
-        toast.error(result.error || "Login failed");
+        toast.error(getErrorMessage(result.error), { position: "bottom-center" });
       } else {
         
         toast.success("Login successful", { position: "bottom-center" });
@@ -95,9 +117,7 @@ export default function SignIn() {
       
       }
     } catch (error: any) {
-      const errorMessage =
-        error?.message || "Something went wrong during login";
-      toast.error(errorMessage, { position: "bottom-center" });
+      toast.error("Something went wrong during login", { position: "bottom-center" });
     }
   };
 

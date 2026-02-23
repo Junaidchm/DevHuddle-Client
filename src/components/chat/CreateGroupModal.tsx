@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { X, Search, Loader2, Camera, UserPlus } from "lucide-react";
 import { useChatSuggestions } from "@/src/hooks/chat/useChatSuggestions";
 import { PROFILE_DEFAULT_URL } from "@/src/constants";
@@ -18,6 +18,8 @@ import { Button } from "@/src/components/ui/button";
 import { cn } from "@/src/lib/utils";
 import { useCreateGroup } from "@/src/hooks/chat/useGroupMutations";
 import { Label } from "@/src/components/ui/label";
+import { useMediaUpload } from "@/src/hooks/chat/useMediaUpload";
+import toast from "react-hot-toast";
 
 interface User {
   id: string;
@@ -41,6 +43,11 @@ export function CreateGroupModal({ isOpen, onClose, onGroupCreated }: CreateGrou
   const [topics, setTopics] = useState<string[]>([]);
   const [topicInput, setTopicInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { uploadMediaAsync } = useMediaUpload();
 
   // Fetch suggestions
   const { data: rawSuggestions = [], isLoading: isSuggestionsLoading } = useChatSuggestions();
@@ -67,7 +74,9 @@ export function CreateGroupModal({ isOpen, onClose, onGroupCreated }: CreateGrou
 
   const createGroupMutation = useCreateGroup((group) => {
       onGroupCreated(group);
+      setIsLoading(false);
       handleClose();
+      toast.success("Group created successfully");
   });
 
   const handleUserToggle = (user: User) => {
@@ -80,12 +89,17 @@ export function CreateGroupModal({ isOpen, onClose, onGroupCreated }: CreateGrou
 
   const handleClose = () => {
     onClose();
-    setStep(1);
-    setSearchQuery("");
-    setSelectedUsers([]);
-    setGroupName("");
-    setTopics([]);
-    setTopicInput("");
+    setTimeout(() => {
+      setStep(1);
+      setSearchQuery("");
+      setSelectedUsers([]);
+      setGroupName("");
+      setTopics([]);
+      setTopicInput("");
+      setIconFile(null);
+      setIconPreview(null);
+      setIsLoading(false);
+    }, 300);
   };
 
   const handleAddTopic = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -102,15 +116,51 @@ export function CreateGroupModal({ isOpen, onClose, onGroupCreated }: CreateGrou
       setTopics(topics.filter(t => t !== topic));
   };
 
-  const handleCreateGroup = () => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (!file.type.startsWith("image/")) {
+          toast.error("Please select an image file");
+          return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+          toast.error("Image must be smaller than 5MB");
+          return;
+      }
+
+      setIconFile(file);
+      const url = URL.createObjectURL(file);
+      setIconPreview(url);
+  };
+
+  const handleCreateGroup = async () => {
     if (!groupName.trim() || selectedUsers.length === 0) return;
     
-    createGroupMutation.mutate({
-        name: groupName,
-        participantIds: selectedUsers.map(u => u.id),
-        topics: topics
-        // icon: ... // Icon upload not implemented yet
-    });
+    setIsLoading(true);
+
+    try {
+        let iconUrl = undefined;
+
+        if (iconFile) {
+            const result = await uploadMediaAsync({
+                file: iconFile,
+                mediaType: "CHAT_IMAGE"
+            });
+            iconUrl = result.mediaUrl;
+        }
+
+        createGroupMutation.mutate({
+            name: groupName,
+            participantIds: selectedUsers.map(u => u.id),
+            topics: topics,
+            icon: iconUrl
+        });
+    } catch (error) {
+        setIsLoading(false);
+        toast.error("Failed to create group. Please try again.");
+    }
   };
 
   return (
@@ -213,14 +263,30 @@ export function CreateGroupModal({ isOpen, onClose, onGroupCreated }: CreateGrou
         ) : (
             <>
                 <div className="p-6 flex flex-col gap-6">
-                    {/* Group Icon Placeholder */}
+                    {/* Group Icon Upload */}
                     <div className="flex justify-center">
-                        <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center cursor-pointer hover:bg-muted/80 relative group">
-                            <Camera className="w-8 h-8 text-muted-foreground" />
-                            <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <span className="text-white text-xs font-medium">Add Icon</span>
+                        <div 
+                            className="w-20 h-20 rounded-full bg-muted flex items-center justify-center cursor-pointer hover:bg-muted/80 relative group overflow-hidden border-2 border-dashed border-muted-foreground/50 hover:border-primary/50 transition-colors"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            {iconPreview ? (
+                                <img src={iconPreview} alt="Group Icon" className="w-full h-full object-cover" />
+                            ) : (
+                                <Camera className="w-8 h-8 text-muted-foreground" />
+                            )}
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-white text-xs font-medium">
+                                    {iconPreview ? "Change" : "Add Icon"}
+                                </span>
                             </div>
                         </div>
+                        <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            className="hidden" 
+                            accept="image/*"
+                            onChange={handleFileChange}
+                        />
                     </div>
 
                     <div className="space-y-2">
@@ -259,13 +325,13 @@ export function CreateGroupModal({ isOpen, onClose, onGroupCreated }: CreateGrou
                 </div>
 
                 <DialogFooter className="px-6 py-4 border-t border-border">
-                    <Button variant="ghost" onClick={() => setStep(1)}>Back</Button>
+                    <Button variant="ghost" onClick={() => setStep(1)} disabled={isLoading}>Back</Button>
                     <Button 
-                        disabled={!groupName.trim() || createGroupMutation.isPending} 
+                        disabled={!groupName.trim() || isLoading} 
                         onClick={handleCreateGroup}
                     >
-                        {createGroupMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Create Group
+                        {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        {isLoading ? "Creating..." : "Create Group"}
                     </Button>
                 </DialogFooter>
             </>

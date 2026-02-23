@@ -100,6 +100,28 @@ export const getPostLikeCount = async (
 };
 
 /**
+ * Get post likes with pagination
+ */
+export const getPostLikes = async (
+  postId: string,
+  limit: number = 10,
+  page: number = 1,
+  headers: Record<string, string>
+): Promise<{ success: boolean; data: { users: any[], totalCount: number, hasMore: boolean } }> => {
+  try {
+    const res = await axiosInstance.get(
+      `${API_ROUTES.ENGAGEMENT.POST_LIKES(postId)}?limit=${limit}&page=${page}`,
+      { headers }
+    );
+    return res.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to get post likes"
+    );
+  }
+};
+
+/**
  * Like a comment
  */
 export const likeComment = async (
@@ -400,7 +422,8 @@ export const reportPost = async (
     );
     return res.data;
   } catch (error: any) {
-    throw new Error(error.response?.data?.message || "Failed to report post");
+    const errorMessage = error.response?.data?.message || "Failed to report post";
+    throw new Error(errorMessage);
   }
 };
 

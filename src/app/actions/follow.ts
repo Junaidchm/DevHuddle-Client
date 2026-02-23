@@ -123,12 +123,10 @@ export async function getSuggestedUsersWithFollowerInfo(limit: number = 5) {
       "the request for suggested mutation is working without error ==========================================>"
     );
 
-    // Fetch suggestions - backend returns { success: true, data: { suggestions: [...], total: number } }
-    const response = await api
-      .get(`${stripLeadingSlash(API_ROUTES.USERS.CHAT_SUGGESTIONS)}?limit=${limit}`)
-      .json<{ success: boolean; data: { suggestions: SuggestedFollower[]; total: number } }>();
-
-    const suggestions = response?.data?.suggestions ?? [];
+    // Fetch suggestions - backend returns SuggestedFollower[] for follows/suggestions
+    const suggestions = await api
+      .get(`${stripLeadingSlash(API_ROUTES.FOLLOWS.SUGGESTIONS)}?limit=${limit}`)
+      .json<SuggestedFollower[]>();
 
     if (!Array.isArray(suggestions) || suggestions.length === 0) {
       return { suggestions: [], followerInfoMap: {} };

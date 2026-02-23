@@ -255,7 +255,12 @@ class WebSocketManager {
    * Send read receipt for a conversation up to a specific message
    */
   sendReadReceipt(conversationId: string, messageId: string): void {
-      if (!this.userId || !this.chatSocket || this.chatSocket.readyState !== WebSocket.OPEN) return;
+      if (!this.userId || !this.chatSocket || this.chatSocket.readyState !== WebSocket.OPEN) {
+          console.warn("[WebSocket] sendReadReceipt aborted: socket not open or unauthenticated");
+          return;
+      }
+
+      console.log(`[WebSocket] 📤 sendReadReceipt sending message_read for conv ${conversationId} up to msg ${messageId}`);
 
       this.sendMessage({
           type: 'message_read',
@@ -363,7 +368,7 @@ class WebSocketManager {
       else if (message.type === "new_message") {
         // ✅ FIX: Backend sends double-wrapped: {type: "new_message", data: {type: "new_message", data: actualMessage}}
         // So we need to drill down to message.data.data to get the actual message object
-        const actualMessage = (message.data?.data || message.data) as any;
+        const actualMessage = ((message.data as any)?.data || message.data) as any;
         console.log("[WebSocket] Received new_message, extracting actual payload:", actualMessage);
         this.handleNewChatMessage(actualMessage as Message);
         return;
@@ -380,10 +385,109 @@ class WebSocketManager {
         return;
       }
 
+      if (message.type === "presence_change") {
+        this.handlePresenceChange(message.data as any);
+        return;
+      }
+
+      // Handle Pin/Unpin events
+      if (message.type === 'message_pinned' || message.type === 'message_unpinned') {
+          console.log(`[WebSocket] 📌 Pin update received: ${message.type}`, message.data);
+          
+          // 1. Dispatch event for PinnedMessageBar (ChatWindow listener)
+          if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('chat:pin_update', {
+                  detail: { 
+                      type: message.type, 
+                      data: message.data,
+                      conversationId: message.conversationId,
+                      messageId: (message.data as any)?.id || (message.data as any)?.messageId // Handle both formats
+                  }
+              }));
+          }
+
+          // 2. Update Message List Cache (to show/hide pin icon on bubble)
+          if (message.conversationId && this.queryClient) {
+              const queryKey = queryKeys.chat.messages.list(message.conversationId);
+              
+              this.queryClient.setQueryData(queryKey, (oldData: any) => {
+                  if (!oldData || !oldData.pages) return oldData;
+
+                  const targetMessageId = message.type === 'message_pinned' 
+                      ? (message.data as any).id 
+                      : (message.data as any).messageId;
+
+                  const newPages = oldData.pages.map((page: any) => ({
+                      ...page,
+                      messages: page.messages.map((msg: Message) => {
+                          if (msg.id === targetMessageId) {
+                              return {
+                                  ...msg,
+                                  isPinned: message.type === 'message_pinned'
+                              };
+                          }
+                          return msg;
+                      })
+                  }));
+
+                  return { ...oldData, pages: newPages };
+              });
+          }
+          return;
+      }
+
+      // Handle Reaction events
+      if (message.type === 'reaction_added' || message.type === 'reaction_removed') {
+          console.log(`[WebSocket] 😀 Reaction update received: ${message.type}`, message.data);
+          
+          if (message.conversationId && this.queryClient) {
+              const queryKey = queryKeys.chat.messages.list(message.conversationId);
+              const { messageId, userId, emoji } = message.data as any;
+
+              this.queryClient.setQueryData(queryKey, (oldData: any) => {
+                  if (!oldData || !oldData.pages) return oldData;
+
+                  const newPages = oldData.pages.map((page: any) => ({
+                      ...page,
+                      messages: page.messages.map((msg: Message) => {
+                          if (msg.id === messageId) {
+                              if (message.type === 'reaction_added') {
+                                  // Add reaction if not already there
+                                  const exists = msg.reactions?.some(r => r.userId === userId && r.emoji === emoji);
+                                  if (exists) return msg;
+                                  
+                                  return {
+                                      ...msg,
+                                      reactions: [...(msg.reactions || []), { 
+                                          id: `temp-${Date.now()}`, 
+                                          messageId, 
+                                          userId, 
+                                          emoji, 
+                                          createdAt: new Date().toISOString() 
+                                      }]
+                                  };
+                              } else {
+                                  // Remove reaction
+                                  return {
+                                      ...msg,
+                                      reactions: (msg.reactions || []).filter(r => !(r.userId === userId && r.emoji === emoji))
+                                  };
+                              }
+                          }
+                          return msg;
+                      })
+                  }));
+
+                  return { ...oldData, pages: newPages };
+              });
+          }
+          return;
+      }
+
       // Legacy chat message support (if backend still uses event format)
       if (message.event === "message:new") {
-        this.handleNewChatMessage(message.data);
-        return;
+          this.handleNewChatMessage(message.data as Message);
+          return;
       }
 
       // Handle Group Events
@@ -415,8 +519,242 @@ class WebSocketManager {
 
       if (callEvents.includes(message.type)) {
           console.log(`[WebSocket] 📞 Call Event Received: ${message.type}`, message);
-          // For call events sent directly via ws.send() in backend, the message IS the payload
-          this.handleCallEvent(message.type, message as any); 
+          // ✅ FIX: Unwrap data property if it exists (for Redis-broadcasted events)
+          const payload = message.data || message;
+          this.handleCallEvent(message.type, payload as any); 
+          return;
+      }
+      
+      // Handle Message Deletion
+      if (message.type === 'message_deleted') {
+          console.log(`[WebSocket] 🗑️ Message deletion received:`, message.data);
+          const { messageId, conversationId, deleteForEveryone } = message.data as any;
+
+          if (conversationId && this.queryClient) {
+              const queryFilter = { queryKey: ["chat", "messages", "list", conversationId] };
+              
+              this.queryClient.setQueriesData(queryFilter, (oldData: any) => {
+                  console.log(`[WebSocket] setQueriesData trigger. Data exists:`, !!oldData);
+                  if (!oldData || !oldData.pages) return oldData;
+
+                  const newPages = oldData.pages.map((page: any) => ({
+                      ...page,
+                      messages: page.messages.map((msg: Message) => 
+                        msg.id === messageId 
+                          ? { ...msg, deletedForAll: true, content: "This message was deleted" } 
+                          : msg
+                      )
+                  }));
+
+                  return { ...oldData, pages: newPages };
+              });
+              
+              // Also invalidate conversations to update last message preview
+              this.queryClient.invalidateQueries({
+                  queryKey: queryKeys.chat.conversations.all
+              });
+          }
+          return;
+      }
+
+      // Handle WebSocket Errors (e.g. Blocked user, invalid content)
+      if (message.type === 'error') {
+          console.warn("[WebSocket] 🛑 Error from server:", message.error);
+          
+          const { dedupeId, conversationId, error: errorMessage } = message as any;
+
+          if (dedupeId && conversationId && this.queryClient) {
+              console.log("[WebSocket] ⏪ Reverting optimistic message due to error:", dedupeId);
+              
+              const queryKey = queryKeys.chat.messages.list(conversationId);
+              
+              this.queryClient.setQueryData(queryKey, (oldData: any) => {
+                  if (!oldData || !oldData.pages) return oldData;
+                  
+                  const newPages = oldData.pages.map((page: any) => ({
+                      ...page,
+                      messages: page.messages.map((msg: Message) => {
+                          if (msg.dedupeId === dedupeId || (msg.id && msg.id.includes(dedupeId))) {
+                              return {
+                                  ...msg,
+                                  status: 'FAILED',
+                                  content: msg.content, // Keep content
+                                  error: errorMessage || 'Failed to send'
+                              };
+                          }
+                          return msg;
+                      })
+                  }));
+                  
+                  return { ...oldData, pages: newPages };
+              });
+              
+              // We could also show a toast here, but need to be careful with Context/Toast integration
+              if (typeof window !== 'undefined') {
+                  const event = new CustomEvent('chat:message_error', { 
+                      detail: { error: errorMessage, dedupeId, conversationId } 
+                  });
+                  window.dispatchEvent(event);
+              }
+          } else if (errorMessage) {
+             // General error where we don't have dedupeId
+             if (typeof window !== 'undefined') {
+                  const event = new CustomEvent('chat:general_error', { 
+                      detail: { error: errorMessage } 
+                  });
+                  window.dispatchEvent(event);
+              }
+          }
+          return;
+      }
+
+      // Handle Block / Unblock Lifecycle Events
+      if (message.type === 'USER_BLOCKED' || message.type === 'USER_UNBLOCKED') {
+          console.log(`[WebSocket] 🛡️ Block state changed: ${message.type}`, message.data);
+          
+          const { conversationId, systemMessage, blockerId, blockedId, unblockerId, unblockedId } = message.data as any;
+
+          if (conversationId && this.queryClient) {
+              // Compute new block state for this user
+              let newIsBlockedByMe = false;
+              let newIsBlockedByThem = false;
+
+              if (message.type === 'USER_BLOCKED') {
+                  if (this.userId === blockerId) newIsBlockedByMe = true;
+                  if (this.userId === blockedId) newIsBlockedByThem = true;
+              } else if (message.type === 'USER_UNBLOCKED') {
+                  // Only clear the flag that belongs to this user's role
+                  // newIsBlockedByMe starts as false — only set true if they are still blocked (not applicable here)
+                  // newIsBlockedByThem: if we were the blockedId, we are now unblocked by them
+                  if (this.userId === unblockerId) newIsBlockedByMe = false;
+                  if (this.userId === unblockedId) newIsBlockedByThem = false;
+              }
+
+              // 1. Update conversation queries to refresh `isBlockedByMe` / `isBlockedByThem`
+              this.queryClient.setQueriesData(
+                  { queryKey: queryKeys.chat.conversations.list() },
+                  (oldData: any) => {
+                      if (!oldData || !oldData.pages) return oldData;
+                      
+                      const newPages = oldData.pages.map((page: any) => ({
+                          ...page,
+                          data: page.data.map((conv: any) => {
+                              if (conv.conversationId === conversationId) {
+                                  let isBlockedByMe = conv.isBlockedByMe ?? false;
+                                  let isBlockedByThem = conv.isBlockedByThem ?? false;
+
+                                  if (message.type === 'USER_BLOCKED') {
+                                      if (this.userId === blockerId) isBlockedByMe = true;
+                                      if (this.userId === blockedId) isBlockedByThem = true;
+                                  } else if (message.type === 'USER_UNBLOCKED') {
+                                      if (this.userId === unblockerId) isBlockedByMe = false;
+                                      if (this.userId === unblockedId) isBlockedByThem = false;
+                                  }
+
+                                  return { ...conv, isBlockedByMe, isBlockedByThem };
+                              }
+                              return conv;
+                          })
+                      }));
+                      return { ...oldData, pages: newPages };
+                  }
+              );
+
+              // Dispatch event ONCE after the map (not inside map loop)
+              if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('chat:block_updated', {
+                      detail: { 
+                          conversationId, 
+                          isBlockedByMe: newIsBlockedByMe, 
+                          isBlockedByThem: newIsBlockedByThem 
+                      }
+                  }));
+              }
+
+              // 2. Inject the new SYSTEM message directly into the chat if we have it
+              if (systemMessage) {
+                  // Deduplicate using existing mechanism
+                  if (this.processedMessageIds.has(systemMessage.id)) {
+                      console.warn("[WebSocket] ♻️ Duplicate system message rejected:", systemMessage.id);
+                      return;
+                  }
+                  this.processedMessageIds.add(systemMessage.id);
+
+                  const queryKey = queryKeys.chat.messages.list(conversationId);
+                  
+                  this.queryClient.setQueryData(queryKey, (oldData: any) => {
+                      if (!oldData || !oldData.pages) return oldData;
+                      
+                      const newPages = [...oldData.pages];
+                      const firstPage = { ...newPages[0] };
+                      
+                      // Check if message already exists to prevent duplicates
+                      const exists = firstPage.messages?.some((m: Message) => m.id === systemMessage.id);
+                      
+                      if (!exists) {
+                          firstPage.messages = [systemMessage, ...(firstPage.messages || [])];
+                          newPages[0] = firstPage;
+                      }
+                      
+                      return { ...oldData, pages: newPages };
+                  });
+              }
+          }
+          return;
+      }
+
+      // --- Group Governance Events ---
+      if (['participants_added', 'participant_removed', 'role_updated', 'group_updated', 'participant_left'].includes(message.type)) {
+          console.log(`[WebSocket] 👥 Group Event: ${message.type}`, message.data);
+          
+          if (typeof window !== 'undefined') {
+              // Dispatch to UI components so they can refresh (e.g., GroupDetailsModal, ChatWindow)
+              window.dispatchEvent(new CustomEvent(message.type, {
+                  detail: message.data
+              }));
+          }
+
+          const { conversationId, systemMessage } = message.data as any;
+
+          // Inject SYSTEM message into the chat if provided
+          if (conversationId && systemMessage && this.queryClient) {
+              if (this.processedMessageIds.has(systemMessage.id)) {
+                  console.warn("[WebSocket] ♻️ Duplicate group system message rejected:", systemMessage.id);
+                  return;
+              }
+              this.processedMessageIds.add(systemMessage.id);
+
+              const queryKey = queryKeys.chat.messages.list(conversationId);
+              this.queryClient.setQueryData(queryKey, (oldData: any) => {
+                  if (!oldData || !oldData.pages) return oldData;
+                  
+                  const newPages = [...oldData.pages];
+                  const firstPage = { ...newPages[0] };
+                  
+                  const exists = firstPage.messages?.some((m: Message) => m.id === systemMessage.id);
+                  if (!exists) {
+                      firstPage.messages = [systemMessage, ...(firstPage.messages || [])];
+                      newPages[0] = firstPage;
+                  }
+                  
+                  return { ...oldData, pages: newPages };
+              });
+          }
+
+          // If the current user was removed, we should probably boot them from the chat window
+          if (message.type === 'participant_removed' && message.data.removedUserId === this.userId) {
+               console.log("🛑 Booting self from chat because I was removed from group", conversationId);
+               this.queryClient?.invalidateQueries({ queryKey: queryKeys.chat.conversations.list() });
+               if (typeof window !== 'undefined') {
+                   window.dispatchEvent(new CustomEvent('chat:self_removed', { detail: { conversationId } }));
+               }
+          } else {
+               // Soft-Invalidate the conversations list so group names/participants array refreshes
+               // This ensures when you open group info, you see the right members
+               this.queryClient?.invalidateQueries({ queryKey: queryKeys.chat.conversations.list() });
+               this.queryClient?.invalidateQueries({ queryKey: ['conversation', conversationId] });
+          }
+
           return;
       }
 
@@ -437,7 +775,7 @@ class WebSocketManager {
 
     // ✅ FIX: Prevent duplicate processing of the same message ID
     if (this.processedMessageIds.has(messageData.id)) {
-        console.warn("[WebSocket] ð REJECTED duplicate message event:", messageData.id);
+        console.warn("[WebSocket] ♻️ REJECTED duplicate message event:", messageData.id);
         return;
     }
     this.processedMessageIds.add(messageData.id);
@@ -598,7 +936,13 @@ class WebSocketManager {
                if (index !== -1) {
                    const updatedMessages = [...newPages[i].messages];
                    // Merge real data status but keep local optimistic fields if needed
-                   updatedMessages[index] = { ...data, status: 'SENT' }; 
+                   // ✅ FIX: Merge with existing message to preserve optimistic fields (like replyTo)
+                   // in case backend response is partial or missing relations
+                   updatedMessages[index] = { 
+                       ...updatedMessages[index], 
+                       ...data, 
+                       status: 'SENT' 
+                   }; 
                    newPages[i] = { ...newPages[i], messages: updatedMessages };
                    
                    return {
@@ -659,10 +1003,26 @@ class WebSocketManager {
                  }
                  // 2. Bulk Read Update (up to lastReadMessageId)
                  if (data.lastReadMessageId && data.conversationId) {
-                      // ✅ FIX: Update ALL messages up to lastReadMessageId, regardless of sender
-                      // (Crucial for sender to see blue ticks on their own messages)
-                      if (msg.id <= data.lastReadMessageId && msg.status !== 'READ') {
-                          return { ...msg, status: 'READ', readAt: data.readAt };
+                      // Find the target message to get its timestamp for accurate bulk update
+                      let targetTimestamp: string | null = null;
+                      for (const p of oldData.pages) {
+                          const targetMsg = p.messages.find((m: Message) => m.id === data.lastReadMessageId);
+                          if (targetMsg) {
+                              targetTimestamp = targetMsg.createdAt;
+                              break;
+                          }
+                      }
+
+                      // Update ALL messages up to the target timestamp/ID
+                      const isReadWithTimestamp = (m: Message) => {
+                          if (targetTimestamp) {
+                              return m.createdAt <= targetTimestamp;
+                          }
+                          return m.id <= data.lastReadMessageId; // Fallback
+                      };
+
+                      if (isReadWithTimestamp(msg) && msg.status !== 'READ') {
+                          return { ...msg, status: 'READ', readAt: data.readAt || new Date().toISOString() };
                       }
                  }
                  return msg;
@@ -898,6 +1258,38 @@ class WebSocketManager {
     this.isOnline = false;
     // Connection will close automatically, no need to force it
   };
+
+  /**
+   * Handle presence change (online/offline/lastSeen)
+   * Updates conversation cache to reflect real-time status
+   */
+  private handlePresenceChange(data: { userId: string, isOnline: boolean, lastSeen?: string }): void {
+      if (!this.queryClient) return;
+
+      console.log("[WebSocket] Presence change received:", data);
+
+      // Update all conversations that include this user
+      this.queryClient.setQueriesData(
+          { queryKey: queryKeys.chat.conversations.list() },
+          (oldData: any) => {
+              if (!oldData || !oldData.pages) return oldData;
+              
+              const updatedPages = oldData.pages.map((page: any) => ({
+                  ...page,
+                  data: page.data.map((conv: any) => ({
+                      ...conv,
+                      participants: conv.participants.map((p: any) => 
+                          p.userId === data.userId 
+                              ? { ...p, isOnline: data.isOnline, lastSeen: data.lastSeen || p.lastSeen }
+                              : p
+                      )
+                  }))
+              }));
+
+              return { ...oldData, pages: updatedPages };
+          }
+      );
+  }
 
   // Cleanup on destroy
   destroy(): void {

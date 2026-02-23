@@ -1,28 +1,34 @@
 "use client"
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useDispatch } from 'react-redux';
-import type { AppDispatch } from '@/src/store/store';
-import { getUser } from '@/src/store/actions/authActions';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 
 export default function AuthCallback() {
   const router = useRouter();
-  const dispatch = useDispatch<AppDispatch>();
+  const searchParams = useSearchParams();
+  const redirectParams = searchParams.get('redirect');
 
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Fetch user data after OAuth callback sets cookies
-        await dispatch(getUser()).unwrap();
-        await new Promise((res,rej)=> setTimeout(res,1000))
-        router.push('/');
+        // Use the google-sync provider to hydrate NextAuth from backend cookies
+        const res = await signIn('google-sync', { redirect: false });
+        
+        if (res?.error) {
+           router.push('/signIn?error=OAuth%20sync%20failed');
+        } else {
+           // Successfully synced
+           // Using window.location instead of router.push to prevent Next.js layout CSS
+           // chunk load 404 caching errors after OAuth redirect.
+           window.location.href = redirectParams || '/';
+        }
       } catch (err) {
         router.push('/signIn?error=OAuth%20failed');
       }
     };
     handleCallback();
-  }, [dispatch, router]);
+  }, [router, redirectParams]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">

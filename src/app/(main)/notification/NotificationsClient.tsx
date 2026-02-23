@@ -14,7 +14,6 @@ import {
   NotificationFilters,
   NotificationList,
   NotificationListSkeleton,
-  SettingsSheet,
 } from "@/src/components/notification";
 import { MappedNotification, NotificationType } from "@/src/components/notification/types";
 import { mapNotificationToLinkedInStyle } from "@/src/components/notification/notificationMapper";
@@ -25,7 +24,6 @@ export default function NotificationsClient() {
   const userId = session?.user?.id;
   const queryClient = useQueryClient();
 
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<NotificationType | "all">("all");
 
   const {
@@ -59,11 +57,18 @@ export default function NotificationsClient() {
   }, [mappedNotifications, activeFilter]);
 
   const handleMarkAllAsRead = useCallback(async () => {
+    console.log("Marking all as read initiated", { userId, unreadCount });
     if (!userId || unreadCount === 0) return;
-    await markAllAsReadMutation.mutateAsync();
-    // Invalidate queries to refetch counts and notification states
-    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list(userId) });
-    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.count(userId) });
+    try {
+      await markAllAsReadMutation.mutateAsync();
+      console.log("Mark all as read mutation successful");
+      // Invalidate queries to refetch counts and notification states
+      await queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list(userId) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.notifications.count(userId) });
+      console.log("Queries invalidated");
+    } catch (error) {
+      console.error("Failed to mark all as read:", error);
+    }
   }, [userId, unreadCount, markAllAsReadMutation, queryClient]);
 
   const handleMarkAsRead = useCallback(async (id: string) => {
@@ -80,7 +85,6 @@ export default function NotificationsClient() {
       <NotificationHeader
         unreadCount={unreadCount}
         onMarkAllAsRead={handleMarkAllAsRead}
-        onOpenSettings={() => setIsSettingsOpen(true)}
         isMarkingAllAsRead={markAllAsReadMutation.isPending}
       />
 
@@ -103,8 +107,6 @@ export default function NotificationsClient() {
           />
         )}
       </div>
-
-      <SettingsSheet isOpen={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
     </>
   );
 }

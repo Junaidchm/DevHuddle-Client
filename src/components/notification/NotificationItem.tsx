@@ -9,6 +9,7 @@ import { Button } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/card";
 import { cn } from "@/src/lib/utils";
 import { Check, X, GitBranch, Bell } from "lucide-react";
+import toast from 'react-hot-toast';
 
 interface NotificationItemProps {
   notification: {
@@ -55,7 +56,7 @@ export default function NotificationItem({
         queryClient.invalidateQueries({
           queryKey: ["notifications", session?.user?.id],
         });
-        alert(
+        toast.success(
           "Collaboration invitation accepted! You will be redirected to the project workspace."
         );
       }

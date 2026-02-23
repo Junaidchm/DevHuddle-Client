@@ -132,7 +132,7 @@ axiosInstance.interceptors.response.use(
 
         // Redirect to sign-in page with blocked user message
         setTimeout(() => {
-          window.location.href = `${redirectUrl}?error=blocked&message=${encodeURIComponent(errorMessage || "You are blocked from DevHuddle, Please contact support")}`;
+          window.location.href = `/api/auth/logout?callbackUrl=${encodeURIComponent(`${redirectUrl}?error=blocked&message=${encodeURIComponent(errorMessage || "You are blocked from DevHuddle, Please contact support")}`)}`;
           // Reset redirect flag after redirect completes
           setTimeout(() => {
             isRedirecting = false;
@@ -207,7 +207,7 @@ axiosInstance.interceptors.response.use(
             if (!isRedirecting) {
               isRedirecting = true;
               setTimeout(() => {
-                window.location.href = redirectUrl;
+                window.location.href = `/api/auth/logout?callbackUrl=${encodeURIComponent(redirectUrl)}`;
                 // Reset redirect flag after redirect completes
                 setTimeout(() => {
                   isRedirecting = false;

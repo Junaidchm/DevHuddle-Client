@@ -1,0 +1,38 @@
+
+> client@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.3.2
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.8:3000
+   - Environments: .env.local
+   - Experiments (use with caution):
+     · staleTimes
+
+ ✓ Starting...
+ ✓ Ready in 2.3s
+ ✓ Compiled /middleware in 307ms (245 modules)
+ ○ Compiling / ...
+ ✓ Compiled / in 4.3s (2588 modules)
+redux-persist failed to create sync storage. falling back to noop storage.
+the request for suggested mutation is working without error ==========================================>
+ ○ Compiling /api/auth/[...nextauth] ...
+ GET / 200 in 7580ms
+ ✓ Compiled /favicon.ico in 1513ms (2594 modules)
+ GET /favicon.ico 200 in 657ms
+ GET /api/auth/session 200 in 2486ms
+ GET /api/auth/session 200 in 34ms
+ ○ Compiling /chat ...
+ ✓ Compiled /chat in 1681ms (2787 modules)
+redux-persist failed to create sync storage. falling back to noop storage.
+ GET /chat 200 in 2039ms
+ GET /favicon.ico 200 in 130ms
+ GET /favicon.ico 200 in 73ms
+ GET /api/auth/session 200 in 195ms
+ GET /api/auth/session 200 in 30ms
+[NextAuth JWT] Attempting to refresh token...
+[NextAuth JWT] Token refreshed successfully
+ GET /api/auth/session 200 in 514ms
+ GET /api/auth/session 200 in 21ms
+ GET /api/auth/session 200 in 32ms
+ GET /api/auth/session 200 in 9ms

@@ -4,7 +4,8 @@ import React, { useState } from "react";
 import { ConversationList } from "@/src/components/chat/ConversationList";
 import ChatWindow from "@/src/components/chat/ChatWindow";
 import { useMessages } from "@/src/hooks/chat/useMessages";
-import { ConversationWithMetadata } from "@/src/types/chat.types";
+import { useConversations } from "@/src/hooks/chat/useConversationQuery";
+import { ConversationWithMetadata, ConversationParticipant } from "@/src/types/chat.types";
 import { useSession } from "next-auth/react";
 import { MessageCircle } from "lucide-react";
 
@@ -12,6 +13,30 @@ import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getConversationById } from "@/src/services/api/chat.service";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
+import { queryKeys } from "@/src/lib/queryKeys";
+
+const mapToMetadata = (conv: any): ConversationWithMetadata => {
+  if (!conv) return conv;
+  return {
+    ...conv,
+    conversationId: conv.conversationId || conv.id,
+    participantIds: conv.participantIds || conv.participants?.map((p: any) => p.userId) || [],
+    participants: conv.participants?.map((p: any) => ({
+        userId: p.userId,
+        username: p.username || p.user?.username || "user",
+        name: p.name || p.user?.fullName || p.user?.name || "User",
+        profilePhoto: p.profilePhoto || p.user?.profilePhoto || null,
+        role: p.role,
+        conversationId: conv.conversationId || conv.id,
+        createdAt: conv.createdAt,
+        lastReadAt: p.lastReadAt || conv.createdAt
+    })) || [],
+    lastMessage: conv.lastMessage || null,
+    lastMessageAt: conv.lastMessageAt || conv.updatedAt || conv.createdAt,
+    unreadCount: conv.unreadCount || 0,
+    createdAt: conv.createdAt
+  };
+};
 
 export default function ChatPage() {
   const { data: session } = useSession();
@@ -20,6 +45,36 @@ export default function ChatPage() {
   const headers = useAuthHeaders();
   
   const [selectedConversation, setSelectedConversation] = useState<ConversationWithMetadata | null>(null);
+  
+  // Get fresh conversations list for syncing
+  const { data: convData } = useConversations();
+
+  // Sync selectedConversation with cache whenever list updates
+  React.useEffect(() => {
+    if (!selectedConversation?.conversationId || !convData) return;
+
+    // Find fresh version in conversation list cache
+    const fresh = convData.pages.flatMap((p: any) => p.data).find(
+      (c: any) => c.conversationId === selectedConversation.conversationId
+    );
+    
+    if (fresh) {
+      // Deep check for flags that affect UI state
+      const hasChanged = 
+        fresh.isBlockedByMe !== selectedConversation.isBlockedByMe ||
+        fresh.isBlockedByThem !== selectedConversation.isBlockedByThem ||
+        fresh.name !== selectedConversation.name ||
+        fresh.icon !== selectedConversation.icon;
+
+      if (hasChanged) {
+        console.log("🔄 [Sync] Updating selectedConversation from cache", { 
+            id: fresh.conversationId, 
+            isBlockedByMe: fresh.isBlockedByMe 
+        });
+        setSelectedConversation(fresh as any as ConversationWithMetadata);
+      }
+    }
+  }, [convData, selectedConversation?.conversationId]);
 
   // Fetch conversation by ID if present in URL
   const { data: fetchedConversation } = useQuery({
@@ -31,9 +86,8 @@ export default function ChatPage() {
   // Set selected conversation when fetched
   React.useEffect(() => {
     if (fetchedConversation) {
-        // We need to ensure it matches ConversationWithMetadata structure if getConversationById returns Conversation
-        // Assuming getConversationById returns correct type or compatible
-        setSelectedConversation(fetchedConversation as any as ConversationWithMetadata);
+        // Use mapping helper to ensure it matches ConversationWithMetadata structure
+        setSelectedConversation(mapToMetadata(fetchedConversation));
     }
   }, [fetchedConversation]);
   
@@ -123,12 +177,27 @@ export default function ChatPage() {
          }
     };
 
+    const handleBlockUpdated = (e: CustomEvent) => {
+         const { conversationId, isBlockedByMe, isBlockedByThem } = e.detail;
+         if (conversationId === selectedConversation.conversationId) {
+              setSelectedConversation(prev => {
+                  if (!prev) return null;
+                  return {
+                      ...prev,
+                      isBlockedByMe,
+                      isBlockedByThem
+                  };
+              });
+         }
+    };
+
     // For now, let's just handle metadata updates (name, icon)
     window.addEventListener('group_updated', handleGroupUpdated as EventListener);
     window.addEventListener('participants_added', handleParticipantsAdded as EventListener);
     window.addEventListener('participant_removed', handleParticipantRemoved as EventListener); // handling remove by admin
     window.addEventListener('participant_left', handleParticipantRemoved as EventListener); // handling self leave (same logic)
     window.addEventListener('role_updated', handleRoleUpdated as EventListener);
+    window.addEventListener('chat:block_updated', handleBlockUpdated as EventListener);
 
     return () => {
         window.removeEventListener('group_updated', handleGroupUpdated as EventListener);
@@ -136,6 +205,7 @@ export default function ChatPage() {
         window.removeEventListener('participant_removed', handleParticipantRemoved as EventListener);
         window.removeEventListener('participant_left', handleParticipantRemoved as EventListener);
         window.removeEventListener('role_updated', handleRoleUpdated as EventListener);
+        window.removeEventListener('chat:block_updated', handleBlockUpdated as EventListener);
     };
   }, [selectedConversation, session?.user?.id]);
 
@@ -163,6 +233,7 @@ export default function ChatPage() {
             isLoadingMessages={isLoading || isFetchingNextPage}
             hasMoreMessages={hasNextPage}
             onLoadMore={() => fetchNextPage()}
+            onConversationDeleted={() => setSelectedConversation(null)}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center bg-muted/20">

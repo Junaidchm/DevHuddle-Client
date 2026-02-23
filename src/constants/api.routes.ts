@@ -40,21 +40,23 @@ export const API_ROUTES = {
     EDUCATION: `${API_VERSION}/users/education`,
     EDUCATION_BY_ID: (id: string) => `${API_VERSION}/users/education/${id}`,
     SKILLS: `${API_VERSION}/users/skills`,
+    DELETE_ACCOUNT: `${API_VERSION}/users/account`,
   },
 
   FOLLOWS: {
     // SUGGESTIONS moved to CHAT_SUGGESTIONS under USERS/CHAT
     FOLLOW: `${API_VERSION}/users/follows/follow`,
     UNFOLLOW: `${API_VERSION}/users/follows/unfollow`,
+    SUGGESTIONS: `${API_VERSION}/users/follows/suggestions`,
     FOLLOWERS_INFO: (userId: string) =>
       `${API_VERSION}/users/${userId}/followers`,
   },
 
   ADMIN: {
     // User Management (Auth Service)
-    USERS: `${API_VERSION}/auth/admin/users`,
-    USER_BY_ID: (id: string) => `${API_VERSION}/auth/admin/user/${id}`,
-    TOGGLE_USER: (id: string) => `${API_VERSION}/auth/admin/users/${id}/toogle`,
+    USERS: `${API_VERSION}/admin/users`,
+    USER_BY_ID: (id: string) => `${API_VERSION}/admin/user/${id}`,
+    TOGGLE_USER: (id: string) => `${API_VERSION}/admin/users/${id}/toggle`,
     USER_REPORTED_CONTENT: (userId: string) => `${API_VERSION}/admin/users/${userId}/reported-content`,
     USER_REPORTS: (userId: string) => `${API_VERSION}/admin/users/${userId}/reports`,
     // Reports Management (Post Service)
@@ -73,10 +75,23 @@ export const API_ROUTES = {
     COMMENTS_REPORTED: `${API_VERSION}/admin/comments/reported`,
     COMMENT_BY_ID: (id: string) => `${API_VERSION}/admin/comments/${id}`,
     COMMENT_DELETE: (id: string) => `${API_VERSION}/admin/comments/${id}`,
+    // Projects Management (Project Service)
+    PROJECTS: `${API_VERSION}/admin/projects`,
+    PROJECTS_REPORTED: `${API_VERSION}/admin/projects/reported`,
+    PROJECT_BY_ID: (id: string) => `${API_VERSION}/admin/projects/${id}`,
+    PROJECT_HIDE: (id: string) => `${API_VERSION}/admin/projects/${id}/hide`,
+    PROJECT_DELETE: (id: string) => `${API_VERSION}/admin/projects/${id}`,
+    // Hubs Management
+    HUBS: `${API_VERSION}/admin/hubs`,
+    HUBS_REPORTED: `${API_VERSION}/admin/hubs/reported`,
+    HUB_BY_ID: (id: string) => `${API_VERSION}/admin/hubs/${id}`,
+    HUB_SUSPEND: (id: string) => `${API_VERSION}/admin/hubs/${id}/suspend`,
+    HUB_DELETE: (id: string) => `${API_VERSION}/admin/hubs/${id}`,
     // Analytics (Post Service)
     ANALYTICS_DASHBOARD: `${API_VERSION}/admin/analytics/dashboard`,
     ANALYTICS_REPORTS_BY_REASON: `${API_VERSION}/admin/analytics/reports-by-reason`,
     ANALYTICS_REPORTS_BY_SEVERITY: `${API_VERSION}/admin/analytics/reports-by-severity`,
+    AUDIT_LOGS: `${API_VERSION}/admin/audit-logs`,
   },
 
   NOTIFICATIONS: {
@@ -121,6 +136,8 @@ export const API_ROUTES = {
       `${API_VERSION}/engagement/posts/${postId}/likes/status`,
     POST_LIKE_COUNT: (postId: string) =>
       `${API_VERSION}/engagement/posts/${postId}/likes/count`,
+    POST_LIKES: (postId: string) =>
+      `${API_VERSION}/engagement/posts/${postId}/likes`,
     // Comment Likes
     LIKE_COMMENT: (commentId: string) =>
       `${API_VERSION}/engagement/comments/${commentId}/likes`,
@@ -182,6 +199,12 @@ export const API_ROUTES = {
     SHARE: (projectId: string) => `${API_VERSION}/projects/${projectId}/share`,
     REPORT: (projectId: string) => `${API_VERSION}/projects/${projectId}/report`,
     VIEW: (projectId: string) => `${API_VERSION}/projects/${projectId}/view`,
+    // Comments
+    CREATE_COMMENT: (projectId: string) => `${API_VERSION}/projects/${projectId}/comments`,
+    GET_COMMENTS: (projectId: string) => `${API_VERSION}/projects/${projectId}/comments`,
+    UPDATE_COMMENT: (commentId: string) => `${API_VERSION}/comments/${commentId}`,
+    DELETE_COMMENT: (commentId: string) => `${API_VERSION}/comments/${commentId}`,
+    GET_REPLIES: (commentId: string) => `${API_VERSION}/comments/${commentId}/replies`,
   },
 
   // Add to API_ROUTES object
@@ -192,6 +215,18 @@ export const API_ROUTES = {
     CHECK_CONVERSATION: `${API_VERSION}/chat/conversations/check`,
     CONVERSATION_BY_ID: (conversationId: string) =>
       `${API_VERSION}/chat/conversations/${conversationId}`,
+    CONVERSATION_PROFILE: (conversationId: string) =>
+      `${API_VERSION}/chat/conversations/${conversationId}/profile`,
+    CONVERSATION_MEDIA: (conversationId: string) =>
+      `${API_VERSION}/chat/conversations/${conversationId}/media`,
+    CONVERSATION_LINKS: (conversationId: string) =>
+      `${API_VERSION}/chat/conversations/${conversationId}/links`,
+    COMMON_GROUPS: (userId: string) =>
+      `${API_VERSION}/chat/users/${userId}/common-groups`,
+    DELETE_CONVERSATION: (conversationId: string) =>
+      `${API_VERSION}/chat/conversations/${conversationId}`,
+    CLEAR_CHAT: (conversationId: string) =>
+      `${API_VERSION}/chat/conversations/${conversationId}/clear`,
 
     // Messages
     CONVERSATION_MESSAGES: (conversationId: string) =>
@@ -201,11 +236,37 @@ export const API_ROUTES = {
 
     // Groups
     GROUPS: `${API_VERSION}/chat/groups`,
+    MY_GROUPS: `${API_VERSION}/chat/groups/my-hubs`,
+    DISCOVER_GROUPS: `${API_VERSION}/chat/groups/discover`,
+    GROUP_TOPICS: `${API_VERSION}/chat/groups/topics`,
     GROUP_DETAILS: (groupId: string) => `${API_VERSION}/chat/groups/${groupId}`,
     GROUP_PARTICIPANTS: (groupId: string) => `${API_VERSION}/chat/groups/${groupId}/participants`,
     GROUP_ADMINS: (groupId: string, userId: string) => `${API_VERSION}/chat/groups/${groupId}/admins/${userId}`,
     GROUP_LEAVE: (groupId: string) => `${API_VERSION}/chat/groups/${groupId}/leave`,
     GROUP_DELETE: (groupId: string) => `${API_VERSION}/chat/groups/${groupId}`,
+    
+    // Message Actions
+    EDIT_MESSAGE: (messageId: string) => `${API_VERSION}/chat/messages/${messageId}`,
+    DELETE_MESSAGE: (messageId: string) => `${API_VERSION}/chat/messages/${messageId}`,
+    DELETE_MESSAGE_ME: (messageId: string) => `${API_VERSION}/chat/messages/${messageId}/me`,
+    REPLY_MESSAGE: (conversationId: string) => `${API_VERSION}/chat/conversations/${conversationId}/messages/reply`,
+    MESSAGE_REACTIONS: (messageId: string) => `${API_VERSION}/chat/messages/${messageId}/reactions`,
+    FORWARD_MESSAGE: `${API_VERSION}/chat/messages/forward`,
+    
+    // Pins
+    PIN_MESSAGE: (messageId: string) => `${API_VERSION}/chat/messages/${messageId}/pin`,
+    UNPIN_MESSAGE: (messageId: string) => `${API_VERSION}/chat/messages/${messageId}/pin`,
+    GET_PINNED_MESSAGES: (conversationId: string) => `${API_VERSION}/chat/conversations/${conversationId}/pins`,
+    
+    // Search
+    SEARCH_MESSAGES: (conversationId: string) => `${API_VERSION}/chat/conversations/${conversationId}/messages/search`,
+
+    // Blocking
+    BLOCK_USER: (userId: string) => `${API_VERSION}/chat/users/${userId}/block`,
+    BLOCKED_USERS: `${API_VERSION}/chat/users/blocked`,
+
+    // Reporting
+    REPORTS: `${API_VERSION}/chat/reports`,
 
     // WebSocket
     WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3003',

@@ -6,6 +6,7 @@ import { cn } from "@/src/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { 
   MoreHorizontal, 
+  Trash2,
   UserPlus, 
   MessageSquare, 
   Heart, 
@@ -16,11 +17,21 @@ import {
   Reply,
   Share2,
   Radio,
-  Bell
+  Bell,
+  AlertTriangle
 } from "lucide-react";
 import { MappedNotification, NotificationType } from "./types";
 import { PROFILE_DEFAULT_URL } from "@/src/constants";
 import { useRouter } from "next/navigation";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/src/components/ui/dropdown-menu";
+import { useToast } from "@/src/components/ui/use-toast";
+import { ToastAction } from "@/src/components/ui/toast";
+import { useDeleteNotification, useRestoreNotification } from "@/src/customHooks/useNotifications";
 
 // LinkedIn-style icon mapping with proper colors
 const getNotificationIcon = (type: NotificationType): React.ReactNode => {
@@ -52,6 +63,8 @@ const getNotificationIcon = (type: NotificationType): React.ReactNode => {
       return <Bell className={cn(iconClass, "text-gray-500")} />;
     case "support":
       return <Star className={cn(iconClass, "text-yellow-500")} />;
+    case "report":
+      return <AlertTriangle className={cn(iconClass, "text-red-500")} />;
     default:
       return <Bell className={cn(iconClass, iconColor)} />;
   }
@@ -93,12 +106,42 @@ interface NotificationRowProps {
 
 export const NotificationRow = ({ notification, onMarkAsRead, isLast }: NotificationRowProps) => {
   const router = useRouter();
+  const { toast } = useToast();
+  const { mutate: deleteNotification } = useDeleteNotification();
+  const { mutate: restoreNotification } = useRestoreNotification();
+
   const actorNames = formatActorNames(
     notification.actors, 
     notification.aggregatedCount || notification.actors.length,
     notification.title
   );
   const timeAgo = formatDistanceToNow(notification.time, { addSuffix: true });
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // 1. Trigger Delete Mutation
+    deleteNotification(notification.id);
+
+    // 2. Show Toast with Undo
+    toast({
+      title: "Notification deleted",
+      description: "Item removed from your list",
+      action: (
+        <ToastAction 
+          altText="Undo delete" 
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            restoreNotification({ notificationId: notification.id, notification });
+          }}
+        >
+          Undo
+        </ToastAction>
+      ),
+      duration: 5000,
+    });
+  };
 
   const handleClick = () => {
     if (!notification.isRead) {
@@ -128,8 +171,14 @@ export const NotificationRow = ({ notification, onMarkAsRead, isLast }: Notifica
       case "comment":
       case "reply":
       case "mention":
+      case "share":
+      case "report":
       default:
-        if (notification.postId) {
+        if (notification.projectId) {
+          // Navigate to project detail page
+          const query = notification.commentId ? `?commentId=${notification.commentId}` : "";
+          router.push(`/projects/${notification.projectId}${query}`);
+        } else if (notification.postId) {
           // Navigate to post detail page with commentId highlight if exists
           const query = notification.commentId ? `?commentId=${notification.commentId}` : "";
           router.push(`/post/${notification.postId}${query}`);
@@ -144,7 +193,7 @@ export const NotificationRow = ({ notification, onMarkAsRead, isLast }: Notifica
   return (
     <div 
       className={cn(
-        "flex items-start gap-3 p-4 transition-colors hover:bg-muted/50 cursor-pointer relative",
+        "flex items-start gap-3 p-4 transition-colors hover:bg-muted/50 cursor-pointer relative group",
         { "border-b border-border": !isLast },
         { "bg-primary/5": !notification.isRead }
       )}
@@ -200,17 +249,27 @@ export const NotificationRow = ({ notification, onMarkAsRead, isLast }: Notifica
           </div>
 
           {/* Three-dot menu */}
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 w-8 p-0 flex-shrink-0 rounded-full"
-            onClick={(e) => {
-              e.stopPropagation();
-              // TODO: Add dropdown menu for more options
-            }}
-          >
-            <MoreHorizontal className="w-4 h-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 flex-shrink-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onClick={handleDelete}
+                className="text-red-500 focus:text-red-500 focus:bg-red-50"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete notification
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </div>

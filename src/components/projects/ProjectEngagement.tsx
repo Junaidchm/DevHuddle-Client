@@ -1,92 +1,103 @@
-"use client";
-
 import { Project } from "@/src/services/api/project.service";
 import { Heart, Share2, MessageCircle, Flag } from "lucide-react";
 import { useState } from "react";
-import CommentSection from "../feed/feedEditor/CommentSection";
+import ProjectCommentSection from "./ProjectCommentSection";
 import ShareProjectModal from "./ShareProjectModal";
 import ReportProjectModal from "./ReportProjectModal";
+import { Button } from "@/src/components/ui/button";
+import { cn } from "@/src/lib/utils";
 
 interface ProjectEngagementProps {
   project: Project;
   onLike: () => void;
-  onShare: () => void;
   isLiking: boolean;
 }
 
 export default function ProjectEngagement({
   project,
   onLike,
-  onShare,
   isLiking,
 }: ProjectEngagementProps) {
   const [showComments, setShowComments] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
 
-  const handleShareClick = () => {
-    setShowShareModal(true);
-  };
-
-  const handleReportClick = () => {
-    setShowReportModal(true);
-  };
-
   return (
     <>
-      <div>
-        {/* Engagement Buttons */}
-        <div className="flex items-center justify-between border-t border-b py-4">
-          <button
-            onClick={onLike}
-            disabled={isLiking}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              project.engagement.isLiked
-                ? "text-red-600 bg-red-50"
-                : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            <Heart
-              className={`w-5 h-5 ${
-                project.engagement.isLiked ? "fill-current" : ""
-              }`}
-            />
-            <span className="font-medium">{project.engagement.likesCount}</span>
-          </button>
+      <div className="space-y-4">
+        {/* Engagement Action Bar */}
+        <div className="flex items-center justify-between py-2 border-y border-border/60">
+          <div className="flex items-center gap-1 sm:gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onLike}
+              disabled={isLiking}
+              className={cn(
+                "group flex items-center gap-2 px-3 py-2",
+                project.engagement.isLiked 
+                  ? "text-red-500 hover:text-red-600 hover:bg-red-50" 
+                  : "text-muted-foreground"
+              )}
+            >
+              <Heart
+                className={cn(
+                  "w-5 h-5 transition-all",
+                  project.engagement.isLiked ? "fill-current scale-110" : "group-hover:scale-110"
+                )}
+              />
+              <span className="font-semibold">{project.engagement.likesCount}</span>
+            </Button>
 
-          <button
-            onClick={() => setShowComments(!showComments)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
-          >
-            <MessageCircle className="w-5 h-5" />
-            <span className="font-medium">
-              {project.engagement.commentsCount}
-            </span>
-          </button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowComments(!showComments)}
+              className={cn(
+                "group flex items-center gap-2 px-3 py-2",
+                showComments ? "text-primary bg-primary/5" : "text-muted-foreground"
+              )}
+            >
+              <MessageCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span className="font-semibold">{project.engagement.commentsCount}</span>
+            </Button>
 
-          <button
-            onClick={handleShareClick}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
-          >
-            <Share2 className="w-5 h-5" />
-            <span className="font-medium">{project.engagement.sharesCount}</span>
-          </button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowShareModal(true)}
+              className="group flex items-center gap-2 px-3 py-2 text-muted-foreground"
+            >
+              <Share2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span className="font-semibold">{project.engagement.sharesCount}</span>
+            </Button>
+          </div>
 
-          <button
-            onClick={handleReportClick}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowReportModal(true)}
+            className="text-muted-foreground hover:text-destructive hover:bg-destructive/5"
           >
-            <Flag className="w-5 h-5" />
-          </button>
+            <Flag className="w-4 h-4" />
+          </Button>
         </div>
 
-        {/* Comments Section */}
+        {/* Views Display (Owners Only) */}
+        {project.engagement.viewsCount > 0 && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground px-2">
+            <span className="font-medium">{project.engagement.viewsCount} total views</span>
+            <span className="text-muted-foreground/30">•</span>
+            <span>Visible to you as the owner</span>
+          </div>
+        )}
+
+        {/* Collapsible Comments Section */}
         {showComments && (
-          <div className="mt-4">
-            <CommentSection
-              postId={project.id}
-              postAuthorId={project.userId}
-              commentsCount={project.engagement.commentsCount}
+          <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+            <ProjectCommentSection
+              projectId={project.id}
+              projectAuthorId={project.userId}
             />
           </div>
         )}

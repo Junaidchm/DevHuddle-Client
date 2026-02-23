@@ -11,7 +11,7 @@ import { signOut } from "next-auth/react";
  * 
  * @param redirectUrl - URL to redirect to after logout (default: "/admin/signIn")
  */
-export default function showLogoutConfirmation(redirectUrl: string = "/admin/signIn") {
+export default function showLogoutConfirmation(redirectUrl: string = "/signIn") {
 
   toast(
     (t) => (
@@ -36,7 +36,7 @@ export default function showLogoutConfirmation(redirectUrl: string = "/admin/sig
                 // ✅ Use window.location for hard reload to ensure clean state
                 // Small delay to show toast
                 setTimeout(() => {
-                  window.location.href = redirectUrl;
+                  window.location.href = `/api/auth/logout?callbackUrl=${encodeURIComponent(redirectUrl)}`;
                 }, 300);
               } catch (err) {
                 console.error("Logout error:", err);

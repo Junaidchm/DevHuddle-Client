@@ -129,6 +129,11 @@ export function useLikeMutation() {
         queryKey: queryKeys.engagement.postLikes.status(variables.postId, ""),
       });
 
+      // Invalidate likes list to ensure modal shows updated data
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.engagement.postLikes.list(variables.postId),
+      });
+
       // ✅ FIXED: Invalidate notifications to ensure new like notifications appear instantly
       // (WebSocket should handle this, but this is a backup)
       if (session?.user?.id) {

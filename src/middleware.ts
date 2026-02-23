@@ -12,10 +12,35 @@ import { NextResponse } from "next/server";
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   
-  // Check both NextAuth session AND cookies (for Google OAuth flow)
+  // IMMEDIATELY SKIP NEXT.JS INTERNAL ASSETS
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname === '/favicon.ico'
+  ) {
+    return NextResponse.next();
+  }
+  
   const hasAuthCookie = req.cookies.get('access_token');
   const isAuthenticated = !!req.auth?.user || !!hasAuthCookie;
   const userRole = req.auth?.user?.role;
+
+  // NEW: Check for desync between backend cookies and NextAuth session
+  // This happens after google auth when backend cookie is set but NextAuth session is empty
+  const isDesynced = hasAuthCookie && !req.auth?.user;
+
+  if (isDesynced) {
+    if (pathname !== '/success' && !pathname.startsWith('/api') && !pathname.startsWith('/_next')) {
+      const url = new URL('/success', req.url);
+      url.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(url);
+    }
+    // If they are on /success and desynced, we MUST let it render so they can sync.
+    // Otherwise, the "already logged in" check below will redirect them back to "/" and cause a loop.
+    if (pathname === '/success') {
+      return NextResponse.next();
+    }
+  }
 
   // Public routes that don't need authentication
   const publicRoutes = ['/signIn', '/signup', '/forgotPassword', '/verify-user', '/success', '/admin/signIn'];

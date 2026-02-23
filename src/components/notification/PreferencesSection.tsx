@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/src
 import { Button } from "@/src/components/ui/button";
 import { SlidersHorizontal, Monitor, Mail, Smartphone, Bell } from "lucide-react";
 import { cn } from "@/src/lib/utils";
+import toast from 'react-hot-toast';
 
 export default function PreferencesSection() {
   const [preferences, setPreferences] = useState({
@@ -31,7 +32,7 @@ export default function PreferencesSection() {
 
   const handleSave = () => {
     // In a real app, this would make an API call
-    alert('Notification preferences saved successfully!');
+    toast.success('Notification preferences saved successfully!');
   };
 
   const handleReset = () => {
@@ -50,7 +51,7 @@ export default function PreferencesSection() {
         followersNotif: false,
         eventsNotif: true
       });
-      alert('Preferences have been reset to default.');
+      toast.success('Preferences have been reset to default.');
     }
   };
 

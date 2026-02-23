@@ -3,6 +3,7 @@
 import {
   getProfile,
   updateProfile,
+  deleteAccount,
 } from "@/src/services/api/auth.service";
 import { uploadProfileImage } from "@/src/services/api/media.service";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,11 +20,10 @@ import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/src/store/store";
 import { setProfilePicture } from "@/src/store/slices/userSlice";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import showLogoutConfirmation from "@/src/utils/showLogoutConfirmation";
 import { userUpdate } from "@/src/types/auth";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
-import SkillsInput from "@/src/components/profile/SkillsInput";
 
 // New UI Components
 import { Button } from "@/src/components/ui/button";
@@ -33,10 +33,6 @@ import { Textarea } from "@/src/components/ui/textarea";
 import { Label } from "@/src/components/ui/label";
 import { 
   User, 
-  Bell, 
-  Link as LinkIcon, 
-  Shield, 
-  Palette, 
   Settings, 
   LogOut, 
   Trash2 
@@ -84,10 +80,6 @@ export default function ProfilePage() {
       email: "",
       location: "",
       bio: "",
-      skills: [],
-      jobTitle: "",
-      company: "",
-      yearsOfExperience: "",
       profileImage: undefined,
     },
   });
@@ -100,10 +92,6 @@ export default function ProfilePage() {
         email: profileData.email || "",
         location: profileData.location || "",
         bio: profileData.bio || "",
-        skills: profileData.skills || [],
-        jobTitle: profileData.jobTitle || "",
-        company: profileData.company || "",
-        yearsOfExperience: profileData.yearsOfExperience || "",
         profileImage: profileData.profilePicture || undefined,
       };
       reset(initialFormData);
@@ -121,10 +109,6 @@ export default function ProfilePage() {
       watchFields.username !== originalData.username ||
       watchFields.location !== originalData.location ||
       watchFields.bio !== originalData.bio ||
-      JSON.stringify(watchFields.skills || []) !== JSON.stringify(originalData.skills || []) ||
-      watchFields.jobTitle !== originalData.jobTitle ||
-      watchFields.company !== originalData.company ||
-      watchFields.yearsOfExperience !== originalData.yearsOfExperience ||
       watchFields.profileImage !== originalData.profileImage
     );
   }, [watchFields, originalData]);
@@ -138,10 +122,6 @@ export default function ProfilePage() {
         username: data.username || "",
         location: data.location || "",
         bio: data.bio || "",
-        skills: data.skills || [],
-        jobTitle: data.jobTitle || "",
-        company: data.company || "",
-        yearsOfExperience: data.yearsOfExperience ? parseInt(data.yearsOfExperience) : 0,
       };
       let profilePictureKey: string | undefined;
       if (data.profileImage instanceof File) {
@@ -178,6 +158,55 @@ export default function ProfilePage() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    toast(
+        (t) => (
+          <div className="flex flex-col items-start text-sm">
+            <span className="font-medium mb-1 text-destructive">Delete Account?</span>
+            <span className="text-muted-foreground mb-3 text-xs">
+              This action is permanent and cannot be undone.
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={async () => {
+                  toast.dismiss(t.id);
+                  const loadingToast = toast.loading("Deleting your account...");
+                  try {
+                    await deleteAccount(authHeaders);
+                    
+                    toast.success("Account deleted successfully", { id: loadingToast });
+                    
+                    // Cleanup and Logout
+                    localStorage.clear();
+                    await signOut({ redirect: false });
+                    
+                    setTimeout(() => {
+                      window.location.href = "/signIn";
+                    }, 500);
+                  } catch (err: any) {
+                    console.error("Delete account error:", err);
+                    toast.error("Failed to delete account", { id: loadingToast });
+                  }
+                }}
+              >
+                Yes, Delete
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => toast.dismiss(t.id)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ),
+        { duration: 10000, position: "bottom-center" }
+      );
+  };
+
   const SidebarItem = ({ icon: Icon, label, isActive, onClick, variant = "default" }: any) => (
       <button
         onClick={onClick}
@@ -204,10 +233,6 @@ export default function ProfilePage() {
           <Card className="p-2 border-border shadow-sm">
              <div className="space-y-1">
                 <SidebarItem icon={User} label="Profile" isActive={true} />
-                <SidebarItem icon={Bell} label="Notifications" />
-                <SidebarItem icon={LinkIcon} label="Connected Accounts" />
-                <SidebarItem icon={Shield} label="Security" />
-                <SidebarItem icon={Palette} label="Appearance" />
                 <SidebarItem icon={Settings} label="General" />
                 <div className="my-2 border-t border-border" />
                 <SidebarItem 
@@ -301,48 +326,6 @@ export default function ProfilePage() {
                 </CardContent>
               </Card>
 
-              {/* Professional Information Card */}
-              <Card>
-                <CardHeader>
-                    <CardTitle>Professional Information</CardTitle>
-                    <CardDescription>Share your career details and skills.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="jobTitle">Job Title</Label>
-                            <Input id="jobTitle" {...register("jobTitle")} placeholder="e.g. Senior Software Engineer" />
-                            {errors.jobTitle && <p className="text-xs text-destructive">{errors.jobTitle.message}</p>}
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="company">Company</Label>
-                            <Input id="company" {...register("company")} placeholder="e.g. Acme Inc" />
-                            {errors.company && <p className="text-xs text-destructive">{errors.company.message}</p>}
-                        </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                        <Label htmlFor="yearsOfExperience">Years of Experience</Label>
-                        <Input id="yearsOfExperience" {...register("yearsOfExperience")} placeholder="e.g. 5" />
-                        {errors.yearsOfExperience && <p className="text-xs text-destructive">{errors.yearsOfExperience.message}</p>}
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label>Skills</Label>
-                         <Controller
-                            name="skills"
-                            control={control}
-                            render={({ field }) => (
-                                <SkillsInput
-                                value={field.value || []}
-                                onChange={field.onChange}
-                                error={errors.skills?.message}
-                                />
-                            )}
-                        />
-                    </div>
-                </CardContent>
-              </Card>
 
               {/* Action Buttons */}
               <div className="flex justify-end gap-3 pt-4">
@@ -359,7 +342,12 @@ export default function ProfilePage() {
                         <h3 className="text-lg font-semibold text-destructive mb-1">Delete Account</h3>
                         <p className="text-sm text-muted-foreground">Once you delete your account, there is no going back. Please be certain.</p>
                     </div>
-                    <Button variant="destructive" type="button" className="shrink-0 gap-2">
+                    <Button 
+                        variant="destructive" 
+                        type="button" 
+                        className="shrink-0 gap-2"
+                        onClick={handleDeleteAccount}
+                    >
                         <Trash2 className="w-4 h-4" />
                         Delete Account
                     </Button>

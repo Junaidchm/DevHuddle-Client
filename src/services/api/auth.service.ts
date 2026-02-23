@@ -125,3 +125,8 @@ export const validateAccessRefresh = async (headers: Record<string, string>) => 
   const response = await axiosInstance.post(API_ROUTES.AUTH.ME, {}, { headers });
   return response;
 };
+
+export const deleteAccount = async (headers: Record<string, string>) => {
+  const response = await axiosInstance.delete(API_ROUTES.USERS.DELETE_ACCOUNT, { headers });
+  return response.data;
+};

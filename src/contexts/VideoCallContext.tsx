@@ -17,6 +17,7 @@ import React, {
 import { useWebRTC } from '@/src/hooks/useWebRTC';
 import { useWebSocket } from './WebSocketContext';
 import { useSession } from 'next-auth/react';
+import toast from 'react-hot-toast';
 
 // ==================== Types ====================
 
@@ -44,7 +45,7 @@ export interface VideoCallContextType {
   remoteStreams: Map<string, MediaStream>;
   
   // Actions
-  startCall: (conversationId: string, isVideoCall: boolean) => Promise<void>;
+  startCall: (conversationId: string, isVideoCall: boolean, targetUserIds?: string[]) => Promise<void>;
   acceptCall: () => Promise<void>;
   rejectCall: () => void;
   leaveCall: () => void;
@@ -115,6 +116,16 @@ export const VideoCallProvider = ({ children }: { children: ReactNode }) => {
 
     const handleIncomingCall = (event: CustomEvent) => {
       const data = event.detail;
+      const callerId = data.callerId || data.data?.callerId;
+      
+      console.log('[VideoCall] Incoming call check:', { callerId, currentUserId });
+      
+      // ✅ FIX: Ignore incoming call events where we are the initiator
+      if (callerId === currentUserId) {
+        console.log('[VideoCall] ⛔ Ignoring self-initiated incoming call event');
+        return;
+      }
+
       console.log('[VideoCall] Incoming call:', data);
       setIncomingCall(data);
       setCallState('INCOMING');
@@ -138,6 +149,11 @@ export const VideoCallProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (activeCall?.conversationId !== conversationId) return;
+
+      // ✅ Switch to CONNECTED now that someone has actually joined
+      if (callState === 'CALLING') {
+          setCallState('CONNECTED');
+      }
 
       // Create peer connection and send offer
       await createPeerConnectionAndOffer(userId);
@@ -189,14 +205,28 @@ export const VideoCallProvider = ({ children }: { children: ReactNode }) => {
         if (!pc) {
           pc = createPeerConnectionForUser(fromUserId);
         }
-        // Handle offer and send answer
-        await webrtc.handleRemoteOffer(pc, signalData);
-        const answer = await webrtc.createAnswer(pc, signalData);
-        sendSignal(fromUserId, 'answer', answer);
+        try {
+            // PERFECT NEGOTIATION: Handle Glare (collision)
+            // Impolite peer (usually the one with smaller ID) ignores the offer if a collision occurs
+            const isPolite = fromUserId < currentUserId; 
+            const isCollision = pc.signalingState !== 'stable' || pc.iceConnectionState === 'checking';
+            
+            if (isCollision && !isPolite) {
+                console.log('[VideoCall] Glare detected, impolite peer ignoring offer from:', fromUserId);
+                return;
+            }
+
+            // Handle offer and send answer
+            await webrtc.handleRemoteOffer(pc, signalData);
+            const answer = await webrtc.createAnswer(pc);
+            sendSignal(fromUserId, 'answer', answer);
+        } catch (err) {
+            console.error('[VideoCall] Failed to process offer:', err);
+        }
       } else if (signalType === 'answer') {
         if (pc) {
-          if (pc.signalingState === 'stable') {
-              console.warn("[VideoCall] Received answer but connection is already stable. Ignoring.", { fromUserId });
+          if (pc.signalingState !== 'have-local-offer') {
+              console.warn("[VideoCall] Received answer but we are not in 'have-local-offer' state. State:", pc.signalingState);
               return;
           }
           await webrtc.handleRemoteAnswer(pc, signalData);
@@ -364,7 +394,7 @@ export const VideoCallProvider = ({ children }: { children: ReactNode }) => {
 
   // ==================== Public Actions ====================
 
-  const startCall = async (conversationId: string, isVideoCall: boolean) => {
+  const startCall = async (conversationId: string, isVideoCall: boolean, targetUserIds?: string[]) => {
     try {
       setCallState('CALLING');
 
@@ -379,6 +409,7 @@ export const VideoCallProvider = ({ children }: { children: ReactNode }) => {
         type: 'call:start',
         conversationId,
         isVideoCall,
+        targetUserIds,
         content: '', // Required by type
       });
 
@@ -389,11 +420,12 @@ export const VideoCallProvider = ({ children }: { children: ReactNode }) => {
         participants: new Map(),
       });
 
-      setCallState('CONNECTED');
+      // ✅ State stays as 'CALLING' (showing OutgoingCallScreen/Ringing)
+      // Transition to 'CONNECTED' happens in handleParticipantJoined
     } catch (error) {
       console.error('[VideoCall] Failed to start call:', error);
       setCallState('IDLE');
-      alert('Failed to access camera/microphone');
+      toast.error('Failed to access camera/microphone');
     }
   };
 
@@ -427,12 +459,19 @@ export const VideoCallProvider = ({ children }: { children: ReactNode }) => {
       setIncomingCall(null);
     } catch (error) {
       console.error('[VideoCall] Failed to accept call:', error);
-      alert('Failed to access camera/microphone');
+      toast.error('Failed to access camera/microphone');
       setCallState('IDLE');
     }
   };
 
   const rejectCall = () => {
+    if (incomingCall) {
+      sendMessage({
+        type: 'call:end',
+        conversationId: incomingCall.conversationId,
+        content: '',
+      });
+    }
     setIncomingCall(null);
     setCallState('IDLE');
   };

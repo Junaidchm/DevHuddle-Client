@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { ConversationWithMetadata } from "@/src/types/chat.types";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
+import { queryKeys } from "@/src/lib/queryKeys";
 
 interface CreateGroupVariables {
   name: string;
@@ -54,13 +55,14 @@ export const useCreateGroup = (onSuccess?: (group: ConversationWithMetadata) => 
             unreadCount: 0,
             // Add missing fields
             onlyAdminsCanPost: group.onlyAdminsCanPost,
-            onlyAdminsCanEditInfo: group.onlyAdminsCanEditInfo
+            onlyAdminsCanEditInfo: group.onlyAdminsCanEditInfo,
+            createdAt: group.createdAt ? (group.createdAt instanceof Date ? group.createdAt.toISOString() : group.createdAt) : new Date().toISOString()
         };
         
         return mappedGroup;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.list() });
       toast.success("Group created successfully");
       if (onSuccess) onSuccess(data);
     },
@@ -92,7 +94,7 @@ export const useRemoveParticipant = (groupId: string) => {
     return useMutation({
         mutationFn: (userId: string) => removeParticipant(groupId, userId, headers),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.list() });
             toast.success("Participant removed");
         },
         onError: (error: any) => toast.error(error.message || "Failed to remove participant")
@@ -106,7 +108,7 @@ export const usePromoteToAdmin = (groupId: string) => {
     return useMutation({
         mutationFn: (userId: string) => promoteToAdmin(groupId, userId, headers),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.list() });
             toast.success("Promoted to admin");
         },
         onError: (error: any) => toast.error(error.message || "Failed to promote")
@@ -120,7 +122,7 @@ export const useDemoteToMember = (groupId: string) => {
     return useMutation({
         mutationFn: (userId: string) => demoteToMember(groupId, userId, headers),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.list() });
             toast.success("Demoted to member");
         },
         onError: (error: any) => toast.error(error.message || "Failed to demote")
@@ -142,7 +144,7 @@ export const useUpdateGroupInfo = (groupId: string) => {
     return useMutation({
         mutationFn: (data: UpdateGroupInfoData) => updateGroupInfo(groupId, data, headers),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.list() });
             toast.success("Group info updated");
         },
         onError: (error: any) => toast.error(error.message || "Failed to update group info")
@@ -156,7 +158,7 @@ export const useLeaveGroup = (groupId: string) => {
     return useMutation({
         mutationFn: () => leaveGroup(groupId, headers),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.list() });
             toast.success("Left group");
         },
         onError: (error: any) => toast.error(error.message || "Failed to leave group")
@@ -170,7 +172,7 @@ export const useDeleteGroup = (groupId: string) => {
     return useMutation({
         mutationFn: () => deleteGroup(groupId, headers),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.list() });
             toast.success("Group deleted successfully");
         },
         onError: (error: any) => toast.error(error.message || "Failed to delete group")
@@ -192,7 +194,7 @@ export const useJoinGroup = (groupId: string) => {
     return useMutation({
         mutationFn: (userId: string) => joinGroup(groupId, [userId], headers),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.list() });
             toast.success("Joined group successfully");
         },
         onError: (error: any) => toast.error(error.message || "Failed to join group")

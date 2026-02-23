@@ -69,7 +69,10 @@ export const createUploadSession = async (
     const response = await axiosInstance.post(
       API_ROUTES.MEDIA.UPLOAD_SESSION,
       data,
-      { headers }
+      { 
+        headers,
+        timeout: 60000 // Increase timeout for media operations
+      }
     );
 
     return response.data.data;
@@ -92,7 +95,10 @@ export const completeUpload = async (
     const response = await axiosInstance.post(
       API_ROUTES.MEDIA.COMPLETE(mediaId),
       {},
-      { headers }
+      { 
+        headers,
+        timeout: 60000 // 60 seconds for completion/processing
+      }
     );
 
     return response.data.data;

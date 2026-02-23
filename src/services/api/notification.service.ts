@@ -62,15 +62,26 @@ export const markAllAsRead = async (
   userId: string,
   headers: AuthHeaders
 ): Promise<void> => {
-  // ✅ FIXED: Increase timeout for markAllAsRead to handle cache invalidation
-  await axiosInstance.post(
-    API_ROUTES.NOTIFICATIONS.MARK_ALL_READ(userId),
-    {},
-    { 
-      headers,
-      timeout: 30000, // 30 seconds instead of default 10 seconds
-    }
-  );
+  console.log("Calling markAllAsRead API", { userId, url: API_ROUTES.NOTIFICATIONS.MARK_ALL_READ(userId) });
+  try {
+    // ✅ FIXED: Increase timeout for markAllAsRead to handle cache invalidation
+    await axiosInstance.post(
+      API_ROUTES.NOTIFICATIONS.MARK_ALL_READ(userId),
+      {},
+      { 
+        headers,
+        timeout: 30000, // 30 seconds instead of default 10 seconds
+      }
+    );
+    console.log("markAllAsRead API successful");
+  } catch (error: any) {
+    console.error("markAllAsRead API failed", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+    throw error;
+  }
 };
 
 export const deleteNotification = async (
@@ -82,4 +93,16 @@ export const deleteNotification = async (
     data: { recipientId: userId },
     headers,
   });
+};
+
+export const restoreNotification = async (
+  notificationId: string,
+  userId: string,
+  headers: AuthHeaders
+): Promise<void> => {
+  await axiosInstance.patch(
+    `${API_ROUTES.NOTIFICATIONS.DELETE(notificationId)}/restore`,
+    { recipientId: userId },
+    { headers }
+  );
 };

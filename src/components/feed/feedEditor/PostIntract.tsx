@@ -16,6 +16,7 @@ import toast from "react-hot-toast";
 import useGetUserData from "@/src/customHooks/useGetUserData";
 import { Button } from "@/src/components/ui/button";
 import { cn } from "@/lib/utils";
+import LikesModal from "./LikesModal";
 
 // SocialActionButton component
 interface SocialActionButtonProps {
@@ -67,6 +68,7 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
   const [showSendDialog, setShowSendDialog] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [showPostMenu, setShowPostMenu] = useState(false);
+  const [showLikesModal, setShowLikesModal] = useState(false);
 
   const likeMutation = useLikeMutation();
   const copyLinkMutation = useCopyPostLink();
@@ -164,7 +166,14 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
                  {engagement.likesCount > 0 && (
                      <>
                         <ThumbsUp className="w-3 h-3 fill-blue-500 text-blue-500 bg-white rounded-full" />
-                        <span className="hover:text-blue-600 hover:underline cursor-pointer">{engagement.likesCount}</span>
+                        <span 
+                          className="hover:text-blue-600 hover:underline cursor-pointer"
+                          onClick={() => setShowLikesModal(true)}
+                        >
+                          {engagement.isLiked 
+                            ? `You and ${engagement.likesCount - 1} ${engagement.likesCount - 1 === 1 ? 'other' : 'others'}`
+                            : `${engagement.likesCount} ${engagement.likesCount === 1 ? 'Like' : 'Likes'}`}
+                        </span>
                      </>
                  )}
              </div>
@@ -242,6 +251,15 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
           onClose={() => setShowReportDialog(false)}
           targetId={post.id}
           targetType="POST"
+        />
+      )}
+
+      {/* Likes Modal */}
+      {showLikesModal && post.id && (
+        <LikesModal
+          isOpen={showLikesModal}
+          onClose={() => setShowLikesModal(false)}
+          postId={post.id}
         />
       )}
 

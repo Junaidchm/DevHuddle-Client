@@ -67,6 +67,30 @@ export interface Project {
   trendingScore: number;
 }
 
+export interface ProjectComment {
+  id: string;
+  projectId: string;
+  userId: string;
+  content: string;
+  parentCommentId?: string;
+  createdAt: string;
+  updatedAt: string;
+  editedAt?: string;
+  replies?: ProjectComment[];
+  author?: {
+    id: string;
+    name: string;
+    username: string;
+    avatar: string;
+  };
+  user?: {
+    id: string;
+    name: string;
+    username: string;
+    avatar: string;
+  };
+}
+
 export interface ListProjectsResponse {
   projects: Project[];
   nextCursor?: string;
@@ -123,6 +147,7 @@ export const listProjects = async (
     tags?: string[];
     period?: string;
     limit?: number;
+    authorId?: string; // Add authorId
   },
   headers: Record<string, string>
 ): Promise<ListProjectsResponse> => {
@@ -310,23 +335,108 @@ export const trackProjectView = async (
   }
 };
 
-// Media
-export const uploadProjectMedia = async (
-  formData: FormData,
+export interface RegisterProjectMediaData {
+  url: string;
+  type: "IMAGE" | "VIDEO";
+  thumbnailUrl?: string;
+  width?: number;
+  height?: number;
+  fileSize?: number;
+  mimeType?: string;
+  duration?: number;
+}
+
+export const registerProjectMedia = async (
+  data: RegisterProjectMediaData,
   headers: Record<string, string>
-): Promise<{ mediaId: string; url: string; thumbnailUrl?: string }> => {
+): Promise<{ mediaId: string }> => {
   try {
-    const res = await axiosInstance.post(API_ROUTES.PROJECTS.MEDIA_UPLOAD, formData, {
-      headers: {
-        ...headers,
-        "Content-Type": "multipart/form-data",
-      },
+    const res = await axiosInstance.post(API_ROUTES.PROJECTS.MEDIA_UPLOAD, data, {
+      headers,
     });
     return res.data.data;
   } catch (err: any) {
     throw new Error(
-      err.response?.data?.message || "Failed to upload project media"
+      err.response?.data?.message || "Failed to register project media"
     );
   }
 };
 
+// Comments
+export const createProjectComment = async (
+  projectId: string,
+  content: string,
+  headers: Record<string, string>,
+  parentCommentId?: string
+): Promise<ProjectComment> => {
+  try {
+    const res = await axiosInstance.post(
+      API_ROUTES.PROJECTS.CREATE_COMMENT(projectId),
+      { content, parentCommentId },
+      { headers }
+    );
+    return res.data.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.message || "Failed to create comment");
+  }
+};
+
+export const updateProjectComment = async (
+  commentId: string,
+  content: string,
+  headers: Record<string, string>
+): Promise<ProjectComment> => {
+  try {
+    const res = await axiosInstance.put(
+      API_ROUTES.PROJECTS.UPDATE_COMMENT(commentId),
+      { content },
+      { headers }
+    );
+    return res.data.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.message || "Failed to update comment");
+  }
+};
+
+export const deleteProjectComment = async (
+  commentId: string,
+  headers: Record<string, string>
+): Promise<void> => {
+  try {
+    await axiosInstance.delete(API_ROUTES.PROJECTS.DELETE_COMMENT(commentId), {
+      headers,
+    });
+  } catch (err: any) {
+    throw new Error(err.response?.data?.message || "Failed to delete comment");
+  }
+};
+
+export const getProjectComments = async (
+  projectId: string,
+  headers: Record<string, string>
+): Promise<ProjectComment[]> => {
+  try {
+    const res = await axiosInstance.get(
+      API_ROUTES.PROJECTS.GET_COMMENTS(projectId),
+      { headers }
+    );
+    return res.data.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.message || "Failed to get comments");
+  }
+};
+
+export const getProjectReplies = async (
+  commentId: string,
+  headers: Record<string, string>
+): Promise<ProjectComment[]> => {
+  try {
+    const res = await axiosInstance.get(
+      API_ROUTES.PROJECTS.GET_REPLIES(commentId),
+      { headers }
+    );
+    return res.data.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.message || "Failed to get replies");
+  }
+};

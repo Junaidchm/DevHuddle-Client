@@ -3,14 +3,10 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import CoverImage from './CoverImage';
-import UserInfo from './UserInfo';
-import BasicStats from './BasicStats';
 import SocialLinks from './SocialLinks';
 import { UserProfile } from '@/src/types/user.type';
 import React from 'react';
 import ProfileTabs from './ProfileTabs';
-import ActivitySection from './ActivitySection';
-import ProfileAnalytics from './ProfileAnalytics';
 import { format } from 'date-fns';
 import { queryKeys } from '@/src/lib/queryKeys';
 import { useAuthHeaders } from '@/src/customHooks/useAuthHeaders';
@@ -20,6 +16,8 @@ import ExperienceSection from './ExperienceSection';
 import EducationSection from './EducationSection';
 import SkillsSection from './SkillsSection';
 import FollowersSection from './FollowersSection';
+import RecentPosts from './RecentPosts';
+import RecentProjects from './RecentProjects';
 
 import { api } from '@/src/lib/api-client';
 import { API_ROUTES } from '@/src/constants/api.routes';
@@ -27,9 +25,11 @@ import { Card } from '../ui/card';
 import Avatar from './Avatar';
 import { Button } from '../ui/button';
 import { useRouter } from 'next/navigation';
-import { Calendar, MapPin, Pencil } from 'lucide-react';
+import { Calendar, MapPin, Pencil, Loader2 } from 'lucide-react';
+import { Skeleton } from '../ui/skeleton';
 import { PROFILE_DEFAULT_URL } from '@/src/constants';
 import { FollowButton } from '../FollowButton';
+import { useToast } from '../ui/use-toast';
 
 interface ProfileHeaderProps {
   username: string;
@@ -41,6 +41,7 @@ const ProfileHeader = ({ username, initialProfile, currentUserId }: ProfileHeade
   const queryClient = useQueryClient();
   const authHeaders = useAuthHeaders();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const { mutate: uploadCover, isPending: isUploading } = useMutation({
     mutationFn: async (file: File) => {
@@ -66,9 +67,13 @@ const ProfileHeader = ({ username, initialProfile, currentUserId }: ProfileHeade
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.profiles.detail(username) });
     },
-    onError: (error) => {
+    onError: (error: any) => {
         console.error("Cover upload failed", error);
-        alert("Failed to update cover photo");
+        toast({
+          title: "Failed to update cover photo",
+          description: error.message || "Please try again later.",
+          variant: "destructive",
+        });
     }
   });
 
@@ -76,7 +81,11 @@ const ProfileHeader = ({ username, initialProfile, currentUserId }: ProfileHeade
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert("File size must be less than 5MB");
+        toast({
+          title: "File too large",
+          description: "Cover image must be less than 5MB",
+          variant: "destructive",
+        });
         return;
       }
       uploadCover(file);
@@ -100,23 +109,33 @@ const ProfileHeader = ({ username, initialProfile, currentUserId }: ProfileHeade
   const isOwnProfile = currentUserId === profile.id;
   const joinedDate = profile.createdAt ? format(new Date(profile.createdAt), 'MMM yyyy') : 'Unknown';
 
-  const [activeTab, setActiveTab] = React.useState('network');
+  const [activeTab, setActiveTab] = React.useState('posts');
   const router = useRouter();
 
   return (
     <div className="max-w-[1128px] mx-auto px-0 md:px-0 py-4 grid grid-cols-1 lg:grid-cols-4 gap-6">
-      
+
       {/* Left Sidebar (Main Profile Card) - Spans 3 columns on large screens */}
+      {/* ... (omitted for brevity, no changes here) */}
       <div className="lg:col-span-3 space-y-4">
-        
+
         {/* Profile Card */}
         <Card className="rounded-lg shadow-sm border border-border overflow-hidden relative">
+            {/* Same content as before */}
             <div className="relative h-[201px] w-full bg-[#A0B4B7]">
                 <CoverImage 
                     src={profile.coverImage} 
-                    editable={isOwnProfile} 
+                    editable={isOwnProfile && !isUploading} 
                     onEdit={() => fileInputRef.current?.click()}
                 />
+                {isUploading && (
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10 transition-opacity">
+                        <div className="flex flex-col items-center gap-2">
+                             <Loader2 className="w-8 h-8 text-white animate-spin" />
+                             <span className="text-white text-sm font-medium">Updating cover...</span>
+                        </div>
+                    </div>
+                )}
                 <input 
                     type="file" 
                     ref={fileInputRef} 
@@ -129,11 +148,11 @@ const ProfileHeader = ({ username, initialProfile, currentUserId }: ProfileHeade
             <div className="px-6 pb-6 relative">
                  {/* Avatar overlapping cover */}
                  <div className="absolute -top-[100px] left-6">
-                    <div className="rounded-full p-1 bg-white">
+                    <div className="rounded-full p-0.5 bg-background">
                          <Avatar 
                              src={profile.profilePicture || PROFILE_DEFAULT_URL} 
                              alt={profile.name} 
-                             className="w-[152px] h-[152px] border-4 border-white shadow-none"
+                             className="w-[152px] h-[152px] border-4 border-background shadow-md"
                          />
                     </div>
                 </div>
@@ -149,8 +168,9 @@ const ProfileHeader = ({ username, initialProfile, currentUserId }: ProfileHeade
                                 variant="outline" 
                                 className="rounded-full text-primary border-primary hover:bg-primary/10 hover:border-primary-hover hover:text-primary-hover font-semibold"
                                 onClick={() => router.push(`/profile/update/${profile.username}`)}
+                                disabled={isUploading}
                             >
-                                <Pencil className="w-4 h-4 mr-2" />
+                                {isUploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Pencil className="w-4 h-4 mr-2" />}
                                 Edit profile
                             </Button>
                         </div>
@@ -185,7 +205,8 @@ const ProfileHeader = ({ username, initialProfile, currentUserId }: ProfileHeade
                 </div>
                 
                 {/* Nav Tabs */}
-                <div className="mt-4 border-t border-border pt-1">
+                {/* <div className="mt-4 border-t border-border pt-1"> */}
+                <div className="mt-4 pt-1">
                     <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
                 </div>
             </div>
@@ -196,15 +217,15 @@ const ProfileHeader = ({ username, initialProfile, currentUserId }: ProfileHeade
             {activeTab === 'posts' && (
                 <div className="space-y-4">
                     <h3 className="text-xl font-bold text-foreground px-1">Activity</h3>
-                    <ActivitySection type="posts" userId={profile.id} currentUserId={currentUserId} />
+                    <RecentPosts userId={profile.id} username={profile.username} isOwnProfile={isOwnProfile} />
                 </div>
             )}
 
-            {activeTab === 'comments' && (
-                <Card className="rounded-lg shadow-sm border border-border p-6">
-                    <h3 className="text-xl font-bold text-foreground mb-4">Comments</h3>
-                    <ActivitySection type="comments" userId={profile.id} currentUserId={currentUserId} />
-                </Card>
+            {activeTab === 'projects' && (
+                <div className="space-y-4">
+                    <h3 className="text-xl font-bold text-foreground px-1">Projects</h3>
+                    <RecentProjects userId={profile.id} username={profile.username} isOwnProfile={isOwnProfile} />
+                </div>
             )}
 
             {activeTab === 'network' && (

@@ -7,8 +7,8 @@ interface ProfileTabsProps {
 
 const ProfileTabs = ({ activeTab, onTabChange }: ProfileTabsProps) => {
   const tabs = [
-    // { id: 'posts', label: 'Posts' },
-    // { id: 'comments', label: 'Comments' },
+    { id: 'posts', label: 'Posts' },
+    { id: 'projects', label: 'Projects' },
     { id: 'network', label: 'Network' },
   ];
 

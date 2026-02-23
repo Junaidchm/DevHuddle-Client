@@ -189,7 +189,15 @@ export function useCreateConversation(onConversationCreated?: (conversation: Con
         );
       }
 
-      // Production approach: Trust the backend data, no need to refetch
+      // Force a full refetch to guarantee the conversation appears in the correct sorted position
+      // across hard refreshes. The backend sorts by lastMessageAt, which we just updated.
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.chat.conversations.list(),
+      });
+      queryClient.refetchQueries({
+        queryKey: queryKeys.chat.conversations.list(),
+        type: 'active',
+      });
 
       // Show appropriate toast
       if (isNew) {

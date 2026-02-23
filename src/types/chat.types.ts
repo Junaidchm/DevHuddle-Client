@@ -20,7 +20,7 @@ export interface Participant {
   role?: 'ADMIN' | 'MEMBER';
 }
 
-export type MessageType = 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO' | 'FILE' | 'STICKER' | 'CHAT_IMAGE' | 'CHAT_VIDEO' | 'CHAT_AUDIO' | 'CHAT_FILE';
+export type MessageType = 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO' | 'FILE' | 'STICKER' | 'SYSTEM' | 'CHAT_IMAGE' | 'CHAT_VIDEO' | 'CHAT_AUDIO' | 'CHAT_FILE';
 
 export interface Message {
   id: string;
@@ -60,6 +60,10 @@ export interface Message {
 
   // Reactions
   reactions?: MessageReaction[];
+
+  // Deletion
+  deletedForAll?: boolean;
+  deletedFor?: string[];
 }
 
 export interface MessageReaction {
@@ -103,6 +107,11 @@ export interface ConversationWithMetadata {
   // Group permissions
     onlyAdminsCanPost?: boolean;
     onlyAdminsCanEditInfo?: boolean;
+    memberCount?: number;
+
+  // Block states
+  isBlockedByMe?: boolean;
+  isBlockedByThem?: boolean;
 
   // Hubs feature
   topics?: string[];
@@ -117,6 +126,7 @@ export interface ConversationWithMetadata {
   } | null;
   lastMessageAt: string;
   unreadCount: number;
+  createdAt: string;
 }
 
 /**
@@ -138,7 +148,12 @@ export type WebSocketMessageType =
   | 'heartbeat'
   | 'heartbeat_ack'
   | 'ping' 
-  | 'pong' 
+  | 'pong'
+  | 'message_pinned'
+  | 'message_unpinned' 
+  | 'reaction_added'
+  | 'reaction_removed'
+  | 'message_deleted'
   // Notification types
   | 'new_notification'
   | 'unread_count'
@@ -154,7 +169,19 @@ export type WebSocketMessageType =
   | 'call:participant_left'
   | 'call:ended'
   | 'call:participants'
-  | 'call:media_toggled';
+  | 'call:media_toggled'
+  | 'call:media_toggled'
+  | 'presence_change'
+  | 'USER_BLOCKED'
+  | 'USER_UNBLOCKED'
+  // Group Types
+  | 'group_created'
+  | 'group_updated'
+  | 'participants_added'
+  | 'participant_joined'
+  | 'participant_removed'
+  | 'participant_left'
+  | 'role_updated';
 
 export interface WebSocketMessage<T = unknown> {
   type: WebSocketMessageType;
@@ -173,10 +200,15 @@ export interface WebSocketMessage<T = unknown> {
   // Call specific fields
   isVideoCall?: boolean;
   targetUserId?: string;
+  targetUserIds?: string[]; // For selective ringing in group calls
+  callId?: string; // DB Call ID
   signalType?: 'offer' | 'answer' | 'ice-candidate';
   signalData?: unknown;
   mediaType?: 'audio' | 'video' | 'screen';
   isEnabled?: boolean;
+  callScope?: 'ONE_TO_ONE' | 'GROUP';
+  groupName?: string;
+  groupAvatar?: string | null;
 }
 
 /**
@@ -189,29 +221,9 @@ export interface ConversationParticipant {
   name: string;
   profilePhoto: string | null;
   role?: 'ADMIN' | 'MEMBER';
-}
-
-// Enriched conversation with metadata
-export interface ConversationWithMetadata {
-  conversationId: string;
-  type: 'DIRECT' | 'GROUP';
-  name?: string;
-  icon?: string;
-  description?: string;
-  ownerId?: string;
-  // Group permissions
-    onlyAdminsCanPost?: boolean;
-    onlyAdminsCanEditInfo?: boolean;
-  participantIds: string[];
-  participants: ConversationParticipant[];
-  lastMessage: {
-    content: string;
-    senderId: string;
-    senderName: string;
-    createdAt: string;
-  } | null;
-  lastMessageAt: string;
-  unreadCount: number;
+  bio?: string;
+  isOnline?: boolean;
+  lastSeen?: string;
 }
 
 // Check conversation response
@@ -254,4 +266,16 @@ export interface GetConversationsResponse {
     offset: number;
     count: number;
   };
+}
+
+// Lightweight DTO for Hubs discovery
+export interface GroupListDto {
+  conversationId: string;
+  name: string | null;
+  description: string | null;
+  icon: string | null;
+  memberCount: number;
+  topics: string[];
+  isMember: boolean;
+  createdAt: Date;
 }

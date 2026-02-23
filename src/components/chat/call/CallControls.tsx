@@ -31,7 +31,6 @@ export const CallControls = () => {
     leaveCall,
     toggleAudio,
     toggleVideo,
-    toggleScreenShare,
     localStream,
   } = useVideoCall();
 
@@ -46,7 +45,7 @@ export const CallControls = () => {
   // TODO: Add isScreenSharing boolean to context for better tracking
 
   return (
-    <div className="flex items-center gap-4 bg-black/60 backdrop-blur-xl px-8 py-4 rounded-full border border-white/10 shadow-2xl animate-in slide-in-from-bottom-10 fade-in duration-500">
+    <div className="flex items-center gap-4 bg-black/40 backdrop-blur-2xl px-6 py-3 rounded-3xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] animate-in slide-in-from-bottom-10 fade-in duration-700">
       <TooltipProvider delayDuration={100}>
         
         {/* Toggle Audio */}
@@ -57,9 +56,9 @@ export const CallControls = () => {
               variant="ghost"
               size="icon"
               className={cn(
-                "w-12 h-12 rounded-full transition-all duration-200",
+                "w-12 h-12 rounded-full transition-all duration-300",
                 !isAudioEnabled 
-                  ? "bg-red-500/90 text-white hover:bg-red-600 hover:text-white" 
+                  ? "bg-red-500 text-white hover:bg-red-600 shadow-[0_0_15px_rgba(239,68,68,0.4)]" 
                   : "bg-white/10 text-white hover:bg-white/20"
               )}
             >
@@ -70,8 +69,8 @@ export const CallControls = () => {
               )}
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top">
-            <p>{isAudioEnabled ? 'Mute Microphone' : 'Unmute Microphone'}</p>
+          <TooltipContent side="top" className="bg-black/80 border-white/10 text-white">
+            <p>{isAudioEnabled ? 'Mute' : 'Unmute'}</p>
           </TooltipContent>
         </Tooltip>
 
@@ -83,9 +82,9 @@ export const CallControls = () => {
               variant="ghost"
               size="icon"
               className={cn(
-                "w-12 h-12 rounded-full transition-all duration-200",
+                "w-12 h-12 rounded-full transition-all duration-300",
                 !isVideoEnabled 
-                  ? "bg-red-500/90 text-white hover:bg-red-600 hover:text-white" 
+                  ? "bg-red-500 text-white hover:bg-red-600 shadow-[0_0_15px_rgba(239,68,68,0.4)]" 
                   : "bg-white/10 text-white hover:bg-white/20"
               )}
             >
@@ -96,29 +95,12 @@ export const CallControls = () => {
               )}
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top">
-            <p>{isVideoEnabled ? 'Turn Off Camera' : 'Turn On Camera'}</p>
+          <TooltipContent side="top" className="bg-black/80 border-white/10 text-white">
+            <p>{isVideoEnabled ? 'Stop Video' : 'Start Video'}</p>
           </TooltipContent>
         </Tooltip>
 
-        {/* Screen Share */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              onClick={toggleScreenShare}
-              variant="ghost"
-              size="icon"
-              className="w-12 h-12 rounded-full bg-white/10 text-white hover:bg-white/20 transition-all duration-200"
-            >
-              <MonitorUp className="w-5 h-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top">
-            <p>Share Screen</p>
-          </TooltipContent>
-        </Tooltip>
-
-        <div className="w-px h-8 bg-white/10 mx-2" />
+        <div className="w-px h-6 bg-white/10 mx-1" />
 
         {/* End Call */}
         <Tooltip>
@@ -127,12 +109,12 @@ export const CallControls = () => {
               onClick={leaveCall}
               variant="destructive"
               size="icon"
-              className="w-14 h-14 rounded-full shadow-lg bg-red-600 hover:bg-red-700 text-white transition-transform hover:scale-105"
+              className="w-14 h-14 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.4)] bg-red-600 hover:bg-red-700 text-white transition-all hover:scale-110 active:scale-95"
             >
-              <PhoneOff className="w-6 h-6" />
+              <PhoneOff className="w-7 h-7" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top">
+          <TooltipContent side="top" className="bg-black/80 border-white/10 text-white">
             <p>End Call</p>
           </TooltipContent>
         </Tooltip>

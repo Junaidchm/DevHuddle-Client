@@ -62,10 +62,6 @@ export function useMessages(conversationId: string | null) {
 
   return {
     ...queryResult,
-    data: messages.reverse(), // Chat usually displays oldest at top (stored reversed in backend?) or handling in UI
-    // If backend returns newest first (standard for chat APIs), we might need to reverse for display if UI stacks bottom-up. 
-    // Usually ChatWindow expects chronological order (Old -> New). 
-    // Assuming backend returns Newest -> Oldest for pagination efficiency. 
-    // If so, reverse here.
+    data: messages,
   };
 }

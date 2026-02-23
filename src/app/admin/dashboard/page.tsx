@@ -1,7 +1,6 @@
-"use client"
+"use client";
 
 import React from "react";
-import { SettingsTab } from "../../(app)/profile/update/[username]/components";
 import { useAdminRedirectIfNotAuthenticated } from "@/src/customHooks/useAdminAuthenticated";
 import { useQuery } from "@tanstack/react-query";
 import { getDashboardStats } from "@/src/services/api/admin-panel.service";
@@ -9,369 +8,358 @@ import { useSession } from "next-auth/react";
 import { useApiClient } from "@/src/lib/api-client";
 import Link from "next/link";
 
+// ─── Stat Card ────────────────────────────────────────────────────────────────
+
+function StatCard({
+  title,
+  value,
+  sub,
+  icon,
+  iconColor,
+  href,
+  isLoading,
+  highlight,
+}: {
+  title: string;
+  value: string | number;
+  sub?: string;
+  icon: string;
+  iconColor: string;
+  href?: string;
+  isLoading: boolean;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={`bg-white rounded-2xl p-6 shadow-sm flex flex-col border transition-all duration-200 hover:-translate-y-0.5 hover:shadow ${
+        highlight ? "border-red-200" : "border-transparent"
+      }`}
+    >
+      <div className="flex justify-between items-start mb-4">
+        <p className="font-medium text-sm text-gray-500">{title}</p>
+        <span className={`text-xl ${iconColor} opacity-75`}>
+          <i className={icon}></i>
+        </span>
+      </div>
+      <p className="text-4xl font-bold text-gray-900 mb-1">
+        {isLoading ? (
+          <span className="inline-block w-16 h-8 bg-gray-100 rounded animate-pulse"></span>
+        ) : (
+          value
+        )}
+      </p>
+      {sub && (
+        <p
+          className={`text-xs mb-4 ${
+            highlight ? "text-red-500" : "text-gray-400"
+          }`}
+        >
+          {sub}
+        </p>
+      )}
+      {href && (
+        <Link
+          href={href}
+          className="mt-auto flex items-center justify-end gap-1.5 text-indigo-600 font-medium text-xs pt-4 border-t border-gray-100 hover:text-indigo-700"
+        >
+          View Details <i className="fas fa-arrow-right text-[10px]"></i>
+        </Link>
+      )}
+    </div>
+  );
+}
+
+// ─── Quick Action ─────────────────────────────────────────────────────────────
+
+function QuickAction({
+  href,
+  icon,
+  label,
+  variant,
+}: {
+  href: string;
+  icon: string;
+  label: string;
+  variant: "primary" | "secondary" | "warning" | "neutral";
+}) {
+  const styles = {
+    primary: "bg-indigo-600 hover:bg-indigo-700 text-white border-transparent",
+    secondary: "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-100",
+    warning: "bg-red-50 hover:bg-red-100 text-red-700 border-red-100",
+    neutral: "bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-100",
+  };
+
+  return (
+    <Link
+      href={href}
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 border ${styles[variant]}`}
+    >
+      <i className={`${icon} w-4 text-center`}></i>
+      <span>{label}</span>
+    </Link>
+  );
+}
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
 
 const AdminDashboard: React.FC = () => {
   const { isChecking } = useAdminRedirectIfNotAuthenticated("/admin/signIn");
   const { data: session, status } = useSession();
   const apiClient = useApiClient({ requireAuth: true });
-  
-  // ✅ FIXED: Stable query key using userId/role instead of token
+
   const userId = session?.user?.id;
   const userRole = session?.user?.role;
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-dashboard-stats", userId, userRole],
-    queryFn: () => getDashboardStats(apiClient.getHeaders()),
-    refetchInterval: 30000, // Refetch every 30 seconds
-    enabled: status !== "loading" && !!userId && userRole === "superAdmin" && apiClient.isReady,
+    queryFn: () =>
+      getDashboardStats(apiClient.getHeaders() as Record<string, string>),
+    refetchInterval: 60_000,
+    enabled:
+      status !== "loading" &&
+      !!userId &&
+      userRole === "superAdmin" &&
+      apiClient.isReady,
   });
 
-  // Default stats structure for loading/error states
   const stats = data?.data || {
-    users: { total: 0, active: 0, blocked: 0, newToday: 0, newThisWeek: 0, newThisMonth: 0 },
-    posts: { total: 0, reported: 0, hidden: 0, deleted: 0, createdToday: 0, createdThisWeek: 0, createdThisMonth: 0 },
-    comments: { total: 0, reported: 0, deleted: 0, createdToday: 0 },
-    reports: { total: 0, pending: 0, open: 0, investigating: 0, resolved: 0, critical: 0, high: 0, createdToday: 0, createdThisWeek: 0 },
-    engagement: { totalLikes: 0, totalComments: 0, totalShares: 0 },
+    users: { total: 0, active: 0, blocked: 0, newThisMonth: 0 },
+    posts: { total: 0 },
+    projects: { total: 0 },
+    hubs: { total: 0 },
+    comments: { total: 0 },
+    reports: { total: 0, pending: 0, investigating: 0, critical: 0 },
   };
 
-  // Show error state if query fails
   if (error && !isLoading) {
     return (
       <div className="p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <i className="fas fa-exclamation-circle text-red-600"></i>
-            <p className="text-red-800 font-medium">Error loading dashboard</p>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+          <i className="fas fa-exclamation-circle text-red-500 mt-0.5"></i>
+          <div>
+            <p className="text-red-800 font-medium text-sm">
+              Failed to load dashboard
+            </p>
+            <p className="text-red-600 text-xs mt-1">
+              {(error as any)?.response?.data?.message ||
+                "Could not fetch statistics from server."}
+            </p>
           </div>
-          <p className="text-red-700 text-sm">
-            {(error as any)?.response?.data?.message || "Failed to load dashboard statistics"}
-          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <>
-       <div className="p-6 flex flex-col gap-6">
-          {/* System alerts card */}
-          <div className="bg-white rounded-2xl shadow p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">
-                System Status
-              </h2>
-              <button className="text-indigo-600 font-medium text-sm flex items-center gap-2">
-                View All <i className="fas fa-arrow-right"></i>
-              </button>
-            </div>
-            <div className="flex gap-4 max-md:flex-col">
-              <div className="flex-1 bg-gray-100 rounded-xl p-4 flex items-center gap-3 transition-transform duration-300 hover:-translate-y-0.5">
-                <div className="w-[42px] h-[42px] rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl">
-                  <i className="fas fa-check-circle"></i>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-[0.95rem] mb-1">
-                    System Health
-                  </h3>
-                  <p className="text-gray-500 text-sm">
-                    All systems operational
-                  </p>
-                </div>
-                <span className="text-gray-400 text-xs whitespace-nowrap">
-                  Just now
-                </span>
-              </div>
-              <div className="flex-1 bg-gray-100 rounded-xl p-4 flex items-center gap-3 transition-transform duration-300 hover:-translate-y-0.5">
-                <div className="w-[42px] h-[42px] rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl">
-                  <i className="fas fa-exclamation-triangle"></i>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-[0.95rem] mb-1">
-                    Flagged Content
-                  </h3>
-                  <p className="text-gray-500 text-sm">{stats.reports.pending} items need review</p>
-                </div>
-                <span className="text-gray-400 text-xs whitespace-nowrap">
-                  2 hours ago
-                </span>
-              </div>
-              <div className="flex-1 bg-gray-100 rounded-xl p-4 flex items-center gap-3 transition-transform duration-300 hover:-translate-y-0.5">
-                <div className="w-[42px] h-[42px] rounded-full bg-red-500/10 text-red-500 flex items-center justify-center text-xl">
-                  <i className="fas fa-times-circle"></i>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-[0.95rem] mb-1">
-                    Failed Logins
-                  </h3>
-                  <p className="text-gray-500 text-sm">
-                    3 suspicious login attempts
-                  </p>
-                </div>
-                <span className="text-gray-400 text-xs whitespace-nowrap">
-                  Yesterday
-                </span>
-              </div>
-            </div>
+    <div className="p-6 flex flex-col gap-6">
+      {/* Page Title */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-sm text-gray-400 mt-1">
+          Moderation overview — real-time platform statistics
+        </p>
+      </div>
+
+      {/* Pending Reports Alert */}
+      {!isLoading && stats.reports.pending > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+            <i className="fas fa-flag text-sm"></i>
           </div>
-
-          {/* Dashboard layout */}
-          <div className="flex gap-6 max-xl:flex-col">
-            <div className="grid grid-cols-3 gap-6 flex-1 max-lg:grid-cols-2 max-md:grid-cols-1">
-              {/* Total Users Card */}
-              <div className="bg-white rounded-2xl p-6 shadow relative overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-base text-gray-500">
-                    Total Users
-                  </h3>
-                  <i className="fas fa-users text-xl text-indigo-600 opacity-80"></i>
-                </div>
-                <div className="text-4xl font-bold mb-2 text-gray-900">
-                  {isLoading ? "..." : stats.users.total.toLocaleString()}
-                </div>
-                <div className="flex items-center gap-2 text-sm text-emerald-500 mb-4">
-                  <i className="fas fa-arrow-up"></i>
-                  <span>{stats.users.newThisMonth} new this month</span>
-                </div>
-                <canvas
-                  className="absolute bottom-0 left-0 w-full h-[50px] opacity-20 transition-opacity duration-300 hover:opacity-50"
-                  id="users-sparkline"
-                ></canvas>
-                <Link
-                  href="/admin/users"
-                  className="mt-auto flex items-center justify-end gap-2 text-indigo-600 font-medium text-sm pt-4 border-t border-gray-200 hover:text-indigo-700"
-                >
-                  <span>View Details</span>
-                  <i className="fas fa-arrow-right"></i>
-                </Link>
-              </div>
-
-              {/* Hubs Card */}
-              <div className="bg-white rounded-2xl p-6 shadow relative overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-base text-gray-500">
-                    Domain Hubs
-                  </h3>
-                  <i className="fas fa-layer-group text-xl text-indigo-600 opacity-80"></i>
-                </div>
-                <div className="text-4xl font-bold mb-2 text-gray-900">
-                  {isLoading ? "..." : stats.posts.total.toLocaleString()}
-                </div>
-                <div className="flex items-center gap-2 text-sm text-emerald-500 mb-4">
-                  <i className="fas fa-arrow-up"></i>
-                  <span>{stats.posts.createdThisMonth} created this month</span>
-                </div>
-                <Link
-                  href="/admin/posts"
-                  className="mt-auto flex items-center justify-end gap-2 text-indigo-600 font-medium text-sm pt-4 border-t border-gray-200"
-                >
-                  <span>View Details</span>
-                  <i className="fas fa-arrow-right"></i>
-                </Link>
-              </div>
-
-              {/* Comments Card */}
-              <div className="bg-white rounded-2xl p-6 shadow relative overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-base text-gray-500">
-                    Total Comments
-                  </h3>
-                  <i className="fas fa-comments text-xl text-indigo-600 opacity-80"></i>
-                </div>
-                <div className="text-4xl font-bold mb-2 text-gray-900">
-                  {isLoading ? "..." : stats.comments.total.toLocaleString()}
-                </div>
-                <div className="flex items-center gap-2 text-sm text-emerald-500 mb-4">
-                  <i className="fas fa-arrow-up"></i>
-                  <span>{stats.comments.createdToday} created today</span>
-                </div>
-                <Link
-                  href="/admin/comments"
-                  className="mt-auto flex items-center justify-end gap-2 text-indigo-600 font-medium text-sm pt-4 border-t border-gray-200"
-                >
-                  <span>View Details</span>
-                  <i className="fas fa-arrow-right"></i>
-                </Link>
-              </div>
-
-              {/* Engagement Card */}
-              <div className="bg-white rounded-2xl p-6 shadow relative overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-base text-gray-500">
-                    Total Engagement
-                  </h3>
-                  <i className="fas fa-heart text-xl text-indigo-600 opacity-80"></i>
-                </div>
-                <div className="text-4xl font-bold mb-2 text-gray-900">
-                  {isLoading ? "..." : stats.engagement.totalLikes.toLocaleString()}
-                </div>
-                <div className="flex items-center gap-2 text-sm text-emerald-500 mb-4">
-                  <i className="fas fa-arrow-up"></i>
-                  <span>{stats.engagement.totalShares} shares</span>
-                </div>
-              </div>
-
-              {/* Reports Card */}
-              <div className="bg-white rounded-2xl p-6 shadow relative overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-base text-gray-500">
-                    Pending Reports
-                  </h3>
-                  <i className="fas fa-flag text-xl text-indigo-600 opacity-80"></i>
-                </div>
-                <div className="text-4xl font-bold mb-2 text-gray-900">
-                  {isLoading ? "..." : stats.reports.pending}
-                </div>
-                <div className="flex items-center gap-2 text-sm text-red-500 mb-4">
-                  <i className="fas fa-arrow-up"></i>
-                  <span>{stats.reports.critical} critical</span>
-                </div>
-                <Link
-                  href="/admin/reports"
-                  className="mt-auto flex items-center justify-end gap-2 text-indigo-600 font-medium text-sm pt-4 border-t border-gray-200"
-                >
-                  <span>View Details</span>
-                  <i className="fas fa-arrow-right"></i>
-                </Link>
-              </div>
-            </div>
-
-            {/* Quick actions panel */}
-            <div className="w-[280px] bg-white rounded-2xl p-6 shadow max-xl:w-full">
-              <h3 className="text-lg font-semibold mb-6 text-gray-900">
-                Quick Actions
-              </h3>
-              <div className="flex flex-col gap-3 max-xl:grid max-xl:grid-cols-3 max-md:grid-cols-2 max-sm:grid-cols-1">
-                <a
-                  href="#"
-                  className="flex items-center gap-3 p-4 rounded-xl font-medium transition-all duration-300 border border-gray-200 text-white bg-indigo-600 hover:bg-indigo-700"
-                >
-                  <i className="fas fa-plus w-5 text-center"></i>
-                  <span>Create Hub</span>
-                </a>
-                <a
-                  href="#"
-                  className="flex items-center gap-3 p-4 rounded-xl font-medium transition-all duration-300 border border-blue-600 text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  <i className="fas fa-calendar-plus w-5 text-center"></i>
-                  <span>Create Event</span>
-                </a>
-                <Link
-                  href="/admin/reports"
-                  className="flex items-center gap-3 p-4 rounded-xl font-medium transition-all duration-300 border border-red-500 text-white bg-red-500 hover:bg-red-600"
-                >
-                  <i className="fas fa-flag w-5 text-center"></i>
-                  <span>Review Flags</span>
-                </Link>
-                <a
-                  href="#"
-                  className="flex items-center gap-3 p-4 rounded-xl font-medium transition-all duration-300 border border-gray-200 text-gray-900 hover:translate-x-1"
-                >
-                  <i className="fas fa-cog w-5 text-center"></i>
-                  <span>Settings</span>
-                </a>
-                <a
-                  href="#"
-                  className="flex items-center gap-3 p-4 rounded-xl font-medium transition-all duration-300 border border-gray-200 text-gray-900 hover:translate-x-1"
-                >
-                  <i className="fas fa-bell w-5 text-center"></i>
-                  <span>Notifications</span>
-                </a>
-                <a
-                  href="#"
-                  className="flex items-center gap-3 p-4 rounded-xl font-medium transition-all duration-300 border border-gray-200 text-gray-900 hover:translate-x-1"
-                >
-                  <i className="fas fa-user-plus w-5 text-center"></i>
-                  <span>Add Admin</span>
-                </a>
-              </div>
-            </div>
+          <div className="flex-1">
+            <p className="text-amber-800 font-medium text-sm">
+              {stats.reports.pending} report
+              {stats.reports.pending !== 1 ? "s" : ""} need review
+            </p>
+            {stats.reports.critical > 0 && (
+              <p className="text-amber-600 text-xs">
+                {stats.reports.critical} marked critical
+              </p>
+            )}
           </div>
+          <Link
+            href="/admin/reports"
+            className="text-amber-700 font-semibold text-sm hover:text-amber-900 whitespace-nowrap"
+          >
+            Review →
+          </Link>
+        </div>
+      )}
 
-          {/* Recent activity section */}
-          <div className="bg-white rounded-2xl p-6 shadow">
-            <h2 className="text-lg font-semibold mb-6 text-gray-900">
-              Recent Activity
-            </h2>
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-4 p-4 rounded-xl bg-gray-100 transition-transform duration-300 hover:-translate-y-0.5">
-                <div className="w-[42px] h-[42px] rounded-full bg-indigo-600/10 text-indigo-600 flex items-center justify-center text-xl">
-                  <i className="fas fa-user-plus"></i>
-                </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-[0.95rem] mb-1">
-                    New User Registration
-                  </div>
-                  <div className="text-gray-500 text-sm mb-2">
-                    Jane Cooper registered an account
-                  </div>
-                  <div className="text-gray-400 text-xs">5 minutes ago</div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 bg-white transition-all duration-300 hover:bg-indigo-600 hover:text-white"
-                    aria-label="View user"
-                  >
-                    <i className="fas fa-eye"></i>
-                  </button>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 p-4 rounded-xl bg-gray-100 transition-transform duration-300 hover:-translate-y-0.5">
-                <div className="w-[42px] h-[42px] rounded-full bg-indigo-600/10 text-indigo-600 flex items-center justify-center text-xl">
-                  <i className="fas fa-lightbulb"></i>
-                </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-[0.95rem] mb-1">
-                    New Idea Submitted
-                  </div>
-                  <div className="text-gray-500 text-sm mb-2">
-                    Michael Scott submitted "AI-powered code review tool"
-                  </div>
-                  <div className="text-gray-400 text-xs">1 hour ago</div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 bg-white transition-all duration-300 hover:bg-indigo-600 hover:text-white"
-                    aria-label="View idea"
-                  >
-                    <i className="fas fa-eye"></i>
-                  </button>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 p-4 rounded-xl bg-gray-100 transition-transform duration-300 hover:-translate-y-0.5">
-                <div className="w-[42px] h-[42px] rounded-full bg-indigo-600/10 text-indigo-600 flex items-center justify-center text-xl">
-                  <i className="fas fa-flag"></i>
-                </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-[0.95rem] mb-1">
-                    Content Flagged
-                  </div>
-                  <div className="text-gray-500 text-sm mb-2">
-                    A post in "React Hub" was flagged for review
-                  </div>
-                  <div className="text-gray-400 text-xs">2 hours ago</div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 bg-white transition-all duration-300 hover:bg-indigo-600 hover:text-white"
-                    aria-label="View flagged content"
-                  >
-                    <i className="fas fa-eye"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-            <a
-              href="#"
-              className="mt-6 inline-block text-indigo-600 font-medium text-sm"
-            >
-              View All Activity
-            </a>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 gap-5 lg:grid-cols-3 xl:grid-cols-6">
+        <StatCard
+          title="Total Users"
+          value={stats.users.total.toLocaleString()}
+          sub={`${stats.users.newThisMonth || 0} joined this month`}
+          icon="fas fa-users"
+          iconColor="text-indigo-600"
+          href="/admin/users"
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Total Posts"
+          value={stats.posts.total.toLocaleString()}
+          icon="fas fa-file-alt"
+          iconColor="text-blue-500"
+          href="/admin/posts"
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Total Projects"
+          value={(stats.projects?.total || 0).toLocaleString()}
+          icon="fas fa-project-diagram"
+          iconColor="text-teal-500"
+          href="/admin/projects"
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Domain Hubs"
+          value={(stats.hubs?.total || 0).toLocaleString()}
+          icon="fas fa-layer-group"
+          iconColor="text-purple-500"
+          href="/admin/hubs"
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Pending Reports"
+          value={stats.reports.pending}
+          sub={stats.reports.critical > 0 ? `${stats.reports.critical} critical` : undefined}
+          icon="fas fa-flag"
+          iconColor="text-red-500"
+          href="/admin/reports"
+          isLoading={isLoading}
+          highlight={stats.reports.pending > 0}
+        />
+        <StatCard
+          title="Under Review"
+          value={stats.reports.investigating || 0}
+          sub="Reports being processed"
+          icon="fas fa-search"
+          iconColor="text-amber-500"
+          href="/admin/reports"
+          isLoading={isLoading}
+        />
+      </div>
+
+      {/* Secondary Grid */}
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        {/* Quick Actions */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-transparent">
+          <h2 className="text-base font-semibold text-gray-900 mb-4">
+            Quick Actions
+          </h2>
+          <div className="flex flex-col gap-2">
+            <QuickAction
+              href="/admin/reports"
+              icon="fas fa-flag"
+              label="Review Pending Reports"
+              variant="primary"
+            />
+            <QuickAction
+              href="/admin/users"
+              icon="fas fa-users"
+              label="Manage Users"
+              variant="secondary"
+            />
+            <QuickAction
+              href="/admin/posts"
+              icon="fas fa-file-alt"
+              label="Moderate Posts"
+              variant="secondary"
+            />
+            <QuickAction
+              href="/admin/audit-logs"
+              icon="fas fa-history"
+              label="View Audit Logs"
+              variant="neutral"
+            />
           </div>
         </div>
 
-      
-    </>
+        {/* Report Summary */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-transparent">
+          <h2 className="text-base font-semibold text-gray-900 mb-4">
+            Report Summary
+          </h2>
+          <div className="space-y-3">
+            {[
+              {
+                label: "Pending",
+                value: stats.reports.pending,
+                color: "bg-amber-500",
+                total: stats.reports.total,
+              },
+              {
+                label: "Under Review",
+                value: stats.reports.investigating || 0,
+                color: "bg-blue-500",
+                total: stats.reports.total,
+              },
+              {
+                label: "Resolved",
+                value: stats.reports.resolved || 0,
+                color: "bg-green-500",
+                total: stats.reports.total,
+              },
+            ].map(({ label, value, color, total }) => (
+              <div key={label}>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-600">{label}</span>
+                  <span className="font-medium text-gray-900">{value}</span>
+                </div>
+                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full ${color} rounded-full transition-all`}
+                    style={{
+                      width:
+                        total > 0
+                          ? `${Math.round((value / total) * 100)}%`
+                          : "0%",
+                    }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+            <div className="pt-2 border-t border-gray-100">
+              <Link
+                href="/admin/reports"
+                className="text-indigo-600 text-sm font-medium hover:text-indigo-700"
+              >
+                View all reports →
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* User Stats */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-transparent">
+        <h2 className="text-base font-semibold text-gray-900 mb-4">
+          User Overview
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: "Total", value: stats.users.total, icon: "fas fa-user", color: "text-indigo-600 bg-indigo-50" },
+            { label: "Active", value: stats.users.active || 0, icon: "fas fa-user-check", color: "text-green-600 bg-green-50" },
+            { label: "Blocked", value: stats.users.blocked || 0, icon: "fas fa-user-slash", color: "text-red-600 bg-red-50" },
+            { label: "New (30d)", value: stats.users.newThisMonth || 0, icon: "fas fa-user-plus", color: "text-blue-600 bg-blue-50" },
+          ].map(({ label, value, icon, color }) => (
+            <div key={label} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${color} shrink-0`}>
+                <i className={`${icon} text-sm`}></i>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-gray-900">
+                  {isLoading ? "—" : value.toLocaleString()}
+                </p>
+                <p className="text-xs text-gray-500">{label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 };
 

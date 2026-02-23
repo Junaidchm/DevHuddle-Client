@@ -141,31 +141,39 @@ export const deletePostAdmin = async (postId: string, headers?: Record<string, s
 
 // ==================== COMMENTS ====================
 
-export const getComments = async (params: {
-  page?: number;
-  limit?: number;
-  status?: string;
-  postId?: string;
-  userId?: string;
-  search?: string;
-  sortBy?: string;
-}) => {
+export const getComments = async (
+  params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    postId?: string;
+    userId?: string;
+    search?: string;
+    sortBy?: string;
+  },
+  headers?: Record<string, string>
+) => {
   const response = await axiosInstance.get(API_ROUTES.ADMIN.COMMENTS, {
     params,
+    headers,
     withCredentials: true,
   });
   return response.data;
 };
 
-export const getReportedComments = async (params: {
-  page?: number;
-  limit?: number;
-  postId?: string;
-  userId?: string;
-  search?: string;
-}) => {
+export const getReportedComments = async (
+  params: {
+    page?: number;
+    limit?: number;
+    postId?: string;
+    userId?: string;
+    search?: string;
+  },
+  headers?: Record<string, string>
+) => {
   const response = await axiosInstance.get(API_ROUTES.ADMIN.COMMENTS_REPORTED, {
     params,
+    headers,
     withCredentials: true,
   });
   return response.data;
@@ -178,7 +186,7 @@ export const getCommentById = async (commentId: string) => {
   return response.data;
 };
 
-export const deleteCommentAdmin = async (commentId: string) => {
+export const deleteCommentAdmin = async (commentId: string, headers?: Record<string, string>) => {
   const response = await axiosInstance.delete(API_ROUTES.ADMIN.COMMENT_DELETE(commentId), {
     withCredentials: true,
   });
@@ -209,6 +217,23 @@ export const getReportsBySeverity = async () => {
   return response.data;
 };
 
+export const getAuditLogs = async (
+  params: {
+    page?: number;
+    limit?: number;
+    adminId?: string;
+    targetType?: string;
+  },
+  headers?: Record<string, string>
+) => {
+  const response = await axiosInstance.get(API_ROUTES.ADMIN.AUDIT_LOGS, {
+    params,
+    headers,
+    withCredentials: true,
+  });
+  return response.data;
+};
+
 // ==================== USER-RELATED ADMIN QUERIES ====================
 
 export const getUserReportedContent = async (userId: string) => {
@@ -224,4 +249,126 @@ export const getUserReportsHistory = async (userId: string) => {
   });
   return response.data;
 };
+
+// ==================== PROJECTS ====================
+
+export const getProjects = async (
+  params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    userId?: string;
+    search?: string;
+    sortBy?: string;
+  },
+  headers?: Record<string, string>
+) => {
+  const response = await axiosInstance.get(API_ROUTES.ADMIN.PROJECTS, {
+    params,
+    headers,
+    withCredentials: true,
+  });
+  return response.data;
+};
+
+export const getReportedProjects = async (
+  params: {
+    page?: number;
+    limit?: number;
+    userId?: string;
+    search?: string;
+  },
+  headers?: Record<string, string>
+) => {
+  const response = await axiosInstance.get(API_ROUTES.ADMIN.PROJECTS_REPORTED, {
+    params,
+    headers,
+    withCredentials: true,
+  });
+  return response.data;
+};
+
+export const getProjectById = async (projectId: string) => {
+  const response = await axiosInstance.get(API_ROUTES.ADMIN.PROJECT_BY_ID(projectId), {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
+export const hideProject = async (projectId: string, data: { hidden: boolean; reason?: string }, headers?: Record<string, string>) => {
+  const response = await axiosInstance.patch(
+    API_ROUTES.ADMIN.PROJECT_HIDE(projectId),
+    data,
+    { headers, withCredentials: true }
+  );
+  return response.data;
+};
+
+export const deleteProjectAdmin = async (projectId: string, headers?: Record<string, string>) => {
+  const response = await axiosInstance.delete(API_ROUTES.ADMIN.PROJECT_DELETE(projectId), {
+    headers,
+    withCredentials: true,
+  });
+  return response.data;
+};
+
+// ==================== HUBS ====================
+
+export const getHubs = async (
+  params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+  },
+  headers?: Record<string, string>
+) => {
+  const response = await axiosInstance.get(API_ROUTES.ADMIN.HUBS, {
+    params,
+    headers,
+    withCredentials: true,
+  });
+  return response.data;
+};
+
+export const getReportedHubs = async (
+  params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  },
+  headers?: Record<string, string>
+) => {
+  const response = await axiosInstance.get(API_ROUTES.ADMIN.HUBS_REPORTED, {
+    params,
+    headers,
+    withCredentials: true,
+  });
+  return response.data;
+};
+
+export const getHubById = async (hubId: string) => {
+  const response = await axiosInstance.get(API_ROUTES.ADMIN.HUB_BY_ID(hubId), {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
+export const suspendHub = async (hubId: string, data: { suspended: boolean; reason?: string }, headers?: Record<string, string>) => {
+  const response = await axiosInstance.patch(
+    API_ROUTES.ADMIN.HUB_SUSPEND(hubId),
+    data,
+    { headers, withCredentials: true }
+  );
+  return response.data;
+};
+
+export const deleteHubAdmin = async (hubId: string, headers?: Record<string, string>) => {
+  const response = await axiosInstance.delete(API_ROUTES.ADMIN.HUB_DELETE(hubId), {
+    headers,
+    withCredentials: true,
+  });
+  return response.data;
+};
+
 

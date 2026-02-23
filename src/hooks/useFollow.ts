@@ -28,6 +28,7 @@ export function useFollow() {
     queryClient.invalidateQueries({ queryKey: queryKeys.profiles.all });
     queryClient.invalidateQueries({ queryKey: queryKeys.network.all });
     queryClient.invalidateQueries({ queryKey: queryKeys.suggestions.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.chat.suggestions.all });
     
     // ✅ FIXED: Invalidate notifications to ensure new follow notifications appear instantly
     // (WebSocket should handle this, but this is a backup)

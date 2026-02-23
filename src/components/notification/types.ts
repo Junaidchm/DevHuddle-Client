@@ -10,6 +10,7 @@ export type NotificationType =
   | "reply"
   | "share"
   | "live"
+  | "report"
   | "system";
 
 export interface NotificationActor {
@@ -33,6 +34,7 @@ export interface MappedNotification {
   entityType?: string;
   entityId?: string;
   postId?: string;
+  projectId?: string;
   commentId?: string;
   preview?: {
     type: "post" | "comment" | "reply";

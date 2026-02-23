@@ -54,7 +54,7 @@ export default function UserList() {
           status,
           date,
         },
-        apiClient.getHeaders()
+        apiClient.getHeaders() as Record<string, string>
       );
     },
     enabled: sessionStatus !== "loading" && !!userId && userRole === "superAdmin" && apiClient.isReady,
@@ -76,7 +76,7 @@ export default function UserList() {
   const endIndex = Math.min(startIndex + limit - 1, totalUsers);
 
   const blockUnblockMutation = useMutation({
-    mutationFn: (userId: string) => toogleUserBlock(userId, apiClient.getHeaders()),
+    mutationFn: (userId: string) => toogleUserBlock(userId, apiClient.getHeaders() as Record<string, string>),
     onSuccess: () => {
       toast.success("User status updated");
       queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -269,7 +269,7 @@ export default function UserList() {
                       <td className="p-4 text-sm">
                         <div className="flex items-center gap-3">
                           <img
-                            src="https://ui-avatars.com/api/?name=David+Miller&background=10b981&color=fff"
+                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=4f46e5&color=fff`}
                             alt={user.name}
                             className="w-8 h-8 rounded-full object-cover"
                           />

@@ -62,22 +62,18 @@ export function useReportPost() {
     },
     onError: (error: any, variables) => {
       const label = variables.targetType === "POST" ? "post" : "comment";
-      // ✅ FIX: Extract more detailed error messages
       const errorMessage = 
         error.response?.data?.message ||
-        error.response?.data?.error ||
         error.message ||
         `Failed to report ${label}`;
       
-      // ✅ FIX: Handle specific error cases
-      if (errorMessage.includes("limit") || errorMessage.includes("exceeded")) {
-        toast.error("You've reached the daily report limit. Please try again tomorrow.");
-      } else if (errorMessage.includes("already reported")) {
+      // Handle known error patterns with cleaner toasts
+      if (errorMessage.toLowerCase().includes("limit") || errorMessage.toLowerCase().includes("exceeded")) {
+        toast.error(errorMessage);
+      } else if (errorMessage.toLowerCase().includes("already reported")) {
         toast.error(`You have already reported this ${label}.`);
-      } else if (errorMessage.includes("own")) {
+      } else if (errorMessage.toLowerCase().includes("own")) {
         toast.error(`You cannot report your own ${label}.`);
-      } else if (error.response?.status === 401) {
-        toast.error(`Unable to report ${label}. Please try again.`);
       } else {
         toast.error(errorMessage);
       }

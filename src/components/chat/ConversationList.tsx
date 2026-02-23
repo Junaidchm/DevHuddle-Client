@@ -9,6 +9,7 @@ import { EmptyState } from "./EmptyState";
 import { ConversationListSkeleton } from "./ConversationListSkeleton";
 import { useConversations, useCreateConversation } from "@/src/hooks/chat/useConversationQuery";
 import { useGroupSocketEvents } from "@/src/hooks/chat/useGroupSocketEvents";
+import { formatSystemMessage } from "@/src/lib/chat-utils";
 
 import { ConversationWithMetadata } from "@/src/types/chat.types";
 import { PROFILE_DEFAULT_URL } from "@/src/constants";
@@ -117,7 +118,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
   // Loading state
   if (isLoading) {
     return (
-      <div className="relative flex flex-col h-full bg-card border-r border-border">
+      <div className="relative flex flex-col h-full bg-background border-r border-border">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h1 className="text-xl font-bold text-foreground">Messages</h1>
           <Button variant="ghost" size="icon" disabled>
@@ -141,7 +142,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
   // Empty state
   if (conversations.length === 0) {
     return (
-      <div className="relative flex flex-col h-full bg-card border-r border-border">
+      <div className="relative flex flex-col h-full bg-background border-r border-border">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h1 className="text-xl font-bold text-foreground">Messages</h1>
           <Button 
@@ -164,35 +165,38 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
   }
 
   return (
-    <div className="relative flex flex-col h-full bg-card border-r border-border">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border bg-card sticky top-0 z-10">
-        <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-          Messages
-        </h1>
-        <Button 
-          variant="ghost" 
-          size="icon"
-          onClick={() => setIsNewChatModalOpen(true)}
-          className="rounded-full text-muted-foreground hover:text-foreground"
-          aria-label="New message"
-          title="New message"
-        >
-          <Edit className="w-5 h-5" />
-        </Button>
-      </div>
+    <div className="relative flex flex-col h-full bg-background border-r border-border overflow-hidden">
+      {/* Header & Search Grouped */}
+      <div className="flex flex-col bg-background sticky top-0 z-20 shadow-sm">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            Messages
+          </h1>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => setIsNewChatModalOpen(true)}
+            className="rounded-full text-muted-foreground hover:text-foreground"
+            aria-label="New message"
+            title="New message"
+          >
+            <Edit className="w-5 h-5" />
+          </Button>
+        </div>
 
-      {/* Search */}
-      <div className="p-3 bg-card sticky top-[65px] z-10 border-b border-border">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search messages..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 bg-muted/40"
-          />
+        {/* Search */}
+        <div className="px-4 pb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search messages..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary/20"
+            />
+          </div>
         </div>
       </div>
 
@@ -266,7 +270,10 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
 
                         // If we have content, show it
                         if (lastMsg.content && lastMsg.content.trim().length > 0) {
-                          return lastMsg.content;
+                            if ((lastMsg as any).type === 'SYSTEM') {
+                                return formatSystemMessage(lastMsg.content, conv.participants, currentUserId);
+                            }
+                            return lastMsg.content;
                         }
 
                         // Map message type to preview text

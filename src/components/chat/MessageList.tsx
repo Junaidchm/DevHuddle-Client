@@ -1,23 +1,21 @@
-import React from "react";
 import { MessageBubble } from "./MessageBubble";
 import { Message } from "@/src/types/chat.types";
+import { ChatWindowSkeleton } from "@/src/components/skeletons/ChatWindowSkeleton";
 
 interface MessageListProps {
   messages: Message[];
   currentUserId: string;
   getUserName?: (userId: string) => string;
   isLoading?: boolean;
+  participants?: any[];
 }
 
-export function MessageList({ messages, currentUserId, getUserName, isLoading = false }: MessageListProps) {
+export function MessageList({ messages, currentUserId, getUserName, isLoading = false, participants = [] }: MessageListProps) {
   // Show loading state
   if (isLoading) {
     return (
-      <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
-        <div className="flex flex-col items-center justify-center h-full">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A66C2]"></div>
-          <p className="mt-4 text-gray-500">Loading messages...</p>
-        </div>
+      <div className="flex-1 overflow-y-auto p-6">
+        <ChatWindowSkeleton />
       </div>
     );
   }
@@ -50,7 +48,7 @@ export function MessageList({ messages, currentUserId, getUserName, isLoading = 
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+    <div className="flex-1 overflow-y-auto p-6">
       <div className="relative">
         {Object.entries(groupedMessages).map(([date, dateMessages]) => (
           <div key={date}>
@@ -76,6 +74,7 @@ export function MessageList({ messages, currentUserId, getUserName, isLoading = 
                   isOwn={isOwn}
                   showAvatar={showAvatar}
                   senderName={!isOwn && getUserName ? getUserName(message.senderId) : undefined}
+                  participants={participants}
                 />
               );
             })}

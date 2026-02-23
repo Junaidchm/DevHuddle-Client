@@ -7,7 +7,7 @@ import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { PROFILE_DEFAULT_URL } from "@/src/constants";
 import { 
-    X, UserPlus, LogOut, Trash2, Shield, ShieldOff, Crown, Search
+    X, UserPlus, LogOut, Trash2, Shield, ShieldOff, Crown, Search, Loader2
 } from "lucide-react";
 import {
     Dialog,
@@ -24,7 +24,8 @@ import {
     useLeaveGroup
 } from "@/src/hooks/chat/useGroupMutations";
 import { useChatSuggestions } from "@/src/hooks/chat/useChatSuggestions";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
+import { confirmToast } from "@/src/utils/confirmToast";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface GroupDetailsModalProps {
@@ -111,19 +112,19 @@ export function GroupDetailsModal({ conversation, currentUserId, isOpen, onClose
     };
 
     const handleRemove = (userId: string) => {
-        if (confirm("Remove this member from the group?")) {
+        confirmToast("Remove this member from the group?", () => {
             removeParticipantMutation.mutate(userId, {
                 onSuccess: () => toast.success("Member removed")
             });
-        }
+        });
     };
 
     const handleLeaveGroup = () => {
-        if (confirm("Are you sure you want to leave this group?")) {
+        confirmToast("Are you sure you want to leave this group?", () => {
             leaveGroupMutation.mutate(undefined, {
                 onSuccess: onClose
             });
-        }
+        });
     };
 
     // Real-time updates
@@ -262,44 +263,54 @@ export function GroupDetailsModal({ conversation, currentUserId, isOpen, onClose
                                                     </p>
                                                 </div>
 
-                                                {/* ADMIN ACTIONS - ALWAYS SHOW MENU FOR TESTING */}
-                                                {isAdmin && !isMe && !isPartOwner && (
-                                                    <div className="flex gap-1">
-                                                        {/* PROMOTE / DEMOTE BUTTON */}
-                                                        {isPartAdmin ? (
+                                                {/* ADMIN ACTIONS */}
+                                                {(isAdmin && !isMe && !isPartOwner) && (() => {
+                                                    const isPromotingThisUser = promoteMutation.isPending && promoteMutation.variables === participant.userId;
+                                                    const isDemotingThisUser = demoteMutation.isPending && demoteMutation.variables === participant.userId;
+                                                    const isRemovingThisUser = removeParticipantMutation.isPending && removeParticipantMutation.variables === participant.userId;
+                                                    const anyPending = isPromotingThisUser || isDemotingThisUser || isRemovingThisUser;
+                                                    
+                                                    return (
+                                                        <div className="flex gap-1">
+                                                            {/* PROMOTE / DEMOTE BUTTON */}
+                                                            {isPartAdmin ? (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => handleDemote(participant.userId)}
+                                                                    disabled={anyPending}
+                                                                    className="h-8 gap-1.5 text-xs"
+                                                                >
+                                                                    {isDemotingThisUser ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldOff className="w-3.5 h-3.5" />}
+                                                                    {isDemotingThisUser ? "Removing..." : "Remove Admin"}
+                                                                </Button>
+                                                            ) : (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => handlePromote(participant.userId)}
+                                                                    disabled={anyPending}
+                                                                    className="h-8 gap-1.5 text-xs"
+                                                                >
+                                                                    {isPromotingThisUser ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
+                                                                    {isPromotingThisUser ? "Making..." : "Make Admin"}
+                                                                </Button>
+                                                            )}
+                                                            
+                                                            {/* REMOVE BUTTON */}
                                                             <Button
                                                                 variant="outline"
                                                                 size="sm"
-                                                                onClick={() => handleDemote(participant.userId)}
-                                                                className="h-8 gap-1.5 text-xs"
+                                                                onClick={() => handleRemove(participant.userId)}
+                                                                disabled={anyPending}
+                                                                className="h-8 gap-1.5 text-xs text-destructive hover:text-destructive"
                                                             >
-                                                                <ShieldOff className="w-3.5 h-3.5" />
-                                                                Remove Admin
+                                                                {isRemovingThisUser ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                                                                {isRemovingThisUser ? "Removing..." : "Remove"}
                                                             </Button>
-                                                        ) : (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => handlePromote(participant.userId)}
-                                                                className="h-8 gap-1.5 text-xs"
-                                                            >
-                                                                <Shield className="w-3.5 h-3.5" />
-                                                                Make Admin
-                                                            </Button>
-                                                        )}
-                                                        
-                                                        {/* REMOVE BUTTON */}
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => handleRemove(participant.userId)}
-                                                            className="h-8 gap-1.5 text-xs text-destructive hover:text-destructive"
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                            Remove
-                                                        </Button>
-                                                    </div>
-                                                )}
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
                                         );
                                     })}
@@ -312,9 +323,10 @@ export function GroupDetailsModal({ conversation, currentUserId, isOpen, onClose
                                     variant="outline"
                                     className="w-full gap-2 text-destructive hover:text-destructive"
                                     onClick={handleLeaveGroup}
+                                    disabled={leaveGroupMutation.isPending}
                                 >
-                                    <LogOut className="w-4 h-4" />
-                                    Exit Group
+                                    {leaveGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+                                    {leaveGroupMutation.isPending ? "Exiting..." : "Exit Group"}
                                 </Button>
                             </div>
                         </div>
@@ -408,7 +420,8 @@ export function GroupDetailsModal({ conversation, currentUserId, isOpen, onClose
                                 onClick={handleAddParticipants}
                                 disabled={selectedUsers.length === 0 || addParticipantsMutation.isPending}
                             >
-                                Add {selectedUsers.length > 0 && `(${selectedUsers.length})`}
+                                {addParticipantsMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                {addParticipantsMutation.isPending ? "Adding..." : `Add ${selectedUsers.length > 0 ? `(${selectedUsers.length})` : ""}`}
                             </Button>
                         </div>
                     </div>

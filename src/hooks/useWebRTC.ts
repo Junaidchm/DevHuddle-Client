@@ -113,8 +113,12 @@ export const useWebRTC = (): WebRTCHookReturn => {
    * Create an answer
    */
   const createAnswer = useCallback(
-    async (pc: RTCPeerConnection, offer: RTCSessionDescriptionInit) => {
-      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    async (pc: RTCPeerConnection) => {
+      if (pc.signalingState !== 'have-remote-offer' && pc.signalingState !== 'have-local-offer') {
+          console.warn('[WebRTC] Cannot create answer in state:', pc.signalingState);
+          // However, sometimes it might be 'stable' if we already set it? 
+          // But 'createAnswer' strictly needs an offer.
+      }
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       return answer;
@@ -179,7 +183,11 @@ export const useWebRTC = (): WebRTCHookReturn => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
-        video: audioOnly ? false : { width: 1280, height: 720 },
+        video: audioOnly ? false : { 
+          width: { ideal: 640, max: 1280 }, 
+          height: { ideal: 480, max: 720 },
+          frameRate: { ideal: 24, max: 30 }
+        },
       });
       console.log('[WebRTC] Got user media:', { audioOnly });
       return stream;

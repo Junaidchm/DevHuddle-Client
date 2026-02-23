@@ -58,6 +58,24 @@ export function useSendMessage() {
     const tempId = `${CHAT_CONFIG.OPTIMISTIC_ID_PREFIX}${dedupeId}`;
     const now = new Date().toISOString();
 
+    // ✅ FIX: Find the message being replied to for optimistic preview
+    let replyToMessage: Message | undefined;
+    if (replyToId) {
+        const messagesCache = queryClient.getQueryData<InfiniteData<GetMessagesResponse>>(
+            queryKeys.chat.messages.list(conversationId)
+        );
+        
+        if (messagesCache) {
+            for (const page of messagesCache.pages) {
+                const found = page.messages?.find(m => m.id === replyToId);
+                if (found) {
+                    replyToMessage = found;
+                    break;
+                }
+            }
+        }
+    }
+
     // Construct the optimistic message object
     // Adapting to match the Message interface strictly
     const optimisticMessage: Message = {
@@ -71,6 +89,7 @@ export function useSendMessage() {
       updatedAt: now,
       dedupeId,
       replyToId,
+      replyTo: replyToMessage, // Populate optimistic preview
       isForwarded: false, 
       reactions: [],
       // Media Fields
@@ -85,9 +104,11 @@ export function useSendMessage() {
     };
 
     // 1. Optimistic Update (React Query)
+    console.log("[useSendMessage] Starting optimistic update for conv:", conversationId);
     queryClient.setQueryData<InfiniteData<GetMessagesResponse>>(
       queryKeys.chat.messages.list(conversationId),
       (oldData) => {
+        console.log("[useSendMessage] setQueryData callback triggered. oldData pages:", oldData?.pages?.length);
         const newPages = oldData ? [...oldData.pages] : [];
 
         if (newPages.length > 0) {
@@ -98,8 +119,7 @@ export function useSendMessage() {
         } else {
             newPages.push({
                 messages: [optimisticMessage],
-                hasMore: false,
-                total: 1
+                hasMore: false
             });
         }
 
@@ -200,9 +220,6 @@ export function useSendMessage() {
     const wsPayload = Object.fromEntries(
       Object.entries(rawPayload).filter(([_, v]) => v !== undefined && v !== null)
     );
-    
-    console.log("[useSendMessage] Final WebSocket payload:", wsPayload);
-    sendWsMessage(wsPayload as any);
     
     console.log("[useSendMessage] Final WebSocket payload:", wsPayload);
     sendWsMessage(wsPayload as any);

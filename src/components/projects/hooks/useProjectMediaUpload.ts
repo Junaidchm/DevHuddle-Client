@@ -2,6 +2,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import toast from "react-hot-toast";
 import { MediaType, createUploadSession, uploadFileToR2, completeUpload } from "@/src/services/api/media.service";
+import { registerProjectMedia } from "@/src/services/api/project.service";
 import { useSession } from "next-auth/react";
 
 interface UploadResult {
@@ -152,7 +153,22 @@ export default function useProjectMediaUpload() {
             if (signal.aborted) throw new Error("Aborted");
 
             const result = await completeUpload(sessionData.mediaId, authHeaders);
-            uploadResults.push({ ...result, file }); // Attach file for mapping
+            
+            // ✅ REGISTER WITH PROJECT SERVICE
+            // This is required because project-service has its own project_media table
+            const projectMediaResult = await registerProjectMedia({
+                url: result.cdnUrl,
+                type: mediaType.includes("VIDEO") ? "VIDEO" : "IMAGE",
+                mimeType: file.type,
+                fileSize: file.size
+            }, authHeaders);
+
+            uploadResults.push({ 
+                mediaId: projectMediaResult.mediaId, // Use the ID from project-service
+                cdnUrl: result.cdnUrl,
+                status: result.status,
+                file 
+            });
 
         } catch (error: any) {
             if (error.message !== "Aborted" && error.message !== "Upload aborted by user") {

@@ -25,6 +25,8 @@ const REPORT_REASONS = [
 
 type ReportReason = typeof REPORT_REASONS[number]["value"];
 
+import { useReportProjectMutation } from "./hooks/useReportProjectMutation";
+
 export default function ReportProjectModal({
   isOpen,
   onClose,
@@ -32,8 +34,8 @@ export default function ReportProjectModal({
 }: ReportProjectModalProps) {
   const [selectedReason, setSelectedReason] = useState<ReportReason | null>(null);
   const [description, setDescription] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const authHeaders = useAuthHeaders();
+  
+  const reportMutation = useReportProjectMutation(projectId);
 
   if (!isOpen) return null;
 
@@ -44,62 +46,57 @@ export default function ReportProjectModal({
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      await reportProject(
-        projectId,
-        selectedReason,
-        description.trim() ? { description: description.trim() } : undefined,
-        authHeaders
-      );
-      toast.success("Project reported successfully");
-      onClose();
-      setSelectedReason(null);
-      setDescription("");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to report project");
-    } finally {
-      setIsSubmitting(false);
-    }
+    reportMutation.mutate({
+      reason: selectedReason,
+      description: description.trim() || undefined,
+    }, {
+      onSuccess: () => {
+        onClose();
+        setSelectedReason(null);
+        setDescription("");
+      }
+    });
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-background rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border border-border">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-red-600" />
-            <h2 className="text-lg font-semibold">Report Project</h2>
+        <div className="flex items-center justify-between p-6 border-b border-border">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-destructive/10 rounded-full">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+            </div>
+            <h2 className="text-xl font-bold">Report Project</h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            disabled={isSubmitting}
+            className="p-2 hover:bg-muted rounded-full transition-all"
+            disabled={reportMutation.isPending}
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
 
         {/* Content */}
-        <form onSubmit={handleSubmit} className="p-4">
-          <p className="text-sm text-gray-600 mb-4">
-            Help us understand what's wrong with this project. Your report is anonymous.
+        <form onSubmit={handleSubmit} className="p-6">
+          <p className="text-sm text-muted-foreground mb-6">
+            Help us maintain a high-quality community. Your report will be reviewed by our team.
           </p>
 
           {/* Reason Selection */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Why are you reporting this?
+          <div className="mb-6">
+            <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
+              Reason for reporting
             </label>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            <div className="space-y-2 max-h-[280px] overflow-y-auto pr-2 custom-scrollbar">
               {REPORT_REASONS.map((reason) => (
                 <label
                   key={reason.value}
-                  className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                  className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all group ${
                     selectedReason === reason.value
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-200 hover:border-gray-300"
+                      ? "border-primary bg-primary/5"
+                      : "border-border/60 hover:border-border hover:bg-muted/30"
                   }`}
                 >
                   <input
@@ -108,12 +105,12 @@ export default function ReportProjectModal({
                     value={reason.value}
                     checked={selectedReason === reason.value}
                     onChange={() => setSelectedReason(reason.value)}
-                    className="mt-1"
-                    disabled={isSubmitting}
+                    className="mt-1 accent-primary"
+                    disabled={reportMutation.isPending}
                   />
                   <div className="flex-1">
-                    <div className="font-medium text-sm">{reason.label}</div>
-                    <div className="text-xs text-gray-500">{reason.description}</div>
+                    <div className="font-semibold text-sm group-hover:text-primary transition-colors">{reason.label}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">{reason.description}</div>
                   </div>
                 </label>
               ))}
@@ -121,36 +118,36 @@ export default function ReportProjectModal({
           </div>
 
           {/* Additional Details */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Additional details (optional)
+          <div className="mb-6">
+            <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+              Additional context (optional)
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Provide more context about why you're reporting this project..."
-              disabled={isSubmitting}
+              className="w-full px-4 py-3 border border-border rounded-xl bg-muted/20 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm outline-none resize-none"
+              placeholder="Tell us more about the issue..."
+              disabled={reportMutation.isPending}
             />
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3">
+          <div className="flex gap-4">
             <button
               type="button"
               onClick={onClose}
-              disabled={isSubmitting}
-              className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              disabled={reportMutation.isPending}
+              className="flex-1 h-11 border border-border rounded-xl font-semibold hover:bg-muted transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={!selectedReason || isSubmitting}
-              className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              disabled={!selectedReason || reportMutation.isPending}
+              className="flex-1 h-11 bg-destructive text-destructive-foreground rounded-xl font-bold hover:bg-destructive/90 transition-all shadow-lg shadow-destructive/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "Submitting..." : "Submit Report"}
+              {reportMutation.isPending ? "Reporting..." : "Submit Report"}
             </button>
           </div>
         </form>

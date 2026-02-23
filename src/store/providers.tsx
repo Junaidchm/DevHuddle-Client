@@ -15,13 +15,16 @@ import { CallModal } from "../components/chat/call/CallModal";
 
 import { createQueryClient } from "@/src/lib/query-client";
 
-export function Providers({ children }: { children: React.ReactNode }) {
+import { Session } from "next-auth";
+
+export function Providers({ children, session }: { children: React.ReactNode; session?: Session | null }) {
   // ⚡ Important: keep QueryClient stable across renders with production defaults
   const [queryClient] = useState(() => createQueryClient());
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <SessionProvider
+          session={session}
           refetchInterval={4 * 60} // ✅ FIXED: Refetch session every 4 minutes (token expires in 15 min, refresh at 5 min buffer)
           refetchOnWindowFocus={true} // ✅ FIXED: Refetch when user returns to tab (helps catch expired sessions)
           refetchWhenOffline={false} // Don't refetch when offline

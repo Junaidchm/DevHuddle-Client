@@ -9,6 +9,7 @@ import {
   getUnreadCount,
   markAllAsRead,
   markAsRead,
+  restoreNotification,
 } from "../services/api/notification.service";
 import { queryKeys } from "@/src/lib/queryKeys";
 import { GetNotificationsResult } from "../app/types";
@@ -75,7 +76,35 @@ export function useDeleteNotification() {
   return useMutation({
     mutationFn: (notificationId: string) =>
       deleteNotification(notificationId, userId!, authHeaders),
-    onSuccess: () => {
+    onMutate: async (notificationId) => {
+      // Cancel any outgoing refetches
+      await qc.cancelQueries({ queryKey: queryKeys.notifications.list(userId!) });
+      await qc.cancelQueries({ queryKey: queryKeys.notifications.count(userId!) });
+
+      // Snapshot the previous value
+      const previousNotifications = qc.getQueryData(queryKeys.notifications.list(userId!));
+
+      // Optimistically update to remove the notification
+      qc.setQueryData(
+        queryKeys.notifications.list(userId!),
+        (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page: any) => ({
+              ...page,
+              notifications: page.notifications.filter((n: any) => n.id !== notificationId),
+            })),
+          };
+        }
+      );
+
+      return { previousNotifications };
+    },
+    onError: (err, newTodo, context) => {
+      qc.setQueryData(queryKeys.notifications.list(userId!), context?.previousNotifications);
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: queryKeys.notifications.list(userId!) });
       qc.invalidateQueries({ queryKey: queryKeys.notifications.count(userId!) });
     },
@@ -93,6 +122,46 @@ export function useMarkAllAsRead() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.notifications.list(userId!) });
       qc.setQueryData(queryKeys.notifications.count(userId!), { unreadCount: 0 });
+    },
+  });
+}
+
+export function useRestoreNotification() {
+  const { data: session } = useSession();
+  const authHeaders = useAuthHeaders();
+  const userId = session?.user?.id;
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ notificationId }: { notificationId: string; notification: any }) =>
+      restoreNotification(notificationId, userId!, authHeaders),
+    onMutate: async ({ notificationId, notification }) => {
+      await qc.cancelQueries({ queryKey: queryKeys.notifications.list(userId!) });
+
+      const previousNotifications = qc.getQueryData(queryKeys.notifications.list(userId!));
+
+      // Optimistically add the notification back
+      qc.setQueryData(queryKeys.notifications.list(userId!), (old: any) => {
+        if (!old) return old;
+        // Add to the first page
+        const newPages = [...old.pages];
+        if (newPages.length > 0) {
+          newPages[0] = {
+            ...newPages[0],
+            notifications: [notification, ...newPages[0].notifications],
+          };
+        }
+        return { ...old, pages: newPages };
+      });
+
+      return { previousNotifications };
+    },
+    onError: (err, newTodo, context) => {
+      qc.setQueryData(queryKeys.notifications.list(userId!), context?.previousNotifications);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.notifications.list(userId!) });
+      qc.invalidateQueries({ queryKey: queryKeys.notifications.count(userId!) });
     },
   });
 }

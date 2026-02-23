@@ -17,6 +17,9 @@ export function stripLeadingSlash(path: string): string {
   return path.startsWith('/') ? path.slice(1) : path;
 }
 
+let sessionCache: { data: any; timestamp: number } | null = null;
+const CACHE_TTL = 100; // 100ms cache to avoid redundant calls in a single request/render cycle
+
 // Create ky instance with enhanced retry policy and server-side auth
 export const api = ky.create({
   prefixUrl: API_BASE_URL,
@@ -30,8 +33,17 @@ export const api = ky.create({
   hooks: {
     beforeRequest: [
       async (request) => {
-        // Add auth header to requests using server-side auth
-        const session = await auth();
+        // Simple session caching to avoid redundant auth() calls in a single request cycle
+        const now = Date.now();
+        let session;
+        
+        if (sessionCache && (now - sessionCache.timestamp < CACHE_TTL)) {
+          session = sessionCache.data;
+        } else {
+          session = await auth();
+          sessionCache = { data: session, timestamp: now };
+        }
+
         if (session?.user?.accessToken) {
           request.headers.set('Authorization', `Bearer ${session.user.accessToken}`);
         }

@@ -15,6 +15,7 @@ interface ParticipantTileProps {
   isLocal: boolean;
   isMuted?: boolean;
   isVideoOff?: boolean;
+  className?: string;
 }
 
 export const ParticipantTile = ({
@@ -58,52 +59,58 @@ export const ParticipantTile = ({
   const isSpeaking = false; // TODO: Implement audio level detection
 
   return (
-    <div className="relative bg-muted/20 rounded-xl overflow-hidden shadow-lg border border-white/5 aspect-video w-full h-full group">
+    <div className="relative bg-[#0f0f0f] rounded-2xl overflow-hidden shadow-2xl border border-white/[0.03] w-full h-full group">
       <video
         ref={videoRef}
         autoPlay
         playsInline
-        muted={isLocal} // Mute local video to prevent echo - CRITICAL
+        muted={isLocal} 
         className={cn(
-            "w-full h-full object-cover transition-opacity duration-300",
-            isVideoOff ? "opacity-0" : "opacity-100"
+            "w-full h-full object-cover transition-all duration-700",
+            isVideoOff ? "opacity-0 scale-105" : "opacity-100 scale-100"
         )}
       />
 
       {/* Placeholder when video is off */}
       <div 
         className={cn(
-            "absolute inset-0 flex items-center justify-center bg-gray-900 transition-opacity duration-300",
-             isVideoOff ? "opacity-100" : "opacity-0 pointer-events-none"
+            "absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] transition-all duration-700",
+             isVideoOff ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"
         )}
       >
-        <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center">
-             <User className="w-12 h-12 text-muted-foreground" />
+        <div className="relative">
+            <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl animate-pulse" />
+            <div className="w-24 h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shadow-2xl relative z-10">
+                 <User className="w-12 h-12 text-white/20" />
+            </div>
         </div>
+        {!isLocal && (
+            <span className="mt-4 text-white/40 text-xs font-bold tracking-[0.2em] uppercase">{displayName}</span>
+        )}
       </div>
 
       {/* Participant Info Bar */}
-      <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
-        <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-lg flex items-center gap-2">
-            <span className="text-white text-sm font-medium shadow-sm">
-                {displayName} {isLocal && '(You)'}
+      <div className="absolute top-4 left-4 z-20">
+        <div className="bg-black/30 backdrop-blur-xl px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/5 transition-opacity duration-300 group-hover:bg-black/50">
+            <span className="text-white/90 text-[10px] font-bold tracking-widest uppercase">
+                {isLocal ? 'YOU' : displayName}
             </span>
-            {isMuted && <MicOff className="w-3 h-3 text-red-500" />}
+            {isMuted && <MicOff className="w-3 h-3 text-red-500/80" />}
         </div>
       </div>
 
       {/* Status Overlay */}
-      <div className="absolute top-4 right-4 flex gap-2">
+      <div className="absolute top-4 right-4 z-20 flex gap-2">
          {isVideoOff && (
-            <div className="bg-black/40 backdrop-blur-md p-2 rounded-full text-red-500">
-                <VideoOff className="w-4 h-4" />
+            <div className="bg-red-500/10 backdrop-blur-md p-1.5 rounded-full text-red-500 border border-red-500/20">
+                <VideoOff className="w-3 h-3" />
             </div>
          )}
       </div>
       
       {/* Speaking Border Indicator */}
       {isSpeaking && !isLocal && (
-        <div className="absolute inset-0 border-4 border-green-500/50 rounded-xl pointer-events-none" />
+        <div className="absolute inset-0 border-2 border-primary/50 rounded-2xl pointer-events-none z-30" />
       )}
     </div>
   );

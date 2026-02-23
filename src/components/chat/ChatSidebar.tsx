@@ -14,6 +14,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/src/components/ui/avatar"
 import { Badge } from "@/src/components/ui/badge";
 import { Input } from "@/src/components/ui/input";
 import { cn } from "@/src/lib/utils";
+import { formatSystemMessage } from '@/src/lib/chat-utils';
 
 interface ChatSidebarProps {
   conversations: Conversation[];
@@ -156,7 +157,16 @@ export default function ChatSidebar({
                     {/* Last Message */}
                     <div className="flex items-center justify-between gap-2">
                       <p className={cn("text-xs truncate flex-1", conv.unreadCount && conv.unreadCount > 0 ? "font-medium text-foreground" : "text-muted-foreground")}>
-                        {conv.lastMessage?.content || 'No messages yet'}
+                        {(() => {
+                          const content = conv.lastMessage?.content || 'No messages yet';
+                          const isSystem = conv.lastMessage?.type === 'SYSTEM';
+                          const isOwn = conv.lastMessage?.senderId === currentUserId;
+                          
+                          if (isSystem) {
+                            return formatSystemMessage(content, conv.participants, currentUserId);
+                          }
+                          return content;
+                        })()}
                       </p>
                       {/* Unread Badge */}
                       {conv.unreadCount && conv.unreadCount > 0 && (

@@ -13,11 +13,12 @@ export const fetchFeed = async (
   cursor: string | null,
   headers: Record<string, string>,
   authorId?: string,
-  sortBy: "RECENT" | "TOP" = "RECENT"
+  sortBy: "RECENT" | "TOP" = "RECENT",
+  limit?: number // Add limit parameter
 ) => {
   try {
     const res = await axiosInstance.get(API_ROUTES.FEED.LIST, {
-      params: { cursor, authorId, sortBy },
+      params: { cursor, authorId, sortBy, limit },
       headers,
     });
 

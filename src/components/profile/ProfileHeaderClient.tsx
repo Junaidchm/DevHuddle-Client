@@ -7,6 +7,7 @@ import { UserProfile } from '@/src/types/user.type';
 import { useRouter } from 'next/navigation';
 import { FollowButton } from '../FollowButton';
 
+
 interface ProfileHeaderClientProps {
   profile: UserProfile;
   isOwnProfile: boolean;
@@ -33,7 +34,7 @@ const ProfileHeaderClient = ({ profile, isOwnProfile }: ProfileHeaderClientProps
           className="bg-white text-slate-500 border border-slate-200 py-2.5 px-5 rounded-lg font-medium cursor-pointer transition-all duration-200 text-sm flex items-center justify-center gap-2 hover:bg-gray-50"
           onClick={() => {
             navigator.clipboard.writeText(window.location.href);
-            alert('Profile URL copied to clipboard!');
+            toast.success('Profile URL copied to clipboard!');
           }}
         >
           Share Profile

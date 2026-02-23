@@ -274,6 +274,88 @@ export default function ReportDetailPage() {
               </div>
             </div>
           )}
+
+          {report.Project && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-lg font-semibold mb-4">Reported Project</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Project ID</label>
+                  <p className="mt-1 text-sm text-gray-900">{report.Project.id}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Title</label>
+                  <p className="mt-1 text-sm text-gray-900 font-semibold">
+                    {report.Project.title}
+                  </p>
+                </div>
+                {report.Project.description && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Description</label>
+                    <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
+                      {report.Project.description?.substring(0, 500)}...
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Reports Count</label>
+                  <p className="mt-1 text-sm text-gray-900">{report.Project.reportsCount || 0}</p>
+                </div>
+                <div className="flex gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Hidden</label>
+                    <p className="mt-1 text-sm text-gray-900">
+                      {report.Project.isHidden ? "Yes" : "No"}
+                    </p>
+                  </div>
+                  {report.Project.deletedAt && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Deleted</label>
+                      <p className="mt-1 text-sm text-red-600 font-medium">Yes</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {report.Hub && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-lg font-semibold mb-4">Reported Hub</h2>
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  {report.Hub.image && (
+                    <img src={report.Hub.image} alt="" className="w-16 h-16 rounded-xl object-cover bg-gray-100" />
+                  )}
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Hub Name</label>
+                    <p className="text-lg font-bold text-gray-900">{report.Hub.name}</p>
+                    <p className="text-xs text-gray-400 font-mono">ID: {report.Hub.id}</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Description</label>
+                  <p className="mt-1 text-sm text-gray-900">
+                    {report.Hub.description || "No description provided."}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Members</label>
+                    <p className="mt-1 text-sm text-gray-900">{report.Hub.memberCount || 0}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Reports Count</label>
+                    <p className="mt-1 text-sm text-gray-900">{report.Hub.reportsCount || 0}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Suspended</label>
+                    <p className="mt-1 text-sm text-gray-900">{report.Hub.isSuspended ? "Yes" : "No"}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Actions Sidebar */}

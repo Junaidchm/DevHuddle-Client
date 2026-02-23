@@ -18,74 +18,70 @@ interface ProjectCardProps {
 export default function ProjectCard({ project }: ProjectCardProps) {
   const previewMedia = project.media.find((m) => m.isPreview) || project.media[0];
 
-
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group h-full flex flex-col border-border/60">
-      <Link href={`/projects/${project.id}`} className="block flex-1 flex flex-col">
-        {/* Preview Image */}
-        <div className="relative w-full h-48 bg-muted overflow-hidden">
+    <Card className="card-base overflow-hidden hover:shadow-md transition-shadow duration-300 group flex flex-col h-full border-none shadow-xs">
+      <Link href={`/projects/${project.id}`} className="flex flex-col h-full">
+        {/* Preview Image - Clean aspect ratio */}
+        <div className="relative w-full aspect-[16/9] bg-muted overflow-hidden border-b border-border/40">
         {previewMedia ? (
              <Image
               src={getMediaUrl(previewMedia.thumbnailUrl || previewMedia.url)}
               alt={project.title}
               fill
-              className="object-cover group-hover:scale-105 transition-transform duration-500"
+              className="object-cover transition-transform duration-700 group-hover:scale-105"
               unoptimized={previewMedia.url?.includes("s3") || previewMedia.url?.includes("r2")}
             />
         ) : (
-            <div className="flex items-center justify-center h-full bg-muted text-muted-foreground">
-                No Preview
+            <div className="flex items-center justify-center h-full bg-muted/30 text-muted-foreground/40 italic text-xs">
+                No Preview Available
             </div>
         )}
         </div>
 
-        <CardContent className="p-5 flex-1 flex flex-col">
-          {/* Title */}
-          <h3 className="text-lg font-bold mb-2 line-clamp-1 group-hover:text-primary transition-colors">
+        <CardContent className="p-4 flex-1 flex flex-col">
+          {/* Author info at the top for professional look */}
+          <div className="flex items-center gap-2 mb-3">
+              <Avatar className="w-6 h-6 border border-border/60">
+                <AvatarImage src={getMediaUrl(project.author.avatar) || PROFILE_DEFAULT_URL} alt={project.author.name} className="object-cover" />
+                <AvatarFallback className="text-[10px]">{project.author.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <span className="text-[11px] font-semibold text-foreground/80 truncate">
+                {project.author.name}
+              </span>
+          </div>
+
+          <h3 className="text-base font-bold text-foreground mb-1.5 line-clamp-1 group-hover:text-primary transition-colors leading-tight">
             {project.title}
           </h3>
 
-          {/* Description */}
-          <p className="text-muted-foreground text-sm mb-4 line-clamp-2 leading-relaxed flex-1">
+          <p className="text-muted-foreground text-[13px] line-clamp-2 leading-snug mb-4 flex-1">
             {project.description}
           </p>
 
-          {/* Tech Stack */}
+          {/* Clean Tech Stack Tags */}
           {project.techStack.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-4 mt-auto">
-              {project.techStack.slice(0, 3).map((tech) => (
-                <Badge 
+            <div className="flex flex-wrap gap-1 mb-1">
+              {project.techStack.slice(0, 2).map((tech) => (
+                <span 
                     key={tech} 
-                    variant="secondary" 
-                    className="font-normal text-[10px] px-2 py-0.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-100"
+                    className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground border border-border/40"
                 >
                   {tech}
-                </Badge>
+                </span>
               ))}
-              {project.techStack.length > 3 && (
-                <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-muted-foreground">
-                  +{project.techStack.length - 3}
-                </Badge>
+              {project.techStack.length > 2 && (
+                <span className="text-[10px] text-muted-foreground/60 font-medium px-1">
+                  +{project.techStack.length - 2} more
+                </span>
               )}
             </div>
           )}
         </CardContent>
          
-        <CardFooter className="p-5 pt-0 flex items-center justify-between border-t border-border/40 mt-auto bg-muted/5">
-             {/* Author */}
-            <div className="flex items-center gap-2 py-3">
-                 <Avatar className="w-6 h-6 border border-border">
-                    <AvatarImage src={getMediaUrl(project.author.avatar) || PROFILE_DEFAULT_URL} alt={project.author.name} className="object-cover" />
-                    <AvatarFallback>{project.author.name.charAt(0)}</AvatarFallback>
-                 </Avatar>
-                <div className="flex flex-col">
-                     <span className="text-xs font-medium leading-none text-foreground">{project.author.name}</span>
-                </div>
-            </div>
-
-            {/* Engagement Stats */}
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1">
+        <CardFooter className="px-4 py-3 flex items-center justify-between border-t border-border/40 bg-muted/5">
+            {/* Engagement Stats in minimalist style */}
+            <div className="flex items-center gap-4 text-[11px] font-medium text-muted-foreground/80">
+                <div className="flex items-center gap-1.5 hover:text-red-500 transition-colors cursor-pointer">
                     <Heart
                         className={`w-3.5 h-3.5 ${
                         project.engagement.isLiked ? "fill-red-500 text-red-500" : ""
@@ -93,22 +89,27 @@ export default function ProjectCard({ project }: ProjectCardProps) {
                     />
                     <span>{project.engagement.likesCount}</span>
                 </div>
-                <div className="flex items-center gap-1">
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>{project.engagement.viewsCount}</span>
+                <div className="flex items-center gap-1.5">
+                    <Eye className="w-3.5 h-3.5 text-muted-foreground/60" />
+                    <span>{project.engagement.viewsCount} views</span>
                 </div>
-                 {project.demoUrl && (
-                     <div className="flex items-center gap-1 text-primary hover:underline cursor-pointer ml-1" 
-                        onClick={(e) => {
-                             e.preventDefault();
-                             e.stopPropagation();
-                             window.open(project.demoUrl, "_blank", "noopener,noreferrer");
-                        }}
-                     >
-                         <ExternalLink className="w-3 h-3" />
-                     </div>
-                 )}
             </div>
+
+            {project.demoUrl && (
+                <Button 
+                   variant="ghost" 
+                   size="sm" 
+                   className="h-7 px-2 text-primary hover:text-brand-blue-hover hover:bg-primary/5 text-[11px] font-semibold"
+                   onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.open(project.demoUrl, "_blank", "noopener,noreferrer");
+                   }}
+                >
+                    <ExternalLink className="w-3 h-3 mr-1" />
+                    Demo
+                </Button>
+            )}
         </CardFooter>
       </Link>
     </Card>

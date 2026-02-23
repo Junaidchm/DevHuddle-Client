@@ -11,7 +11,10 @@ const BACKEND_TO_FRONTEND_TYPE_MAP: Record<string, MappedNotification["type"]> =
   MENTION: "mention",
   FOLLOW: "follow",
   NEW_MESSAGE: "message",
+  CHAT_MESSAGE: "message",
   ROOM_REMINDER: "system",
+  SHARE: "share",
+  REPORT: "report",
   // Handle legacy types
   COLLAB: "collab",
   EVENT: "event",
@@ -36,9 +39,14 @@ const isShare = (type: string, metadata?: any, summary?: any): boolean => {
     return true;
   }
   
+  // NEW_MESSAGE with a postId is a LinkedIn-style "sent you a post" which we'll treat as a share category
+  if (type === "NEW_MESSAGE" && metadata?.postId) {
+    return true;
+  }
+  
   // Check summary text for share-related keywords
   const summaryText = summary?.text?.toLowerCase() || "";
-  if (summaryText.includes("shared") || summaryText.includes("reposted") || summaryText.includes("reshared")) {
+  if (summaryText.includes("shared") || summaryText.includes("reposted") || summaryText.includes("reshared") || summaryText.includes("sent you a post")) {
     return true;
   }
   
@@ -54,8 +62,16 @@ const getActionText = (
   isReply: boolean,
   isShare: boolean
 ): string => {
+  if (type === "NEW_MESSAGE") {
+    return "sent you a post";
+  }
+
+  if (type === "CHAT_MESSAGE") {
+    return "sent you a message";
+  }
+  
   if (isShare) {
-    return "shared your post";
+    return type === "SHARE" ? "shared your post" : "sent you a post";
   }
   
   switch (type) {
@@ -68,9 +84,15 @@ const getActionText = (
     case "FOLLOW":
       return "started following you";
     case "NEW_MESSAGE":
+      return "sent you a post";
+    case "CHAT_MESSAGE":
       return "sent you a message";
     case "ROOM_REMINDER":
       return "reminder";
+    case "SHARE":
+      return "shared your post";
+    case "REPORT":
+      return "reported your content";
     default:
       return "interacted with your content";
   }
@@ -297,7 +319,8 @@ export const mapNotificationToLinkedInStyle = (
     aggregatedCount,
     entityType,
     entityId: notification.entityId,
-    postId: notification.metadata?.postId || (notification.entityType === "POST" ? notification.entityId : notification.contextId),
+    projectId: notification.metadata?.projectId || (notification.entityType === "PROJECT" ? notification.entityId : (notification.entityType === "COMMENT" && notification.metadata?.projectId ? notification.contextId : undefined)),
+    postId: notification.metadata?.postId || (notification.entityType === "POST" ? notification.entityId : (notification.entityType === "COMMENT" && !notification.metadata?.projectId ? notification.contextId : undefined)),
     commentId: notification.metadata?.commentId || (notification.entityType === "COMMENT" ? notification.entityId : undefined),
     preview,
     actionText,

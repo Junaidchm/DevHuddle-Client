@@ -131,163 +131,239 @@ export default function CreateProjectModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-6">
-        <DialogHeader className="px-1">
-          <DialogTitle className="text-2xl font-bold">Create New Project</DialogTitle>
-          <DialogDescription>
-            Share your latest work with the community.
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0 shadow-xl border-border/40">
+        <DialogHeader className="p-6 pb-4 border-b border-border/10">
+          <DialogTitle className="text-xl font-bold tracking-tight">Showcase Project</DialogTitle>
+          <DialogDescription className="text-muted-foreground text-xs font-medium">
+            Share your technical masterpieces with the community.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto pr-2 space-y-6 mt-4">
-          {/* Title */}
-          <div className="space-y-2">
-            <Label htmlFor="title">Project Title <span className="text-destructive">*</span></Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. AI-Powered Task Manager"
-              required
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
+          {/* Core Information Section */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="title" className="text-xs font-semibold text-foreground/80">Project Title <span className="text-primary">*</span></Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Distributed Mesh Network"
+                  required
+                  className="h-10 border-border/60 bg-muted/5 focus:bg-background transition-all"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="description" className="text-xs font-semibold text-foreground/80">Description <span className="text-primary">*</span></Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={4}
+                  placeholder="What is this project about? (Markdown supported)"
+                  required
+                  className="resize-none min-h-[120px] border-border/60 bg-muted/5 focus:bg-background transition-all text-sm leading-relaxed"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Links & Visibility Section */}
+            <div className="space-y-4">
+                <div className="space-y-4 pt-2">
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-xs font-semibold text-foreground/80">Repository URLs</Label>
+                            <Button type="button" variant="ghost" size="sm" onClick={handleAddRepositoryUrl} className="h-6 text-[10px] font-bold text-primary px-1 hover:bg-transparent">
+                                + Add
+                            </Button>
+                        </div>
+                        <div className="space-y-1.5">
+                            {repositoryUrls.map((url, index) => (
+                            <div key={index} className="flex gap-2">
+                                <Input
+                                type="url"
+                                value={url}
+                                onChange={(e) => handleRepositoryUrlChange(index, e.target.value)}
+                                placeholder="GitHub URL"
+                                className="font-mono text-[11px] h-9 bg-muted/5"
+                                />
+                                {repositoryUrls.length > 1 && (
+                                <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={() => setRepositoryUrls(repositoryUrls.filter((_, i) => i !== index))}
+                                    className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </Button>
+                                )}
+                            </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label htmlFor="demoUrl" className="text-xs font-semibold text-foreground/80">Demo URL</Label>
+                        <Input
+                            id="demoUrl"
+                            type="url"
+                            value={demoUrl}
+                            onChange={(e) => setDemoUrl(e.target.value)}
+                            placeholder="Live preview URL"
+                            className="h-9 bg-muted/5"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label htmlFor="visibility" className="text-xs font-semibold text-foreground/80">Visibility</Label>
+                        <select
+                            id="visibility"
+                            value={visibility}
+                            onChange={(e) => setVisibility(e.target.value as typeof visibility)}
+                            className="w-full h-9 px-3 text-xs border border-border rounded-md bg-muted/5 focus:bg-background transition-all appearance-none cursor-pointer"
+                        >
+                            <option value="PUBLIC">🌎 Public</option>
+                            <option value="VISIBILITY_CONNECTIONS">👥 Network</option>
+                            <option value="PRIVATE">🔒 Private</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            {/* Technical Stack & Tags */}
+            <div className="space-y-4 pt-2">
+                <div className="space-y-3">
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-foreground/80">Tech Stack</Label>
+                        <div className="flex gap-2">
+                            <Input
+                                value={techInput}
+                                onChange={(e) => setTechInput(e.target.value)}
+                                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTech())}
+                                placeholder="React, Rust..."
+                                className="h-9 bg-muted/5"
+                            />
+                            <Button type="button" onClick={handleAddTech} variant="secondary" className="h-9 px-3 text-xs">
+                                Add
+                            </Button>
+                        </div>
+                        <div className="flex flex-wrap gap-1 min-h-[24px]">
+                            {techStack.map((tech) => (
+                                <Badge key={tech} variant="secondary" className="px-1.5 py-0.5 text-[10px] bg-muted/50 border-none font-medium">
+                                {tech}
+                                <button type="button" onClick={() => handleRemoveTech(tech)} className="ml-1 text-muted-foreground hover:text-foreground">
+                                    <X className="w-2.5 h-2.5" />
+                                </button>
+                                </Badge>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5 pt-1">
+                        <Label className="text-xs font-semibold text-foreground/80">Tags</Label>
+                        <div className="flex gap-2">
+                            <Input
+                                value={tagInput}
+                                onChange={(e) => setTagInput(e.target.value)}
+                                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTag())}
+                                placeholder="web3, ai..."
+                                className="h-9 bg-muted/5"
+                            />
+                            <Button type="button" onClick={handleAddTag} variant="secondary" className="h-9 px-3 text-xs">
+                                Tag
+                            </Button>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 min-h-[12px]">
+                            {tags.map((tag) => (
+                                <span key={tag} className="text-[11px] font-medium text-primary/80">#{tag}</span>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+          </div>
+
+          {/* Media Assets Section */}
+          <div className="space-y-3 pt-2">
+            <h3 className="text-xs font-semibold text-foreground/80">Visual Assets</h3>
+            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                {attachments.map((attachment, index) => {
+                  const previewUrl = URL.createObjectURL(attachment.file);
+                  return (
+                    <div key={attachment.file.name + attachment.file.lastModified} className="relative group aspect-square rounded-lg overflow-hidden border border-border/60 bg-muted/20">
+                      {attachment.file.type.startsWith('image/') ? (
+                        <img 
+                          src={previewUrl} 
+                          alt="Preview" 
+                          className="w-full h-full object-cover"
+                          onLoad={() => URL.revokeObjectURL(previewUrl)}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-secondary/30">
+                          <UploadCloud className="w-5 h-5 text-muted-foreground" />
+                        </div>
+                      )}
+
+                      {index === 0 && (
+                          <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-brand-blue text-[8px] text-white font-bold rounded-sm shadow-sm flex items-center gap-1 z-10">
+                              COVER
+                          </div>
+                      )}
+                      
+                      {attachment.isUploading && (
+                        <div className="absolute inset-0 bg-background/60 flex items-center justify-center backdrop-blur-sm">
+                          <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                        </div>
+                      )}
+
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                         <button 
+                            type="button" 
+                            onClick={() => removeAttachment(attachment.file.name)}
+                            className="p-1.5 bg-white/20 hover:bg-white/40 text-white rounded-md transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {attachments.length < 10 && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="aspect-square rounded-lg border-2 border-dashed border-border/60 hover:border-primary/40 hover:bg-muted/30 flex flex-col items-center justify-center gap-1 transition-all group"
+                  >
+                    <UploadCloud className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase group-hover:text-primary">Add</span>
+                  </button>
+                )}
+            </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={(e) => e.target.files && startUpload(Array.from(e.target.files))}
+              className="hidden"
+              multiple
+              accept="image/*,video/*"
             />
           </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Description <span className="text-destructive">*</span></Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={5}
-              placeholder="Describe your project (Markdown supported)"
-              required
-              className="resize-y min-h-[120px]"
-            />
-          </div>
-
-          {/* Repository URLs */}
-          <div className="space-y-3">
-             <div className="flex items-center justify-between">
-                <Label>Repository URLs</Label>
-                <Button type="button" variant="ghost" size="sm" onClick={handleAddRepositoryUrl} className="h-8 text-xs">
-                    <LinkIcon className="w-3.5 h-3.5 mr-1.5" />
-                    Add Another URL
-                </Button>
-             </div>
-            {repositoryUrls.map((url, index) => (
-              <Input
-                key={index}
-                type="url"
-                value={url}
-                onChange={(e) => handleRepositoryUrlChange(index, e.target.value)}
-                placeholder="https://github.com/username/repo"
-                className="font-mono text-sm"
-              />
-            ))}
-          </div>
-
-          {/* Demo URL */}
-          <div className="space-y-2">
-            <Label htmlFor="demoUrl">Demo URL</Label>
-            <Input
-              id="demoUrl"
-              type="url"
-              value={demoUrl}
-              onChange={(e) => setDemoUrl(e.target.value)}
-              placeholder="https://your-demo.com"
-            />
-          </div>
-
-          {/* Tech Stack */}
-          <div className="space-y-3">
-            <Label>Tech Stack</Label>
-            <div className="flex gap-2">
-              <Input
-                value={techInput}
-                onChange={(e) => setTechInput(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTech())}
-                placeholder="Add technology (e.g., React, Node.js)"
-                className="flex-1"
-              />
-              <Button type="button" onClick={handleAddTech} variant="secondary">
-                Add
-              </Button>
-            </div>
-            
-            <div className="flex flex-wrap gap-2 min-h-[32px] p-2 border border-dashed rounded-md bg-muted/30">
-                {techStack.length === 0 && <span className="text-xs text-muted-foreground self-center">No technologies added</span>}
-                {techStack.map((tech) => (
-                    <Badge key={tech} variant="secondary" className="pl-2 pr-1 py-1 flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-100">
-                    {tech}
-                    <button
-                        type="button"
-                        onClick={() => handleRemoveTech(tech)}
-                        className="p-0.5 hover:bg-blue-200 rounded-full transition-colors ml-1"
-                    >
-                        <X className="w-3 h-3" />
-                    </button>
-                    </Badge>
-                ))}
-            </div>
-          </div>
-
-          {/* Tags */}
-          <div className="space-y-3">
-            <Label>Tags</Label>
-            <div className="flex gap-2">
-              <Input
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTag())}
-                placeholder="Add tag (e.g., open-source, web3)"
-                className="flex-1"
-              />
-               <Button type="button" onClick={handleAddTag} variant="outline" size="icon">
-                  <Tag className="w-4 h-4" />
-               </Button>
-            </div>
-            
-            <div className="flex flex-wrap gap-2 min-h-[32px] p-2 border border-dashed rounded-md bg-muted/30">
-                {tags.length === 0 && <span className="text-xs text-muted-foreground self-center">No tags added</span>}
-                {tags.map((tag) => (
-                    <Badge key={tag} variant="outline" className="pl-2 pr-1 py-1 flex items-center gap-1">
-                    #{tag}
-                    <button
-                        type="button"
-                        onClick={() => handleRemoveTag(tag)}
-                        className="p-0.5 hover:bg-muted-foreground/20 rounded-full transition-colors ml-1"
-                    >
-                        <X className="w-3 h-3" />
-                    </button>
-                    </Badge>
-                ))}
-            </div>
-          </div>
-
-          {/* Visibility */}
-          <div className="space-y-2">
-            <Label htmlFor="visibility">Visibility</Label>
-            <select
-              id="visibility"
-              value={visibility}
-              onChange={(e) => setVisibility(e.target.value as typeof visibility)}
-              className="w-full px-3 py-2 text-sm border border-input rounded-md bg-background hover:bg-accent hover:text-accent-foreground focus:ring-2 focus:ring-ring focus:outline-none transition-colors"
-            >
-              <option value="PUBLIC">Public</option>
-              <option value="VISIBILITY_CONNECTIONS">Connections Only</option>
-              <option value="PRIVATE">Private</option>
-            </select>
-          </div>
-
         </form>
 
-        <DialogFooter className="pt-4 border-t border-border mt-4">
+        <DialogFooter className="p-4 border-t border-border/10 bg-muted/5 flex items-center justify-end gap-3">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               onClick={handleClose}
               disabled={createMutation.isPending || isUploading}
+              className="px-4 text-xs font-medium text-muted-foreground hover:bg-transparent"
             >
               Cancel
             </Button>
@@ -295,14 +371,14 @@ export default function CreateProjectModal({
               type="submit"
               onClick={handleSubmit}
               disabled={createMutation.isPending || isUploading}
-              className="min-w-[140px]"
+              className="h-9 px-6 text-xs font-bold"
             >
               {createMutation.isPending ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating...
+                    <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                    Publishing...
                   </>
-              ) : "Create Project"}
+              ) : "Publish Project"}
             </Button>
         </DialogFooter>
       </DialogContent>

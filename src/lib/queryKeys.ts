@@ -8,7 +8,7 @@ export const queryKeys = {
   feed: {
     all: ["feed"] as const,
     list: (filters?: any) => ["feed", "list", { filters }] as const,
-    user: (userId: string) => ["feed", "user", userId] as const,
+    user: (userId: string, limit?: number) => ["feed", "user", userId, { limit }] as const,
   },
 
   // Network queries (followers/following lists)
@@ -36,6 +36,7 @@ export const queryKeys = {
     postLikes: {
       count: (postId: string) => ["engagement", "post-likes", "count", postId] as const,
       status: (postId: string, userId: string) => ["engagement", "post-likes", "status", postId, userId] as const,
+      list: (postId: string) => ["engagement", "post-likes", "list", postId] as const,
     },
 
     // Comment likes
@@ -68,6 +69,24 @@ export const queryKeys = {
 
     connections: {
       all: (userId?: string) => ["engagement", "connections", ...(userId ? [userId] : [])] as const,
+    },
+  },
+
+  // Project queries
+  projects: {
+    all: ["projects"] as const,
+    list: (filters?: any) => ["projects", "list", { filters }] as const,
+    detail: (projectId: string) => ["projects", "detail", projectId] as const,
+    trending: (period?: string) => ["projects", "trending", { period }] as const,
+    top: (period?: string) => ["projects", "top", { period }] as const,
+    search: (query: string, filters?: any) => ["projects", "search", query, { filters }] as const,
+    user: (userId: string, limit?: number) => ["projects", "user", userId, { limit }] as const,
+
+    // Project Comments
+    comments: {
+      all: (projectId: string) => ["projects", "comments", "all", projectId] as const,
+      count: (projectId: string) => ["projects", "comments", "count", projectId] as const,
+      replies: (commentId: string) => ["projects", "comments", "replies", commentId] as const,
     },
   },
 
