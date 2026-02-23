@@ -189,8 +189,9 @@ function GroupCard({ group, currentUser }: { group: GroupListDto, currentUser: {
     const router = useRouter();
     const headers = useAuthHeaders(); 
     
-    // isMember is provided by the backend now!
+    // isMember and isRequestPending are provided by the backend now!
     const isMember = group.isMember;
+    const isRequestPending = group.isRequestPending;
     
     // We need a specific mutation instance for this group
     const { mutate: joinGroup, isPending } = useJoinGroup(group.conversationId);
@@ -199,12 +200,7 @@ function GroupCard({ group, currentUser }: { group: GroupListDto, currentUser: {
         if (!currentUser) return toast.error("Please login to join groups");
         if (!headers.Authorization) return toast.error("Authentication required. Please refresh the page.");
         
-        joinGroup(currentUser.id, {
-            onSuccess: () => {
-                toast.success("Joined group successfully");
-                router.push(`/chat?id=${group.conversationId}`);
-            }
-        });
+        joinGroup(currentUser.id);
     };
 
     const handleView = () => {
@@ -251,6 +247,10 @@ function GroupCard({ group, currentUser }: { group: GroupListDto, currentUser: {
                         View Hub
                         <ArrowRight className="w-4 h-4" />
                     </Button>
+                ) : isRequestPending ? (
+                    <Button variant="outline" className="w-full bg-muted/50 text-muted-foreground" disabled>
+                        Request Sent
+                    </Button>
                 ) : (
                     <Button 
                         className="w-full" 
@@ -258,7 +258,7 @@ function GroupCard({ group, currentUser }: { group: GroupListDto, currentUser: {
                         disabled={isPending || !headers.Authorization}
                     >
                         {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Join Hub
+                        Request to Join
                     </Button>
                 )}
             </CardFooter>

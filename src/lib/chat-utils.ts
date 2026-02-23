@@ -57,6 +57,9 @@ export function formatSystemMessage(
             }
             return "New participants were added";
 
+        case "joined_group":
+            return `${resolveActorName(payload)} joined the group`;
+
         case "removed_participant":
             return `${resolveActorName(payload)} was removed from the group`;
 

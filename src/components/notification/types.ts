@@ -11,6 +11,7 @@ export type NotificationType =
   | "share"
   | "live"
   | "report"
+  | "hub_join_request"
   | "system";
 
 export interface NotificationActor {

@@ -65,6 +65,8 @@ const getNotificationIcon = (type: NotificationType): React.ReactNode => {
       return <Star className={cn(iconClass, "text-yellow-500")} />;
     case "report":
       return <AlertTriangle className={cn(iconClass, "text-red-500")} />;
+    case "hub_join_request":
+      return <UserPlus className={cn(iconClass, "text-indigo-500")} />;
     default:
       return <Bell className={cn(iconClass, iconColor)} />;
   }
@@ -166,6 +168,11 @@ export const NotificationRow = ({ notification, onMarkAsRead, isLast }: Notifica
         // System notifications could have a target route in metadata
         // Fallback to home if no specific route provided
         router.push("/");
+        break;
+      case "hub_join_request":
+        if (notification.entityId) {
+          router.push(`/chat?id=${notification.entityId}`);
+        }
         break;
       case "like":
       case "comment":

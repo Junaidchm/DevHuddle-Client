@@ -259,9 +259,10 @@ export async function getGroupTopics(
     return response.data;
 }
 
-export async function joinGroup(groupId: string, userIds: string[], headers?: Record<string, string>): Promise<void> {
+export async function joinGroup(groupId: string, userIds: string[], headers?: Record<string, string>): Promise<any> {
     // Use the new /join endpoint for self-joining groups
-    await axiosInstance.post(`${API_ROUTES.CHAT.GROUPS}/${groupId}/join`, {}, { headers });
+    const response = await axiosInstance.post<{success: boolean, message: string, status: string}>(`${API_ROUTES.CHAT.GROUPS}/${groupId}/join`, {}, { headers });
+    return response.data;
 }
 
 export async function addParticipants(groupId: string, userIds: string[], headers?: Record<string, string>): Promise<void> {
@@ -429,4 +430,28 @@ export async function reportChat(
     headers?: Record<string, string>
 ): Promise<void> {
     await axiosInstance.post(API_ROUTES.CHAT.REPORTS, data, { headers });
+}
+
+// --- Hub Join Requests ---
+
+export async function getHubJoinRequests(
+    hubId: string, 
+    headers?: Record<string, string>
+): Promise<any[]> {
+    const response = await axiosInstance.get(API_ROUTES.CHAT.HUB_REQUESTS(hubId), { headers });
+    return response.data;
+}
+
+export async function approveHubJoinRequest(
+    requestId: string, 
+    headers?: Record<string, string>
+): Promise<void> {
+    await axiosInstance.post(API_ROUTES.CHAT.APPROVE_REQUEST(requestId), {}, { headers });
+}
+
+export async function rejectHubJoinRequest(
+    requestId: string, 
+    headers?: Record<string, string>
+): Promise<void> {
+    await axiosInstance.post(API_ROUTES.CHAT.REJECT_REQUEST(requestId), {}, { headers });
 }

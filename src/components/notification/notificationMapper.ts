@@ -1,6 +1,7 @@
 import { MappedNotification, NotificationActor } from "./types";
 import { PROFILE_DEFAULT_URL } from "@/src/constants/index";
 import { GetNotificationsResult } from "@/src/app/types";
+import { formatSystemMessage } from "@/src/lib/chat-utils";
 
 /**
  * Maps backend notification types to frontend notification types
@@ -15,6 +16,9 @@ const BACKEND_TO_FRONTEND_TYPE_MAP: Record<string, MappedNotification["type"]> =
   ROOM_REMINDER: "system",
   SHARE: "share",
   REPORT: "report",
+  HUB_JOIN_REQUEST: "hub_join_request",
+  HUB_JOIN_APPROVED: "system",
+  HUB_JOIN_REJECTED: "system",
   // Handle legacy types
   COLLAB: "collab",
   EVENT: "event",
@@ -93,6 +97,12 @@ const getActionText = (
       return "shared your post";
     case "REPORT":
       return "reported your content";
+    case "HUB_JOIN_REQUEST":
+      return "requested to join your hub";
+    case "HUB_JOIN_APPROVED":
+      return "approved your request to join the hub";
+    case "HUB_JOIN_REJECTED":
+      return "rejected your request to join the hub";
     default:
       return "interacted with your content";
   }
@@ -223,7 +233,7 @@ const extractPreview = (notification: GetNotificationsResult["notifications"][0]
   if (notification.metadata?.content) {
     return {
       type: notification.entityType === "COMMENT" ? "comment" : "post",
-      content: notification.metadata.content,
+      content: formatSystemMessage(notification.metadata.content),
       imageUrl: notification.metadata.imageUrl,
     };
   }
@@ -232,7 +242,7 @@ const extractPreview = (notification: GetNotificationsResult["notifications"][0]
   if (notification.summary?.preview) {
     return {
       type: notification.entityType === "COMMENT" ? "comment" : "post",
-      content: notification.summary.preview.content || notification.summary.preview.text || "",
+      content: formatSystemMessage(notification.summary.preview.content || notification.summary.preview.text || ""),
       imageUrl: notification.summary.preview.imageUrl,
     };
   }

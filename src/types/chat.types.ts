@@ -277,5 +277,6 @@ export interface GroupListDto {
   memberCount: number;
   topics: string[];
   isMember: boolean;
+  isRequestPending: boolean;
   createdAt: Date;
 }

@@ -193,9 +193,10 @@ export const useJoinGroup = (groupId: string) => {
 
     return useMutation({
         mutationFn: (userId: string) => joinGroup(groupId, [userId], headers),
-        onSuccess: () => {
+        onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.list() });
-            toast.success("Joined group successfully");
+            queryClient.invalidateQueries({ queryKey: ["discover-groups"] });
+            toast.success(data.message || "Action successful");
         },
         onError: (error: any) => toast.error(error.message || "Failed to join group")
     });

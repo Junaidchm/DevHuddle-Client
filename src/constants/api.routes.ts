@@ -268,6 +268,11 @@ export const API_ROUTES = {
     // Reporting
     REPORTS: `${API_VERSION}/chat/reports`,
 
+    // Hub Join Requests
+    HUB_REQUESTS: (hubId: string) => `${API_VERSION}/chat/hubs/${hubId}/requests`,
+    APPROVE_REQUEST: (requestId: string) => `${API_VERSION}/chat/hubs/requests/${requestId}/approve`,
+    REJECT_REQUEST: (requestId: string) => `${API_VERSION}/chat/hubs/requests/${requestId}/reject`,
+
     // WebSocket
     WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3003',
   },

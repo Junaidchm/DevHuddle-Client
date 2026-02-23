@@ -16,6 +16,8 @@ import {
 } from "@/src/components/ui/dialog";
 import { ScrollArea } from "@/src/components/ui/scroll-area";
 import { cn } from "@/src/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/src/components/ui/tabs";
+import { JoinRequestsTab } from "./hubs/JoinRequestsTab";
 import { 
     useAddParticipants, 
     useRemoveParticipant, 
@@ -24,9 +26,10 @@ import {
     useLeaveGroup
 } from "@/src/hooks/chat/useGroupMutations";
 import { useChatSuggestions } from "@/src/hooks/chat/useChatSuggestions";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { confirmToast } from "@/src/utils/confirmToast";
 import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/src/lib/queryKeys";
 
 interface GroupDetailsModalProps {
     conversation: ConversationWithMetadata;
@@ -130,7 +133,7 @@ export function GroupDetailsModal({ conversation, currentUserId, isOpen, onClose
     // Real-time updates
     useEffect(() => {
         const handleUpdate = () => {
-            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.all });
         };
 
         window.addEventListener('group_updated', handleUpdate as EventListener);
@@ -187,135 +190,147 @@ export function GroupDetailsModal({ conversation, currentUserId, isOpen, onClose
                                 </div>
                             </div>
 
-                            {/* Members Section */}
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <h4 className="font-semibold">Members ({conversation.participants.length})</h4>
-                                    {/* ADD MEMBER BUTTON - ALWAYS SHOW FOR TESTING */}
+                            {/* Tabs Section */}
+                            <Tabs defaultValue="members" className="w-full">
+                                <TabsList className="grid w-full grid-cols-2">
+                                    <TabsTrigger value="members">Members</TabsTrigger>
                                     {isAdmin && (
-                                        <Button
-                                            size="sm"
-                                            onClick={() => setIsAddMemberOpen(true)}
-                                            className="gap-2 h-8 text-xs"
-                                        >
-                                            <UserPlus className="w-3.5 h-3.5" />
-                                            Add Member
-                                        </Button>
+                                        <TabsTrigger value="requests">Join Requests</TabsTrigger>
                                     )}
-                                </div>
-
-                                {/* Search */}
-                                {conversation.participants.length > 5 && (
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                        <Input
-                                            placeholder="Search members..."
-                                            value={memberSearch}
-                                            onChange={(e) => setMemberSearch(e.target.value)}
-                                            className="pl-9 h-9"
-                                        />
-                                    </div>
-                                )}
-
-                                {/* Member List */}
-                                <div className="space-y-1">
-                                    {filteredMembers.map(participant => {
-                                        const isMe = participant.userId === currentUserId;
-                                        const isPartAdmin = participant.role === 'ADMIN' || conversation.ownerId === participant.userId;
-                                        const isPartOwner = conversation.ownerId === participant.userId;
-                                        
-                                        return (
-                                            <div 
-                                                key={participant.userId}
-                                                className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
+                                </TabsList>
+                                
+                                <TabsContent value="members" className="pt-4 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="font-semibold text-sm">Members ({conversation.participants.length})</h4>
+                                        {/* ADD MEMBER BUTTON - ALWAYS SHOW FOR TESTING */}
+                                        {isAdmin && (
+                                            <Button
+                                                size="sm"
+                                                onClick={() => setIsAddMemberOpen(true)}
+                                                className="gap-2 h-8 text-xs h-7 px-2"
                                             >
-                                                <Avatar className="w-10 h-10">
-                                                    <AvatarImage src={participant.profilePhoto || PROFILE_DEFAULT_URL} />
-                                                    <AvatarFallback>
-                                                        {(participant.name?.[0] || 'U').toUpperCase()}
-                                                    </AvatarFallback>
-                                                </Avatar>
+                                                <UserPlus className="w-3 h-3" />
+                                                Add Member
+                                            </Button>
+                                        )}
+                                    </div>
 
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-sm font-medium truncate">
-                                                            {isMe ? "You" : participant.name}
-                                                        </span>
-                                                        
-                                                        {/* OWNER BADGE */}
-                                                        {isPartOwner && (
-                                                            <span className="inline-flex items-center gap-1 text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
-                                                                <Crown className="w-3 h-3" />
-                                                                Owner
-                                                            </span>
-                                                        )}
-                                                        
-                                                        {/* ADMIN BADGE */}
-                                                        {isPartAdmin && !isPartOwner && (
-                                                            <span className="inline-flex items-center gap-1 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
-                                                                <Shield className="w-3 h-3" />
-                                                                Admin
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-xs text-muted-foreground truncate">
-                                                        @{participant.username}
-                                                    </p>
-                                                </div>
+                                    {/* Search */}
+                                    {conversation.participants.length > 5 && (
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                            <Input
+                                                placeholder="Search members..."
+                                                value={memberSearch}
+                                                onChange={(e) => setMemberSearch(e.target.value)}
+                                                className="pl-9 h-9"
+                                            />
+                                        </div>
+                                    )}
 
-                                                {/* ADMIN ACTIONS */}
-                                                {(isAdmin && !isMe && !isPartOwner) && (() => {
-                                                    const isPromotingThisUser = promoteMutation.isPending && promoteMutation.variables === participant.userId;
-                                                    const isDemotingThisUser = demoteMutation.isPending && demoteMutation.variables === participant.userId;
-                                                    const isRemovingThisUser = removeParticipantMutation.isPending && removeParticipantMutation.variables === participant.userId;
-                                                    const anyPending = isPromotingThisUser || isDemotingThisUser || isRemovingThisUser;
-                                                    
-                                                    return (
-                                                        <div className="flex gap-1">
-                                                            {/* PROMOTE / DEMOTE BUTTON */}
-                                                            {isPartAdmin ? (
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    onClick={() => handleDemote(participant.userId)}
-                                                                    disabled={anyPending}
-                                                                    className="h-8 gap-1.5 text-xs"
-                                                                >
-                                                                    {isDemotingThisUser ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldOff className="w-3.5 h-3.5" />}
-                                                                    {isDemotingThisUser ? "Removing..." : "Remove Admin"}
-                                                                </Button>
-                                                            ) : (
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    onClick={() => handlePromote(participant.userId)}
-                                                                    disabled={anyPending}
-                                                                    className="h-8 gap-1.5 text-xs"
-                                                                >
-                                                                    {isPromotingThisUser ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
-                                                                    {isPromotingThisUser ? "Making..." : "Make Admin"}
-                                                                </Button>
+                                    {/* Member List */}
+                                    <div className="space-y-1">
+                                        {filteredMembers.map(participant => {
+                                            const isMe = participant.userId === currentUserId;
+                                            const isPartAdmin = participant.role === 'ADMIN' || conversation.ownerId === participant.userId;
+                                            const isPartOwner = conversation.ownerId === participant.userId;
+                                            
+                                            return (
+                                                <div 
+                                                    key={participant.userId}
+                                                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
+                                                >
+                                                    <Avatar className="w-10 h-10">
+                                                        <AvatarImage src={participant.profilePhoto || PROFILE_DEFAULT_URL} />
+                                                        <AvatarFallback>
+                                                            {(participant.name?.[0] || 'U').toUpperCase()}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm font-medium truncate">
+                                                                {isMe ? "You" : participant.name}
+                                                            </span>
+                                                            
+                                                            {/* OWNER BADGE */}
+                                                            {isPartOwner && (
+                                                                <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0 rounded-md border border-amber-200 dark:border-amber-800">
+                                                                    <Crown className="w-2.5 h-2.5" />
+                                                                    Owner
+                                                                </span>
                                                             )}
                                                             
-                                                            {/* REMOVE BUTTON */}
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => handleRemove(participant.userId)}
-                                                                disabled={anyPending}
-                                                                className="h-8 gap-1.5 text-xs text-destructive hover:text-destructive"
-                                                            >
-                                                                {isRemovingThisUser ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                                                                {isRemovingThisUser ? "Removing..." : "Remove"}
-                                                            </Button>
+                                                            {/* ADMIN BADGE */}
+                                                            {isPartAdmin && !isPartOwner && (
+                                                                <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-1.5 py-0 rounded-md border border-blue-200 dark:border-blue-800">
+                                                                    <Shield className="w-3 h-3 text-2.5" />
+                                                                    Admin
+                                                                </span>
+                                                            )}
                                                         </div>
-                                                    );
-                                                })()}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
+                                                        <p className="text-[10px] text-muted-foreground truncate">
+                                                            @{participant.username}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* ADMIN ACTIONS */}
+                                                    {(isAdmin && !isMe && !isPartOwner) && (() => {
+                                                        const isPromotingThisUser = promoteMutation.isPending && promoteMutation.variables === participant.userId;
+                                                        const isDemotingThisUser = demoteMutation.isPending && demoteMutation.variables === participant.userId;
+                                                        const isRemovingThisUser = removeParticipantMutation.isPending && removeParticipantMutation.variables === participant.userId;
+                                                        const anyPending = isPromotingThisUser || isDemotingThisUser || isRemovingThisUser;
+                                                        
+                                                        return (
+                                                            <div className="flex gap-1">
+                                                                {/* PROMOTE / DEMOTE BUTTON */}
+                                                                {isPartAdmin ? (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => handleDemote(participant.userId)}
+                                                                        disabled={anyPending}
+                                                                        className="h-7 px-2 text-[10px]"
+                                                                    >
+                                                                        {isDemotingThisUser ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShieldOff className="w-3 h-3" />}
+                                                                    </Button>
+                                                                ) : (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => handlePromote(participant.userId)}
+                                                                        disabled={anyPending}
+                                                                        className="h-7 px-2 text-[10px]"
+                                                                    >
+                                                                        {isPromotingThisUser ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shield className="w-3 h-3" />}
+                                                                    </Button>
+                                                                )}
+                                                                
+                                                                {/* REMOVE BUTTON */}
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => handleRemove(participant.userId)}
+                                                                    disabled={anyPending}
+                                                                    className="h-7 px-2 text-[10px] text-destructive hover:text-destructive"
+                                                                >
+                                                                    {isRemovingThisUser ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                                                                </Button>
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </TabsContent>
+
+                                {isAdmin && (
+                                    <TabsContent value="requests" className="pt-4">
+                                        <JoinRequestsTab hubId={conversation.conversationId} />
+                                    </TabsContent>
+                                )}
+                            </Tabs>
 
                             {/* Exit Group */}
                             <div className="pt-4 border-t">

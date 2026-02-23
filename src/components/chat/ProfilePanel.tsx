@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { ConversationWithMetadata } from "@/src/types/chat.types";
-import { Info, Image, Link, Users, X } from "lucide-react";
+import { Info, Image, Link, Users, X, UserPlus } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import { Badge } from "@/src/components/ui/badge";
@@ -12,6 +12,7 @@ import { InfoSection } from "./profile/InfoSection";
 import { MediaSection } from "./profile/MediaSection";
 import { LinksSection } from "./profile/LinksSection";
 import { GroupsSection } from "./profile/GroupsSection";
+import { JoinRequestsTab } from "./hubs/JoinRequestsTab";
 
 interface ProfilePanelProps {
     conversation: ConversationWithMetadata;
@@ -20,18 +21,22 @@ interface ProfilePanelProps {
     onConversationDeleted?: () => void;
 }
 
-type TabType = 'info' | 'media' | 'links' | 'groups';
+type TabType = 'info' | 'media' | 'links' | 'groups' | 'requests';
 
 export function ProfilePanel({ conversation, currentUserId, onClose, onConversationDeleted }: ProfilePanelProps) {
     const [activeTab, setActiveTab] = useState<TabType>('info');
     const isGroup = conversation.type === 'GROUP';
     const participant = !isGroup ? conversation.participants.find(p => p.userId !== currentUserId) : null;
+    
+    const myParticipant = conversation.participants.find(p => p.userId === currentUserId);
+    const isAdmin = myParticipant?.role === 'ADMIN' || conversation.ownerId === currentUserId;
 
     const tabs = [
         { id: 'info', icon: Info, label: 'Overview' },
         { id: 'media', icon: Image, label: 'Media' },
         { id: 'links', icon: Link, label: 'Links' },
         { id: 'groups', icon: Users, label: isGroup ? 'Members' : 'Groups in Common' },
+        ...(isGroup && isAdmin ? [{ id: 'requests', icon: UserPlus, label: 'Requests' }] : []),
     ] as const;
 
     const renderContent = () => {
@@ -44,6 +49,8 @@ export function ProfilePanel({ conversation, currentUserId, onClose, onConversat
                 return <LinksSection conversationId={conversation.conversationId} currentUserId={currentUserId} />;
             case 'groups':
                 return <GroupsSection conversation={conversation} currentUserId={currentUserId} />;
+            case 'requests':
+                return <JoinRequestsTab hubId={conversation.conversationId} />;
             default:
                 return null;
         }
