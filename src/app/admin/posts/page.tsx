@@ -236,6 +236,7 @@ export default function PostsPage() {
                         name={post.author?.name || "Unknown"}
                         username={post.author?.username || "unknown"}
                         avatar={post.author?.profilePicture}
+                        subtext={post.author?.isDeleted ? "Deleted Account" : undefined}
                       />
                     </td>
                     <td className="p-4">

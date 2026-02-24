@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { getMediaUrl } from "@/src/utils/media";
 
 interface MediaItem {
   id: string;
@@ -39,14 +40,14 @@ export default function ProjectMediaGallery({ media }: ProjectMediaGalleryProps)
       <div className="relative w-full aspect-video">
         {currentMedia.type === "IMAGE" ? (
           <Image
-            src={currentMedia.url}
+            src={getMediaUrl(currentMedia.url)}
             alt={`Project media ${currentIndex + 1}`}
             fill
             className="object-contain"
           />
         ) : (
           <video
-            src={currentMedia.url}
+            src={getMediaUrl(currentMedia.url)}
             controls
             className="w-full h-full object-contain"
           />
@@ -84,7 +85,7 @@ export default function ProjectMediaGallery({ media }: ProjectMediaGalleryProps)
                 }`}
               >
                 <Image
-                  src={item.thumbnailUrl || item.url}
+                  src={getMediaUrl(item.thumbnailUrl || item.url)}
                   alt={`Thumbnail ${index + 1}`}
                   width={64}
                   height={64}

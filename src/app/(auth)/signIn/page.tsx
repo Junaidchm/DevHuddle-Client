@@ -77,6 +77,7 @@ export default function SignIn() {
   });
 
   const getErrorMessage = (error: string) => {
+    // Exact matches for known codes
     switch (error) {
       case "user_not_found":
         return "User not found. Please check your email or sign up.";
@@ -94,6 +95,8 @@ export default function SignIn() {
       case "server_error":
         return "A server error occurred. Please try again later.";
       default:
+        // Fallback for custom codes that might come through
+        if (error.includes("blocked")) return "Your account has been blocked. Please contact support.";
         return "Login failed. Please check your credentials.";
     }
   };
@@ -105,10 +108,12 @@ export default function SignIn() {
         redirect: false, 
         email: data.email,
         password: data.password,
-      })) as { error?: string };
+      })) as { error?: string, code?: string };
 
-      if (result?.error) {
-        toast.error(getErrorMessage(result.error), { position: "bottom-center" });
+      if (result?.error || result?.code) {
+        // Prefer code over error as it contains our custom mapping (e.g., 'user_blocked')
+        const errorToDisplay = result.code || result.error || "login_failed";
+        toast.error(getErrorMessage(errorToDisplay), { position: "bottom-center" });
       } else {
         
         toast.success("Login successful", { position: "bottom-center" });

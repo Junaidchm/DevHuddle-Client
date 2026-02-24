@@ -96,20 +96,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
             // Map backend messages to specific error codes
             let errorCode = "login_failed";
-            if (backendMessage === "User not found !") errorCode = "user_not_found";
-            else if (backendMessage === "Invalid Credentials") errorCode = "invalid_credentials";
-            else if (backendMessage === "You are blocked from DevHuddle, Please contact support") errorCode = "user_blocked";
-            else if (backendMessage === "This account was created using Google. Please login using Google.") errorCode = "google_account_only";
-            else if (backendMessage === "Provide Verified Email ID") errorCode = "email_not_verified";
-            else if (backendMessage === "Internel server error") errorCode = "server_error";
             
-            // Log for debugging
-            console.error("Login error response:", {
-              status: res.status,
-              backendMessage,
-              errorCode
-            });
-
+            // Normalize message for comparison
+            const msg = backendMessage?.toLowerCase() || "";
+            
+            if (msg.includes("user not found")) {
+              errorCode = "user_not_found";
+            } else if (msg.includes("invalid credentials")) {
+              errorCode = "invalid_credentials";
+            } else if (msg.includes("blocked")) {
+              errorCode = "user_blocked";
+            } else if (msg.includes("google")) {
+              errorCode = "google_account_only";
+            } else if (msg.includes("verified email")) {
+              errorCode = "email_not_verified";
+            } else if (msg.includes("internel server error") || msg.includes("server error")) {
+              errorCode = "server_error";
+            }
+            
             // Throw error with the specific code
             class InvalidLoginError extends CredentialsSignin {
               code = errorCode;

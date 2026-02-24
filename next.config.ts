@@ -37,6 +37,11 @@ const nextConfig: NextConfig = {
         hostname: 'pub-*.r2.dev',  // Cloudflare R2 public URLs
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'vkszksqfmg.ufs.sh',  // UploadThing
+        pathname: '/**',
+      },
     ],
   },
 };

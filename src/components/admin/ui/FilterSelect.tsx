@@ -35,7 +35,7 @@ export const FilterSelect: React.FC<FilterSelectProps> = ({
       <select
         onChange={onChange}
         value={value}
-        id={label}
+        id={id}
         className={`p-1 px-2 border border-gray-200 rounded-lg font-['Inter'] text-sm text-gray-800 bg-white min-w-[140px] max-[768px]:w-full focus:outline-none focus:border-indigo-600 focus:shadow-[0_0_0_3px_rgba(79,70,229,0.2)] ${selectClassName}`}
         {...props}
       >

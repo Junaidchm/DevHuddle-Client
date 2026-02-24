@@ -1,31 +1,44 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useParams, useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getCommentById, deleteCommentAdmin } from "@/src/services/api/admin-panel.service";
-import { toast } from "react-toastify";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { deleteCommentAdmin, getCommentById } from "@/src/services/api/admin-panel.service";
+import { useApiClient } from "@/src/lib/api-client";
+import { useSession } from "next-auth/react";
+import toast from "react-hot-toast";
+import ConfirmModal from "@/src/components/admin/ui/ConfirmModal";
+import StatusBadge from "@/src/components/admin/ui/StatusBadge";
+import Link from "next/link";
+import { useState } from "react";
 
 export default function CommentDetailPage() {
   const params = useParams();
   const router = useRouter();
   const commentId = params.id as string;
-
+  const { data: session, status } = useSession();
+  const apiClient = useApiClient({ requireAuth: true });
+  const userId = session?.user?.id;
+  const userRole = session?.user?.role;
   const queryClient = useQueryClient();
+  const [deleteModal, setDeleteModal] = useState(false);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["admin-comment", commentId],
-    queryFn: () => getCommentById(commentId),
+    queryKey: ["admin-comment", commentId, userId, userRole],
+    queryFn: () => getCommentById(commentId, apiClient.getHeaders()),
+    enabled:
+      status !== "loading" && !!userId && userRole === "superAdmin" && apiClient.isReady,
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteCommentAdmin(commentId),
+    mutationFn: () => deleteCommentAdmin(commentId, apiClient.getHeaders()),
     onSuccess: () => {
-      toast.success("Comment deleted successfully");
+      toast.success("Comment deleted");
       queryClient.invalidateQueries({ queryKey: ["admin-comments"] });
       router.push("/admin/comments");
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Failed to delete comment");
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || "Failed to delete comment");
     },
   });
 
@@ -44,7 +57,7 @@ export default function CommentDetailPage() {
     return (
       <div className="p-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">Error loading comment. Please try again.</p>
+          <p className="text-red-800">Error loading comment details.</p>
         </div>
       </div>
     );
@@ -55,10 +68,7 @@ export default function CommentDetailPage() {
   return (
     <div className="p-6">
       <div className="mb-6 flex items-center gap-4">
-        <button
-          onClick={() => router.back()}
-          className="text-gray-600 hover:text-gray-900"
-        >
+        <button onClick={() => router.back()} className="text-gray-600 hover:text-gray-900">
           <i className="fas fa-arrow-left mr-2"></i>Back
         </button>
         <h1 className="text-2xl font-bold text-gray-900">Comment Details</h1>
@@ -67,77 +77,72 @@ export default function CommentDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Comment Content</h2>
+            <h2 className="text-lg font-semibold mb-4">Comment Information</h2>
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-gray-500">Content</label>
-                <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{comment.content}</p>
+                <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
+                  {comment.content || "No content"}
+                </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">User ID</label>
+                <label className="text-sm font-medium text-gray-500">Author ID</label>
                 <p className="mt-1 text-sm text-gray-900">{comment.userId}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">Post ID</label>
                 <p className="mt-1 text-sm text-gray-900">{comment.postId}</p>
+                <Link href={`/admin/posts/${comment.postId}`} className="text-xs text-indigo-600 hover:underline">
+                  Open parent post
+                </Link>
               </div>
-              {comment.Post && (
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Parent Post</label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {comment.Post.content?.substring(0, 200)}...
-                  </p>
-                </div>
-              )}
               <div>
                 <label className="text-sm font-medium text-gray-500">Status</label>
                 <div className="mt-1">
-                  {comment.deletedAt ? (
-                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
-                      Deleted
-                    </span>
-                  ) : (
-                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                      Active
-                    </span>
-                  )}
+                  <StatusBadge status={comment.deletedAt ? "deleted" : "active"} />
                 </div>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">Likes</label>
                 <p className="mt-1 text-sm text-gray-900">{comment.likesCount || 0}</p>
               </div>
-              {comment.Reports && comment.Reports.length > 0 && (
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Reports</label>
-                  <div className="mt-2 space-y-2">
-                    {comment.Reports.map((report: any) => (
-                      <div key={report.id} className="p-3 bg-gray-50 rounded-lg">
-                        <p className="text-sm text-gray-900">
-                          <span className="font-medium">{report.reason}</span> - {report.status}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {new Date(report.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold mb-4">Related Reports</h2>
+            {comment.Reports && comment.Reports.length > 0 ? (
+              <div className="space-y-3">
+                {comment.Reports.map((report: any) => (
+                  <div key={report.id} className="border border-gray-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm text-gray-900 font-medium">{report.reason}</p>
+                      <p className="text-xs text-gray-500">{report.status}</p>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {new Date(report.createdAt).toLocaleString()}
+                    </p>
+                    <Link
+                      href={`/admin/reports/${report.id}`}
+                      className="text-xs text-indigo-600 hover:underline mt-2 inline-block"
+                    >
+                      Open report
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No reports attached to this comment.</p>
+            )}
           </div>
         </div>
 
         <div className="space-y-6">
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Actions</h2>
+            <h2 className="text-lg font-semibold mb-4">Moderation Actions</h2>
             {!comment.deletedAt && (
               <button
-                onClick={() => {
-                  if (confirm("Are you sure you want to delete this comment?")) {
-                    deleteMutation.mutate();
-                  }
-                }}
+                onClick={() => setDeleteModal(true)}
                 disabled={deleteMutation.isPending}
                 className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
               >
@@ -147,7 +152,17 @@ export default function CommentDetailPage() {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={deleteModal}
+        onClose={() => setDeleteModal(false)}
+        onConfirm={() => deleteMutation.mutate()}
+        title="Delete Comment"
+        message="This action permanently deletes the comment."
+        confirmLabel="Delete Comment"
+        confirmVariant="danger"
+        isLoading={deleteMutation.isPending}
+      />
     </div>
   );
 }
-

@@ -23,7 +23,7 @@ export default function UserDetailsModal({ userId, onClose }: UserDetailsModalPr
   const profileImageUrl = data?.data?.profileImage;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] flex justify-center items-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-[0_1px_3px_0_rgba(0,0,0,0.1),0_1px_2px_0_rgba(0,0,0,0.06)] w-full max-w-3xl max-h-[80vh] overflow-y-auto font-['Inter'] text-gray-900">
         <div className="p-6 relative">
           <button

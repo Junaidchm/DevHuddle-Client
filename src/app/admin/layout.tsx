@@ -205,7 +205,7 @@ export default function AdminLayout({
         {/* Backdrop */}
         {isSidebarOpen && (
           <div
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-40 lg:hidden"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}

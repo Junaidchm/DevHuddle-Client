@@ -17,6 +17,7 @@ import useDebounce from "@/src/customHooks/useDebounce";
 import { FilterSelect } from "@/src/components/admin/ui/FilterSelect";
 import { config } from "./static_config";
 import { FilterBar } from "@/src/components/admin/ui/FilterBar";
+import { confirmToast } from "@/src/utils/confirmToast";
 
 const UserDetailsModal = dynamic(
   () => import("@/src/components/admin/user-management/userDetailsModal")
@@ -70,10 +71,7 @@ export default function UserList() {
     setDate("all");
   };
 
-  const totalUsers = data?.data?.total || 0;
   const totalPages = data?.data?.totalPages;
-  const startIndex = (page - 1) * limit + 1;
-  const endIndex = Math.min(startIndex + limit - 1, totalUsers);
 
   const blockUnblockMutation = useMutation({
     mutationFn: (userId: string) => toogleUserBlock(userId, apiClient.getHeaders() as Record<string, string>),
@@ -81,13 +79,17 @@ export default function UserList() {
       toast.success("User status updated");
       queryClient.invalidateQueries({ queryKey: ["users"] });
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Failed to update user status");
+    onError: (error: unknown) => {
+      const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to update user status";
+      toast.error(errorMessage);
     },
   });
 
-  const handleBlockMutation = (userId: string) => {
-    blockUnblockMutation.mutate(userId);
+  const handleBlockMutation = (userId: string, isBlocked: boolean) => {
+    const action = isBlocked ? "unblock" : "block";
+    confirmToast(`Are you sure you want to ${action} this user?`, () => {
+      blockUnblockMutation.mutate(userId);
+    });
   };
 
   const handleBlockToogle = (index: number) => {
@@ -239,7 +241,7 @@ export default function UserList() {
                       <div className="bg-red-50 border border-red-200 rounded-lg p-4 inline-block">
                         <p className="text-red-800 font-medium">Error loading users</p>
                         <p className="text-red-600 text-sm mt-1">
-                          {(error as any)?.response?.data?.message || "Please try again"}
+                          {(error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Please try again"}
                         </p>
                       </div>
                     </td>
@@ -333,7 +335,7 @@ export default function UserList() {
                             {blockUnblock === index && (
                               <div className="absolute top-full right-0 w-44 bg-white rounded-md shadow-lg z-10">
                                 <button
-                                  onClick={() => handleBlockMutation(user.id)}
+                                  onClick={() => handleBlockMutation(user.id, user.isBlocked)}
                                   disabled={blockUnblockMutation.isPending}
                                   className={`flex w-full items-center gap-2 px-4 py-2 text-sm ${
                                     user.isBlocked

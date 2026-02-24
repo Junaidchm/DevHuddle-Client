@@ -44,34 +44,33 @@ export default function SidebarClient({id}: { id: string }) {
         </CardHeader>
         <CardContent className="grid gap-4">
           {usersToFollow.map((user, index) => (
-            <div key={user.id} className="flex items-start gap-3">
-               <Avatar className="h-12 w-12 border border-border">
-                  <AvatarImage 
-                    src={getMediaUrl(user.profilePicture) || PROFILE_DEFAULT_URL} 
-                    alt={user.name} 
-                    className="object-cover"
-                  />
-                  <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
-                </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-col">
+            <div key={user.id} className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3 overflow-hidden">
+                 <Avatar className="h-10 w-10 border border-border shrink-0">
+                    <AvatarImage 
+                      src={getMediaUrl(user.profilePicture) || PROFILE_DEFAULT_URL} 
+                      alt={user.name} 
+                      className="object-cover"
+                    />
+                    <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
+                  </Avatar>
+                <div className="flex flex-col min-w-0">
                     <span className="font-semibold text-sm text-foreground truncate">
                         {user.name}
                     </span>
-                    <span className="text-xs text-muted-foreground mb-1 truncate">
-                       {/* Placeholder headline or username */}
+                    <span className="text-xs text-muted-foreground truncate">
                        @{user.username}
                     </span>
                 </div>
-                
-                <FollowButton
-                  userId={user.id}
-                  isFollowing={user.isFollowedByUser}
-                  size="sm"
-                  className="w-fit h-8 text-xs px-4 rounded-full border-2 font-semibold hover:bg-muted/50 hover:border-foreground/50"
-                  variant="outline"
-                />
               </div>
+              
+              <FollowButton
+                userId={user.id}
+                isFollowing={user.isFollowedByUser}
+                size="sm"
+                className="w-fit h-7 text-xs px-3 rounded-full border-2 font-semibold hover:bg-muted/50 hover:border-foreground/50 shrink-0"
+                variant="outline"
+              />
             </div>
           ))}
           

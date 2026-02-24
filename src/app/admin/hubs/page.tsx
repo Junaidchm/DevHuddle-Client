@@ -208,7 +208,7 @@ export default function HubsPage() {
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <img
-                          src={hub.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(hub.name)}&background=4f46e5&color=fff`}
+                          src={hub.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(hub.name)}&background=4f46e5&color=fff`}
                           alt={hub.name}
                           className="h-10 w-10 rounded-lg object-cover bg-gray-100"
                         />
@@ -220,9 +220,9 @@ export default function HubsPage() {
                     </td>
                     <td className="p-4">
                       <ContentIdentityCell
-                        name={hub.creator?.name || "Member"}
-                        username={hub.creator?.username || "member"}
-                        avatar={hub.creator?.profilePicture}
+                        name={"Hub Owner"}
+                        username={hub.ownerId ? hub.ownerId.substring(0, 8) : "owner"}
+                        avatar={null}
                         avatarSize="sm"
                       />
                     </td>

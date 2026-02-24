@@ -40,7 +40,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-[2px] animate-in fade-in duration-200">
       <Card className="w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
         <div className="p-6">
           <h3 className="text-xl font-bold text-gray-900 mb-2">{title}</h3>

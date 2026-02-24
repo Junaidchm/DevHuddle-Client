@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { PostCreationProvider } from "@/src/contexts/PostCreationContext";
 import dynamic from "next/dynamic";
-import { Image, FileText, Video } from "lucide-react";
+import { Image, Video } from "lucide-react";
 import { PROFILE_DEFAULT_URL } from "@/src/constants";
 import { useSession } from "next-auth/react";
 import { Card } from "@/src/components/ui/card";
@@ -61,12 +61,6 @@ export default function PostComposer({ userId }: PostComposerProps) {
             >
               <Video size={20} className="text-orange-600 flex-shrink-0" />
               <span className="font-semibold text-xs sm:text-sm group-hover:text-foreground">Video</span>
-            </button>
-            <button
-              className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-muted rounded-lg transition-colors cursor-pointer group"
-            >
-              <FileText size={20} className="text-orange-400 flex-shrink-0" />
-              <span className="font-semibold text-xs sm:text-sm group-hover:text-foreground">Article</span>
             </button>
          </div>
         {isCreatePostModalOpen && (

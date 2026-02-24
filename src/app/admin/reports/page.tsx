@@ -1,140 +1,194 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getReports, takeReportAction, bulkReportAction } from "@/src/services/api/admin-panel.service";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  bulkReportAction,
+  getReports,
+  takeReportAction,
+} from "@/src/services/api/admin-panel.service";
 import { useApiClient } from "@/src/lib/api-client";
-import { useAdminRedirectIfNotAuthenticated } from "@/src/customHooks/useAdminAuthenticated";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import { Card } from "@/src/components/admin/ui/Card";
+import { CardHeader } from "@/src/components/admin/ui/CardHeader";
+import { SearchInput } from "@/src/components/admin/ui/SearchInput";
+import { FilterBar } from "@/src/components/admin/ui/FilterBar";
+import { FilterSelect } from "@/src/components/admin/ui/FilterSelect";
+import ConfirmModal from "@/src/components/admin/ui/ConfirmModal";
+import {
+  ADMIN_REPORT_REASONS,
+  ADMIN_REPORT_SEVERITIES,
+  ADMIN_REPORT_TARGET_TYPES,
+  ADMIN_REPORT_STATUSES,
+  AdminModerationAction,
+  AdminReportRecord,
+  isReportActionable,
+  mapModerationActionToPayload,
+} from "@/src/lib/admin-moderation";
+import useDebounce from "@/src/customHooks/useDebounce";
+
+type ActionModalState = {
+  isOpen: boolean;
+  action: AdminModerationAction | null;
+  reportId: string | null;
+  targetType: string | null;
+  mode: "single" | "bulk";
+};
+
+function statusBadgeClasses(status: string): string {
+  if (status === "PENDING") return "bg-yellow-100 text-yellow-800";
+  if (status === "INVESTIGATING") return "bg-blue-100 text-blue-800";
+  if (status === "RESOLVED_REMOVED") return "bg-red-100 text-red-700";
+  if (status === "RESOLVED_APPROVED") return "bg-green-100 text-green-700";
+  if (status === "RESOLVED_IGNORED") return "bg-gray-100 text-gray-700";
+  if (status === "CLOSED") return "bg-slate-100 text-slate-700";
+  return "bg-gray-100 text-gray-700";
+}
+
+function severityBadgeClasses(severity: string): string {
+  if (severity === "CRITICAL") return "bg-red-100 text-red-800";
+  if (severity === "HIGH") return "bg-orange-100 text-orange-800";
+  if (severity === "MEDIUM") return "bg-yellow-100 text-yellow-800";
+  return "bg-gray-100 text-gray-700";
+}
 
 export default function ReportsPage() {
-  const { isChecking } = useAdminRedirectIfNotAuthenticated("/admin/signIn");
   const { data: session, status } = useSession();
   const apiClient = useApiClient({ requireAuth: true });
-  
-  // ✅ FIXED: Stable query key using userId/role instead of token
+  const queryClient = useQueryClient();
+
   const userId = session?.user?.id;
   const userRole = session?.user?.role;
-  
+
   const [page, setPage] = useState(1);
-  const [limit] = useState(10);
+  const [limit, setLimit] = useState(10);
   const [filters, setFilters] = useState({
+    search: "",
     status: "all",
     targetType: "all",
     severity: "all",
     reason: "all",
     sortBy: "createdAt",
+    sortOrder: "desc" as "asc" | "desc",
   });
+  const debouncedSearch = useDebounce(filters.search, 500);
   const [selectedReports, setSelectedReports] = useState<string[]>([]);
-
-  const queryClient = useQueryClient();
+  const [actionModal, setActionModal] = useState<ActionModalState>({
+    isOpen: false,
+    action: null,
+    reportId: null,
+    targetType: null,
+    mode: "single",
+  });
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["admin-reports", page, limit, filters, userId, userRole],
-    queryFn: () => {
-      return getReports({ page, limit, ...filters }, apiClient.getHeaders());
-    },
-    enabled: status !== "loading" && !!userId && userRole === "superAdmin" && apiClient.isReady,
-    retry: 1,
-    onError: (err: any) => {
-      console.error("Reports query error:", err);
-      if (err?.response?.status === 401 || err?.response?.status === 403) {
-        toast.error("Session expired. Please log in again.");
-      }
-    },
+    queryKey: [
+      "admin-reports",
+      page,
+      limit,
+      debouncedSearch,
+      filters.status,
+      filters.targetType,
+      filters.severity,
+      filters.reason,
+      filters.sortBy,
+      filters.sortOrder,
+      userId,
+      userRole,
+    ],
+    queryFn: () =>
+      getReports(
+        {
+          page,
+          limit,
+          search: debouncedSearch || undefined,
+          status: filters.status,
+          targetType: filters.targetType,
+          severity: filters.severity,
+          reason: filters.reason,
+          sortBy: filters.sortBy,
+          sortOrder: filters.sortOrder,
+        },
+        apiClient.getHeaders()
+      ),
+    enabled:
+      status !== "loading" && !!userId && userRole === "superAdmin" && apiClient.isReady,
+    refetchInterval: 45_000,
   });
 
-  const actionMutation = useMutation({
-    mutationFn: ({ reportId, ...data }: { reportId: string; action: string; resolution?: string; hideContent?: boolean; suspendUser?: boolean }) =>
-      takeReportAction(reportId, data as any, apiClient.getHeaders()),
-    onSuccess: () => {
-      toast.success("Action completed successfully");
-      queryClient.invalidateQueries({ queryKey: ["admin-reports"] });
-      setSelectedReports([]);
+  const reports: AdminReportRecord[] = data?.data?.reports || [];
+  const totalPages = data?.data?.totalPages || 1;
+  const total = data?.data?.total || 0;
+
+  const summary = reports.reduce(
+    (acc, report) => {
+      if (report.status === "PENDING") acc.pending += 1;
+      if (report.status === "INVESTIGATING") acc.investigating += 1;
+      if (report.severity === "CRITICAL") acc.critical += 1;
+      return acc;
     },
-    onError: (error: any) => {
-      console.error("Report action error:", error);
-      
-      // Handle timeout errors specifically
-      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        toast.error("Request timed out. The action may still be processing. Please refresh the page.", {
-          duration: 6000,
-        });
-        queryClient.invalidateQueries({ queryKey: ["admin-reports"] });
-        return;
-      }
-      
-      // Handle network errors
-      if (error.code === 'ERR_NETWORK' || !error.response) {
-        toast.error("Network error. Please check your connection and try again.", {
-          duration: 5000,
-        });
-        return;
-      }
-      
-      const errorMessage = error?.response?.data?.message || error?.message || "Failed to take action";
-      toast.error(errorMessage, {
-        duration: 5000,
-      });
+    { pending: 0, investigating: 0, critical: 0 }
+  );
+
+  const actionMutation = useMutation({
+    mutationFn: ({
+      reportId,
+      action,
+      targetType,
+      resolution,
+    }: {
+      reportId: string;
+      action: AdminModerationAction;
+      targetType: string;
+      resolution: string;
+    }) => {
+      const payload = mapModerationActionToPayload(action, targetType, resolution);
+      return takeReportAction(reportId, payload, apiClient.getHeaders());
+    },
+    onSuccess: () => {
+      toast.success("Report action applied");
+      queryClient.invalidateQueries({ queryKey: ["admin-reports"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard-stats"] });
+      setSelectedReports([]);
+      setActionModal({ isOpen: false, action: null, reportId: null, targetType: null, mode: "single" });
+    },
+    onError: (err: any) => {
+      const message = err?.response?.data?.message || "Failed to process report action";
+      toast.error(message);
     },
   });
 
   const bulkActionMutation = useMutation({
-    mutationFn: (data: { reportIds: string[]; action: string; resolution?: string }) =>
-      bulkReportAction(data, apiClient.getHeaders()),
-    onSuccess: () => {
-      toast.success("Bulk action completed successfully");
-      queryClient.invalidateQueries({ queryKey: ["admin-reports"] });
-      setSelectedReports([]);
-    },
-    onError: (error: any) => {
-      console.error("Bulk report action error:", error);
-      
-      // Handle timeout errors specifically
-      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        toast.error("Bulk action timed out. Some actions may still be processing. Please refresh the page.", {
-          duration: 6000,
-        });
-        queryClient.invalidateQueries({ queryKey: ["admin-reports"] });
-        return;
-      }
-      
-      // Handle network errors
-      if (error.code === 'ERR_NETWORK' || !error.response) {
-        toast.error("Network error. Please check your connection and try again.", {
-          duration: 5000,
-        });
-        return;
-      }
-      
-      const errorMessage = error?.response?.data?.message || error?.message || "Failed to perform bulk action";
-      toast.error(errorMessage, {
-        duration: 5000,
-      });
-    },
-  });
-
-  const handleAction = (reportId: string, action: "APPROVE" | "REMOVE" | "IGNORE", resolution?: string) => {
-    actionMutation.mutate({
-      reportId,
+    mutationFn: ({
       action,
       resolution,
-      hideContent: action === "REMOVE",
-    });
-  };
-
-  const handleBulkAction = (action: "APPROVE" | "REMOVE" | "IGNORE") => {
-    if (selectedReports.length === 0) {
-      toast.warning("Please select at least one report");
-      return;
-    }
-    bulkActionMutation.mutate({
-      reportIds: selectedReports,
-      action,
-    });
-  };
+    }: {
+      action: AdminModerationAction;
+      resolution?: string;
+    }) =>
+      bulkReportAction(
+        {
+          reportIds: selectedReports,
+          action,
+          resolution,
+        },
+        apiClient.getHeaders()
+      ),
+    onSuccess: () => {
+      toast.success("Bulk moderation action completed");
+      queryClient.invalidateQueries({ queryKey: ["admin-reports"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard-stats"] });
+      setSelectedReports([]);
+      setActionModal({ isOpen: false, action: null, reportId: null, targetType: null, mode: "single" });
+    },
+    onError: (err: any) => {
+      const message = err?.response?.data?.message || "Failed to process bulk action";
+      toast.error(message);
+    },
+  });
 
   const toggleSelectReport = (reportId: string) => {
     setSelectedReports((prev) =>
@@ -143,11 +197,69 @@ export default function ReportsPage() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedReports.length === data?.data?.reports?.length) {
+    if (reports.length === 0) return;
+    if (selectedReports.length === reports.length) {
       setSelectedReports([]);
-    } else {
-      setSelectedReports(data?.data?.reports?.map((r: any) => r.id) || []);
+      return;
     }
+    setSelectedReports(reports.map((report) => report.id));
+  };
+
+  const openSingleAction = (report: AdminReportRecord, action: AdminModerationAction) => {
+    setActionModal({
+      isOpen: true,
+      action,
+      reportId: report.id,
+      targetType: report.targetType,
+      mode: "single",
+    });
+  };
+
+  const openBulkAction = (action: AdminModerationAction) => {
+    if (selectedReports.length === 0) {
+      toast.error("Select at least one report first");
+      return;
+    }
+    setActionModal({
+      isOpen: true,
+      action,
+      reportId: null,
+      targetType: null,
+      mode: "bulk",
+    });
+  };
+
+  const handleActionConfirm = (resolution?: string) => {
+    if (!actionModal.action) return;
+    const moderationNote = resolution?.trim();
+    if (!moderationNote) return;
+
+    if (actionModal.mode === "bulk") {
+      bulkActionMutation.mutate({ action: actionModal.action, resolution: moderationNote });
+      return;
+    }
+
+    if (!actionModal.reportId || !actionModal.targetType) return;
+    actionMutation.mutate({
+      reportId: actionModal.reportId,
+      action: actionModal.action,
+      targetType: actionModal.targetType,
+      resolution: moderationNote,
+    });
+  };
+
+  const handleClearFilters = () => {
+    setPage(1);
+    setFilters({
+      search: "",
+      status: "all",
+      targetType: "all",
+      severity: "all",
+      reason: "all",
+      sortBy: "createdAt",
+      sortOrder: "desc",
+    });
+    setSelectedReports([]);
   };
 
   if (isLoading) {
@@ -162,330 +274,330 @@ export default function ReportsPage() {
   }
 
   if (error) {
-    const errorMessage = (error as any)?.response?.data?.message || "Failed to load reports";
-    const isAuthError = (error as any)?.response?.status === 401 || (error as any)?.response?.status === 403;
-    
     return (
       <div className="p-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <i className="fas fa-exclamation-circle text-red-600"></i>
-            <p className="text-red-800 font-medium">Error loading reports</p>
-          </div>
-          <p className="text-red-700 text-sm">{errorMessage}</p>
-          {isAuthError && (
-            <p className="text-red-600 text-xs mt-2">
-              Your session may have expired. Please <Link href="/admin/signIn" className="underline">log in again</Link>.
-            </p>
-          )}
+          <p className="text-red-800 font-medium">Error loading reports</p>
+          <p className="text-red-600 text-sm mt-1">
+            {(error as any)?.response?.data?.message || "Please try again"}
+          </p>
         </div>
       </div>
     );
   }
-
-  // Show loading state while checking authentication
-  if (isChecking) {
-    return (
-      <div className="p-6 flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <i className="fas fa-spinner fa-spin text-4xl text-indigo-600 mb-4"></i>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const reports = data?.data?.reports || [];
-  const total = data?.data?.total || 0;
-  const totalPages = data?.data?.totalPages || 1;
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Reports Management</h1>
-        {selectedReports.length > 0 && (
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleBulkAction("APPROVE")}
-              disabled={bulkActionMutation.isPending}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-            >
-              Approve Selected ({selectedReports.length})
-            </button>
-            <button
-              onClick={() => handleBulkAction("REMOVE")}
-              disabled={bulkActionMutation.isPending}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-            >
-              Remove Selected ({selectedReports.length})
-            </button>
-            <button
-              onClick={() => handleBulkAction("IGNORE")}
-              disabled={bulkActionMutation.isPending}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
-            >
-              Ignore Selected ({selectedReports.length})
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="all">All</option>
-              <option value="PENDING">Pending</option>
-              <option value="OPEN">Open</option>
-              <option value="INVESTIGATING">Investigating</option>
-              <option value="RESOLVED_APPROVED">Resolved (Approved)</option>
-              <option value="RESOLVED_REMOVED">Resolved (Removed)</option>
-              <option value="RESOLVED_IGNORED">Resolved (Ignored)</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Target Type</label>
-            <select
-              value={filters.targetType}
-              onChange={(e) => setFilters({ ...filters, targetType: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="all">All</option>
-              <option value="POST">Post</option>
-              <option value="COMMENT">Comment</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Severity</label>
-            <select
-              value={filters.severity}
-              onChange={(e) => setFilters({ ...filters, severity: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="all">All</option>
-              <option value="LOW">Low</option>
-              <option value="MEDIUM">Medium</option>
-              <option value="HIGH">High</option>
-              <option value="CRITICAL">Critical</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
-            <select
-              value={filters.reason}
-              onChange={(e) => setFilters({ ...filters, reason: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="all">All</option>
-              <option value="SPAM">Spam</option>
-              <option value="INAPPROPRIATE">Inappropriate</option>
-              <option value="HARASSMENT">Harassment</option>
-              <option value="HATE_SPEECH">Hate Speech</option>
-              <option value="VIOLENCE">Violence</option>
-              <option value="SELF_HARM">Self Harm</option>
-              <option value="FALSE_INFORMATION">False Information</option>
-              <option value="COPYRIGHT_VIOLATION">Copyright Violation</option>
-              <option value="OTHER">Other</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
-            <select
-              value={filters.sortBy}
-              onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="createdAt">Date</option>
-              <option value="severity">Severity</option>
-              <option value="status">Status</option>
-            </select>
-          </div>
+    <div className="p-6 w-full h-full">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <div className="bg-white border border-gray-200 rounded-lg p-3">
+          <p className="text-xs text-gray-500">Pending</p>
+          <p className="text-xl font-bold text-gray-900">{summary.pending}</p>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-lg p-3">
+          <p className="text-xs text-gray-500">Investigating</p>
+          <p className="text-xl font-bold text-gray-900">{summary.investigating}</p>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-lg p-3">
+          <p className="text-xs text-gray-500">Critical</p>
+          <p className="text-xl font-bold text-red-700">{summary.critical}</p>
         </div>
       </div>
 
-      {/* Reports Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <input
-                  type="checkbox"
-                  checked={selectedReports.length === reports.length && reports.length > 0}
-                  onChange={toggleSelectAll}
-                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Target
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Reason
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Severity
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Created
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {reports.length === 0 ? (
+      <Card>
+        <CardHeader title="Reports Management">
+          <SearchInput
+            placeholder="Search target ID / reporter ID / description..."
+            value={filters.search}
+            onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+          />
+        </CardHeader>
+
+        <div className="overflow-x-auto">
+          <FilterBar onClearFilters={handleClearFilters}>
+            <FilterSelect
+              id="report-status-filter"
+              label="Status"
+              value={filters.status}
+              onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
+              options={[
+                { label: "All Status", value: "all" },
+                ...ADMIN_REPORT_STATUSES.map((status) => ({ label: status, value: status })),
+              ]}
+            />
+
+            <FilterSelect
+              id="report-target-filter"
+              label="Target Type"
+              value={filters.targetType}
+              onChange={(e) => setFilters((prev) => ({ ...prev, targetType: e.target.value }))}
+              options={[
+                { label: "All Targets", value: "all" },
+                ...ADMIN_REPORT_TARGET_TYPES.map((target) => ({ label: target, value: target })),
+              ]}
+            />
+
+            <FilterSelect
+              id="report-severity-filter"
+              label="Severity"
+              value={filters.severity}
+              onChange={(e) => setFilters((prev) => ({ ...prev, severity: e.target.value }))}
+              options={[
+                { label: "All Severity", value: "all" },
+                ...ADMIN_REPORT_SEVERITIES.map((severity) => ({ label: severity, value: severity })),
+              ]}
+            />
+
+            <FilterSelect
+              id="report-reason-filter"
+              label="Reason"
+              value={filters.reason}
+              onChange={(e) => setFilters((prev) => ({ ...prev, reason: e.target.value }))}
+              options={[
+                { label: "All Reasons", value: "all" },
+                ...ADMIN_REPORT_REASONS.map((reason) => ({ label: reason, value: reason })),
+              ]}
+            />
+
+            <FilterSelect
+              id="report-sort-filter"
+              label="Sort By"
+              value={filters.sortBy}
+              onChange={(e) => setFilters((prev) => ({ ...prev, sortBy: e.target.value }))}
+              options={[
+                { label: "Created Date", value: "createdAt" },
+                { label: "Severity", value: "severity" },
+                { label: "Status", value: "status" },
+              ]}
+            />
+
+            <FilterSelect
+              id="report-sort-order-filter"
+              label="Order"
+              value={filters.sortOrder}
+              onChange={(e) =>
+                setFilters((prev) => ({ ...prev, sortOrder: e.target.value as "asc" | "desc" }))
+              }
+              options={[
+                { label: "Descending", value: "desc" },
+                { label: "Ascending", value: "asc" },
+              ]}
+            />
+          </FilterBar>
+
+          <div className="p-4 border-b border-gray-200 flex flex-wrap gap-2">
+            <button
+              onClick={() => openBulkAction("APPROVE")}
+              disabled={selectedReports.length === 0 || bulkActionMutation.isPending}
+              className="px-3 py-2 text-sm rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+            >
+              Approve Selected
+            </button>
+            <button
+              onClick={() => openBulkAction("REMOVE")}
+              disabled={selectedReports.length === 0 || bulkActionMutation.isPending}
+              className="px-3 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              Remove Selected
+            </button>
+            <button
+              onClick={() => openBulkAction("IGNORE")}
+              disabled={selectedReports.length === 0 || bulkActionMutation.isPending}
+              className="px-3 py-2 text-sm rounded-lg bg-gray-600 text-white hover:bg-gray-700 disabled:opacity-50"
+            >
+              Ignore Selected
+            </button>
+            <span className="text-xs text-gray-500 self-center ml-auto">
+              {selectedReports.length} selected
+            </span>
+          </div>
+
+          <table className="w-full border-collapse min-w-[1100px]">
+            <thead>
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <i className="fas fa-inbox text-gray-400 text-4xl"></i>
-                    <p className="text-gray-500 font-medium">No reports found</p>
-                    <p className="text-gray-400 text-sm">Try adjusting your filters</p>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              reports.map((report: any) => (
-              <tr key={report.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
+                <th className="p-4 bg-gray-100 text-left">
                   <input
                     type="checkbox"
-                    checked={selectedReports.includes(report.id)}
-                    onChange={() => toggleSelectReport(report.id)}
+                    checked={reports.length > 0 && selectedReports.length === reports.length}
+                    onChange={toggleSelectAll}
                     className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                   />
-                </td>
-                <td className="px-6 py-4">
-                  <div>
-                    <span className="text-sm font-medium text-gray-900">
-                      {report.targetType}
-                    </span>
-                    {report.Post && (
-                      <p className="text-xs text-gray-500 truncate max-w-xs">
-                        {report.Post.content?.substring(0, 50)}...
-                      </p>
-                    )}
-                    {report.Comment && (
-                      <p className="text-xs text-gray-500 truncate max-w-xs">
-                        {report.Comment.content?.substring(0, 50)}...
-                      </p>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900">{report.reason}</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                      report.severity === "CRITICAL"
-                        ? "bg-red-100 text-red-800"
-                        : report.severity === "HIGH"
-                        ? "bg-orange-100 text-orange-800"
-                        : report.severity === "MEDIUM"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {report.severity}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                      report.status === "PENDING"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : report.status === "OPEN"
-                        ? "bg-blue-100 text-blue-800"
-                        : report.status === "INVESTIGATING"
-                        ? "bg-purple-100 text-purple-800"
-                        : report.status?.startsWith("RESOLVED_")
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {report.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Date(report.createdAt).toLocaleDateString()}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex gap-2">
-                    <Link
-                      href={`/admin/reports/${report.id}`}
-                      className="text-indigo-600 hover:text-indigo-900"
-                    >
-                      View
-                    </Link>
-                    {report.status === "PENDING" || report.status === "OPEN" ? (
-                      <>
-                        <button
-                          onClick={() => handleAction(report.id, "APPROVE")}
-                          className="text-green-600 hover:text-green-900"
-                          disabled={actionMutation.isPending}
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => handleAction(report.id, "REMOVE")}
-                          className="text-red-600 hover:text-red-900"
-                          disabled={actionMutation.isPending}
-                        >
-                          Remove
-                        </button>
-                        <button
-                          onClick={() => handleAction(report.id, "IGNORE")}
-                          className="text-gray-600 hover:text-gray-900"
-                          disabled={actionMutation.isPending}
-                        >
-                          Ignore
-                        </button>
-                      </>
-                    ) : null}
-                  </div>
-                </td>
+                </th>
+                <th className="p-4 bg-gray-100 text-gray-500 font-semibold text-xs uppercase tracking-wider text-left">
+                  Target
+                </th>
+                <th className="p-4 bg-gray-100 text-gray-500 font-semibold text-xs uppercase tracking-wider text-left">
+                  Reporter
+                </th>
+                <th className="p-4 bg-gray-100 text-gray-500 font-semibold text-xs uppercase tracking-wider text-left">
+                  Reason
+                </th>
+                <th className="p-4 bg-gray-100 text-gray-500 font-semibold text-xs uppercase tracking-wider text-left">
+                  Severity
+                </th>
+                <th className="p-4 bg-gray-100 text-gray-500 font-semibold text-xs uppercase tracking-wider text-left">
+                  Status
+                </th>
+                <th className="p-4 bg-gray-100 text-gray-500 font-semibold text-xs uppercase tracking-wider text-left">
+                  Created
+                </th>
+                <th className="p-4 bg-gray-100 text-gray-500 font-semibold text-xs uppercase tracking-wider text-left">
+                  Actions
+                </th>
               </tr>
-            ))
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {reports.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-12 text-center text-gray-500">
+                    No reports found.
+                  </td>
+                </tr>
+              ) : (
+                reports.map((report) => (
+                  <tr key={report.id} className="border-b border-gray-200 hover:bg-gray-50">
+                    <td className="p-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedReports.includes(report.id)}
+                        onChange={() => toggleSelectReport(report.id)}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-semibold text-gray-700">{report.targetType}</span>
+                        <span className="text-xs text-gray-500 font-mono">{report.targetId}</span>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm text-gray-900">
+                          {report.reporter?.name || report.reporter?.username || "Unknown"}
+                        </span>
+                        <span className="text-xs text-gray-500 font-mono">{report.reporterId}</span>
+                      </div>
+                    </td>
+                    <td className="p-4 max-w-[220px]">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-semibold text-gray-700">{report.reason}</span>
+                        <span className="text-xs text-gray-500 line-clamp-2">
+                          {report.description || "No additional details"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 text-xs rounded-full font-medium ${severityBadgeClasses(report.severity)}`}>
+                        {report.severity}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 text-xs rounded-full font-medium ${statusBadgeClasses(report.status)}`}>
+                        {report.status}
+                      </span>
+                    </td>
+                    <td className="p-4 text-sm text-gray-600">
+                      {new Date(report.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/admin/reports/${report.id}`}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                          title="View Details"
+                        >
+                          <i className="fas fa-eye"></i>
+                        </Link>
+                        {isReportActionable(report.status) && (
+                          <>
+                            <button
+                              onClick={() => openSingleAction(report, "APPROVE")}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-green-600 hover:bg-green-50 transition-colors"
+                              title="Approve"
+                            >
+                              <i className="fas fa-check"></i>
+                            </button>
+                            <button
+                              onClick={() => openSingleAction(report, "REMOVE")}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-red-600 hover:bg-red-50 transition-colors"
+                              title="Remove"
+                            >
+                              <i className="fas fa-ban"></i>
+                            </button>
+                            <button
+                              onClick={() => openSingleAction(report, "IGNORE")}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors"
+                              title="Ignore"
+                            >
+                              <i className="fas fa-minus"></i>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-6 flex justify-between items-center">
-          <div className="text-sm text-gray-700">
-            Showing {(page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} results
+        <div className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center border-t border-gray-200 gap-4">
+          <div className="text-sm text-gray-500">
+            Showing page {page} of {totalPages} ({total} total reports)
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
               disabled={page === 1}
-              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
             >
               Previous
             </button>
+            <select
+              value={limit}
+              onChange={(e) => setLimit(Number(e.target.value))}
+              className="px-2 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+            >
+              <option value={10}>10 / page</option>
+              <option value={25}>25 / page</option>
+              <option value={50}>50 / page</option>
+            </select>
             <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
               disabled={page === totalPages}
-              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
             >
               Next
             </button>
           </div>
         </div>
-      )}
+      </Card>
+
+      <ConfirmModal
+        isOpen={actionModal.isOpen}
+        onClose={() =>
+          setActionModal({ isOpen: false, action: null, reportId: null, targetType: null, mode: "single" })
+        }
+        onConfirm={handleActionConfirm}
+        title={
+          actionModal.mode === "bulk"
+            ? `${actionModal.action} Selected Reports`
+            : `${actionModal.action} Report`
+        }
+        message={
+          actionModal.mode === "bulk"
+            ? "This moderation decision will be applied to all selected reports. Add resolution notes for audit."
+            : "This moderation decision will be logged in audit history and may trigger enforcement workflows."
+        }
+        confirmLabel={
+          actionModal.mode === "bulk"
+            ? `Confirm ${actionModal.action || "Action"} (${selectedReports.length})`
+            : `Confirm ${actionModal.action || "Action"}`
+        }
+        confirmVariant={actionModal.action === "REMOVE" ? "danger" : "primary"}
+        reasonRequired={true}
+        isLoading={actionMutation.isPending || bulkActionMutation.isPending}
+      />
     </div>
   );
 }
-
