@@ -55,6 +55,26 @@ function severityBadgeClasses(severity: string): string {
   return "bg-gray-100 text-gray-700";
 }
 
+const getTargetLink = (targetType: string, targetId: string) => {
+  switch (targetType) {
+    case "POST":
+      return `/admin/posts/${targetId}`;
+    case "COMMENT":
+      return `/admin/comments?id=${targetId}`;
+    case "PROJECT":
+      return `/admin/projects/${targetId}`;
+    case "HUB":
+    case "CONVERSATION":
+      return `/admin/hubs/${targetId}`;
+    case "USER":
+      return `/admin/users/${targetId}`;
+    case "MESSAGE":
+      return `/admin/hubs/${targetId}/messages`; // Hypothetical route
+    default:
+      return null;
+  }
+};
+
 export default function ReportsPage() {
   const { data: session, status } = useSession();
   const apiClient = useApiClient({ requireAuth: true });
@@ -112,26 +132,40 @@ export default function ReportsPage() {
           sortBy: filters.sortBy,
           sortOrder: filters.sortOrder,
         },
-        apiClient.getHeaders()
+        apiClient.getHeaders() as any
       ),
     enabled:
       status !== "loading" && !!userId && userRole === "superAdmin" && apiClient.isReady,
     refetchInterval: 45_000,
   });
 
+  // Fetch global stats for the cards
+  const { data: statsData } = useQuery({
+    queryKey: ["admin-dashboard-stats"],
+    queryFn: () => getDashboardStats(apiClient.getHeaders() as any),
+    enabled: apiClient.isReady && userRole === "superAdmin",
+  });
+
   const reports: AdminReportRecord[] = data?.data?.reports || [];
   const totalPages = data?.data?.totalPages || 1;
   const total = data?.data?.total || 0;
 
-  const summary = reports.reduce(
-    (acc, report) => {
-      if (report.status === "PENDING") acc.pending += 1;
-      if (report.status === "INVESTIGATING") acc.investigating += 1;
-      if (report.severity === "CRITICAL") acc.critical += 1;
-      return acc;
-    },
-    { pending: 0, investigating: 0, critical: 0 }
-  );
+  // Use global stats if available, otherwise fallback to local page calculation
+  const summary = statsData?.data?.reports 
+    ? {
+        pending: statsData.data.reports.pending || 0,
+        investigating: statsData.data.reports.investigating || 0,
+        critical: statsData.data.reports.critical || 0,
+      }
+    : reports.reduce(
+        (acc, report) => {
+          if (report.status === "PENDING") acc.pending += 1;
+          if (report.status === "INVESTIGATING") acc.investigating += 1;
+          if (report.severity === "CRITICAL") acc.critical += 1;
+          return acc;
+        },
+        { pending: 0, investigating: 0, critical: 0 }
+      );
 
   const actionMutation = useMutation({
     mutationFn: ({
@@ -146,7 +180,7 @@ export default function ReportsPage() {
       resolution: string;
     }) => {
       const payload = mapModerationActionToPayload(action, targetType, resolution);
-      return takeReportAction(reportId, payload, apiClient.getHeaders());
+      return takeReportAction(reportId, payload, apiClient.getHeaders() as any);
     },
     onSuccess: () => {
       toast.success("Report action applied");
@@ -175,7 +209,7 @@ export default function ReportsPage() {
           action,
           resolution,
         },
-        apiClient.getHeaders()
+        apiClient.getHeaders() as any
       ),
     onSuccess: () => {
       toast.success("Bulk moderation action completed");
@@ -288,18 +322,33 @@ export default function ReportsPage() {
 
   return (
     <div className="p-6 w-full h-full">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-        <div className="bg-white border border-gray-200 rounded-lg p-3">
-          <p className="text-xs text-gray-500">Pending</p>
-          <p className="text-xl font-bold text-gray-900">{summary.pending}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center text-yellow-500 flex-shrink-0">
+            <i className="fas fa-clock"></i>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pending</p>
+            <p className="text-2xl font-black text-gray-900">{summary.pending}</p>
+          </div>
         </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-3">
-          <p className="text-xs text-gray-500">Investigating</p>
-          <p className="text-xl font-bold text-gray-900">{summary.investigating}</p>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500 flex-shrink-0">
+            <i className="fas fa-magnifying-glass"></i>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Investigating</p>
+            <p className="text-2xl font-black text-gray-900">{summary.investigating}</p>
+          </div>
         </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-3">
-          <p className="text-xs text-gray-500">Critical</p>
-          <p className="text-xl font-bold text-red-700">{summary.critical}</p>
+        <div className="bg-white rounded-xl border border-red-100 shadow-sm p-5 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500 flex-shrink-0">
+            <i className="fas fa-circle-exclamation"></i>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Critical</p>
+            <p className="text-2xl font-black text-red-700">{summary.critical}</p>
+          </div>
         </div>
       </div>
 
@@ -384,30 +433,35 @@ export default function ReportsPage() {
             />
           </FilterBar>
 
-          <div className="p-4 border-b border-gray-200 flex flex-wrap gap-2">
+          <div className="p-4 border-b border-gray-200 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mr-2">Bulk Actions</span>
             <button
               onClick={() => openBulkAction("APPROVE")}
               disabled={selectedReports.length === 0 || bulkActionMutation.isPending}
-              className="px-3 py-2 text-sm rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 h-8 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              Approve Selected
+              <i className="fas fa-check text-[10px]"></i> Approve Selected
             </button>
             <button
               onClick={() => openBulkAction("REMOVE")}
               disabled={selectedReports.length === 0 || bulkActionMutation.isPending}
-              className="px-3 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 h-8 text-xs font-bold rounded-lg bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              Remove Selected
+              <i className="fas fa-ban text-[10px]"></i> Remove Selected
             </button>
             <button
               onClick={() => openBulkAction("IGNORE")}
               disabled={selectedReports.length === 0 || bulkActionMutation.isPending}
-              className="px-3 py-2 text-sm rounded-lg bg-gray-600 text-white hover:bg-gray-700 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 h-8 text-xs font-bold rounded-lg bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              Ignore Selected
+              <i className="fas fa-minus text-[10px]"></i> Ignore Selected
             </button>
-            <span className="text-xs text-gray-500 self-center ml-auto">
-              {selectedReports.length} selected
+            <span className="text-xs text-gray-400 font-medium ml-auto">
+              {selectedReports.length > 0 ? (
+                <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded font-bold">{selectedReports.length} selected</span>
+              ) : (
+                "0 selected"
+              )}
             </span>
           </div>
 
@@ -436,6 +490,9 @@ export default function ReportsPage() {
                 </th>
                 <th className="p-4 bg-gray-100 text-gray-500 font-semibold text-xs uppercase tracking-wider text-left">
                   Status
+                </th>
+                <th className="p-4 bg-gray-100 text-gray-500 font-semibold text-xs uppercase tracking-wider text-left">
+                  Content
                 </th>
                 <th className="p-4 bg-gray-100 text-gray-500 font-semibold text-xs uppercase tracking-wider text-left">
                   Created
@@ -495,6 +552,26 @@ export default function ReportsPage() {
                         {report.status}
                       </span>
                     </td>
+                    <td className="p-4">
+                      {getTargetLink(report.targetType, report.targetId) ? (
+                        <div className="flex flex-col gap-1.5">
+                          <Link
+                            href={getTargetLink(report.targetType, report.targetId)!}
+                            className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 group"
+                          >
+                            View Entity
+                            <i className="fas fa-external-link-alt text-[10px] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"></i>
+                          </Link>
+                          {report.metadata?.contentSnippet && (
+                            <span className="text-[11px] text-gray-500 italic line-clamp-1 border-l-2 border-gray-200 pl-2">
+                              "{report.metadata.contentSnippet}"
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic">No link available</span>
+                      )}
+                    </td>
                     <td className="p-4 text-sm text-gray-600">
                       {new Date(report.createdAt).toLocaleDateString()}
                     </td>
@@ -542,33 +619,51 @@ export default function ReportsPage() {
         </div>
 
         <div className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center border-t border-gray-200 gap-4">
-          <div className="text-sm text-gray-500">
-            Showing page {page} of {totalPages} ({total} total reports)
-          </div>
-          <div className="flex items-center gap-2">
+          <div className="flex gap-1">
             <button
-              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+              className="w-8 h-8 rounded-md flex items-center justify-center text-gray-800 hover:bg-gray-100 transition-all duration-300 disabled:text-gray-400 disabled:cursor-not-allowed"
               disabled={page === 1}
-              className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
             >
-              Previous
+              <i className="fas fa-chevron-left"></i>
             </button>
+
+            {[...Array(totalPages)].map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setPage(i + 1)}
+                className={`w-8 h-8 rounded-md flex items-center justify-center font-medium ${
+                  page === i + 1
+                    ? "text-white bg-indigo-600"
+                    : "text-gray-800 hover:bg-gray-100"
+                } transition-all duration-300`}
+              >
+                {i + 1}
+              </button>
+            ))}
+
+            <button
+              className="w-8 h-8 rounded-md flex items-center justify-center text-gray-800 disabled:text-gray-400 hover:bg-gray-100 transition-all duration-300"
+              disabled={page === totalPages}
+              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+            >
+              <i className="fas fa-chevron-right"></i>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 text-sm text-gray-500 w-full sm:w-auto justify-between sm:justify-start">
+            <label htmlFor="report-page-size">Show</label>
             <select
+              id="report-page-size"
               value={limit}
               onChange={(e) => setLimit(Number(e.target.value))}
-              className="px-2 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+              className="p-1 border border-gray-200 rounded-md text-sm text-gray-800 bg-white min-w-[70px] outline-none focus:border-indigo-600"
             >
-              <option value={10}>10 / page</option>
-              <option value={25}>25 / page</option>
-              <option value={50}>50 / page</option>
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
             </select>
-            <button
-              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
-              disabled={page === totalPages}
-              className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-            >
-              Next
-            </button>
+            <span>entries</span>
           </div>
         </div>
       </Card>

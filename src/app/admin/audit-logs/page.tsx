@@ -21,6 +21,10 @@ export default function AuditLogsPage() {
   const [filters, setFilters] = useState({
     adminId: "",
     targetType: "all",
+    search: "",
+    action: "all",
+    startDate: "",
+    endDate: "",
   });
 
   const { data, isLoading, error } = useQuery({
@@ -31,6 +35,10 @@ export default function AuditLogsPage() {
         limit,
         targetType: filters.targetType === "all" ? undefined : filters.targetType,
         adminId: filters.adminId || undefined,
+        search: filters.search || undefined,
+        action: filters.action === "all" ? undefined : filters.action,
+        startDate: filters.startDate || undefined,
+        endDate: filters.endDate || undefined,
       };
       return getAuditLogs(params, apiClient.getHeaders() as Record<string, string>);
     },
@@ -65,11 +73,11 @@ export default function AuditLogsPage() {
   const totalPages = data?.data?.totalPages || 1;
 
   const getActionBadgeColor = (action: string) => {
-    if (action.includes("BLOCKED")) return "bg-red-100 text-red-800";
-    if (action.includes("UNBLOCKED")) return "bg-green-100 text-green-800";
-    if (action.includes("RESOLVED")) return "bg-blue-100 text-blue-800";
-    if (action.includes("MODERATION")) return "bg-purple-100 text-purple-800";
-    return "bg-gray-100 text-gray-800";
+    if (action.includes("BLOCKED") || action.includes("SUSPENDED") || action.includes("DELETED") || action.includes("HIDDEN")) return "bg-red-100 text-red-800 border border-red-200";
+    if (action.includes("UNBLOCKED") || action.includes("RESTORED") || action.includes("UNHIDDEN")) return "bg-green-100 text-green-800 border border-green-200";
+    if (action.includes("RESOLVED") || action.includes("APPROVED")) return "bg-blue-100 text-blue-800 border border-blue-200";
+    if (action.includes("MODERATION") || action.includes("WARN")) return "bg-purple-100 text-purple-800 border border-purple-200";
+    return "bg-gray-100 text-gray-800 border border-gray-200";
   };
 
   return (
@@ -83,12 +91,22 @@ export default function AuditLogsPage() {
 
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+            <input
+              type="text"
+              placeholder="Search by ID, username, reason..."
+              value={filters.search}
+              onChange={(e) => { setFilters({ ...filters, search: e.target.value }); setPage(1); }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Target Type</label>
             <select
               value={filters.targetType}
-              onChange={(e) => setFilters({ ...filters, targetType: e.target.value })}
+              onChange={(e) => { setFilters({ ...filters, targetType: e.target.value }); setPage(1); }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
             >
               <option value="all">All Types</option>
@@ -100,21 +118,47 @@ export default function AuditLogsPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Admin ID</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Action Category</label>
+            <select
+              value={filters.action}
+              onChange={(e) => { setFilters({ ...filters, action: e.target.value }); setPage(1); }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="all">All Actions</option>
+              <option value="BLOCKED">Blocking</option>
+              <option value="DELETED">Deletion</option>
+              <option value="HIDDEN">Hiding</option>
+              <option value="RESOLVED">Resolution</option>
+              <option value="REPORT">Reports</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
             <input
-              type="text"
-              placeholder="Search by Admin ID..."
-              value={filters.adminId}
-              onChange={(e) => setFilters({ ...filters, adminId: e.target.value })}
+              type="date"
+              value={filters.startDate}
+              onChange={(e) => { setFilters({ ...filters, startDate: e.target.value }); setPage(1); }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+            <input
+              type="date"
+              value={filters.endDate}
+              onChange={(e) => { setFilters({ ...filters, endDate: e.target.value }); setPage(1); }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
             />
           </div>
           <div className="flex items-end">
             <button
-              onClick={() => { setFilters({ adminId: "", targetType: "all" }); setPage(1); }}
-              className="px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg font-medium"
+              onClick={() => { 
+                setFilters({ adminId: "", targetType: "all", search: "", action: "all", startDate: "", endDate: "" }); 
+                setPage(1); 
+              }}
+              className="w-full px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg font-medium transition-colors border border-gray-200"
             >
-              Reset Filters
+              Clear All Filters
             </button>
           </div>
         </div>

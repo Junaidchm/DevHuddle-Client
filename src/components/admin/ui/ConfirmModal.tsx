@@ -10,6 +10,7 @@ interface ConfirmModalProps {
   confirmLabel?: string;
   confirmVariant?: 'danger' | 'warning' | 'primary';
   reasonRequired?: boolean;
+  reasonOptions?: { label: string; value: string }[];
   isLoading?: boolean;
 }
 
@@ -22,6 +23,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   confirmLabel = 'Confirm',
   confirmVariant = 'danger',
   reasonRequired = false,
+  reasonOptions = [],
   isLoading = false,
 }) => {
   const [reason, setReason] = useState('');
@@ -51,14 +53,31 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Reason for action <span className="text-red-500">*</span>
               </label>
-              <textarea
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                rows={3}
-                placeholder="Enter reason here..."
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                autoFocus
-              />
+              
+              {reasonOptions.length > 0 ? (
+                <select
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  autoFocus
+                >
+                  <option value="">Select a reason...</option>
+                  {reasonOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <textarea
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  rows={3}
+                  placeholder="Enter reason here..."
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  autoFocus
+                />
+              )}
             </div>
           )}
 

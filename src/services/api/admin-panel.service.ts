@@ -182,6 +182,15 @@ export const getReportedComments = async (
   return response.data;
 };
 
+export const hideComment = async (commentId: string, data: { hidden: boolean; reason?: string }, headers?: Record<string, string>) => {
+  const response = await axiosInstance.patch(
+    API_ROUTES.ADMIN.COMMENT_HIDE(commentId),
+    data,
+    { headers, withCredentials: true }
+  );
+  return response.data;
+};
+
 export const getCommentById = async (commentId: string, headers?: Record<string, string>) => {
   const response = await axiosInstance.get(API_ROUTES.ADMIN.COMMENT_BY_ID(commentId), {
     headers,
@@ -230,6 +239,10 @@ export const getAuditLogs = async (
     limit?: number;
     adminId?: string;
     targetType?: string;
+    search?: string;
+    action?: string;
+    startDate?: string;
+    endDate?: string;
   },
   headers?: Record<string, string>
 ) => {

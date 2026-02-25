@@ -43,7 +43,7 @@ export default auth((req) => {
   }
 
   // Public routes that don't need authentication
-  const publicRoutes = ['/signIn', '/signup', '/forgotPassword', '/verify-user', '/success', '/admin/signIn'];
+  const publicRoutes = ['/signIn', '/signup', '/forgotPassword', '/verify-user', '/success', '/admin/signIn', '/reset-password'];
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
 
   // Admin routes - require superAdmin role
@@ -75,7 +75,8 @@ export default auth((req) => {
   }
 
   // Redirect to sign-in if not authenticated and trying to access protected routes
-  if (!isPublicRoute && !isAdminRoute && !isAuthenticated && (pathname === '/' || pathname.startsWith('/profile'))) {
+  // Protect all routes except public routes and admin routes (admin routes are handled separately above)
+  if (!isPublicRoute && !isAdminRoute && !isAuthenticated) {
     return NextResponse.redirect(new URL('/signIn', req.url));
   }
 

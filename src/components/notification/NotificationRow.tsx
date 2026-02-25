@@ -164,11 +164,20 @@ export const NotificationRow = ({ notification, onMarkAsRead, isLast }: Notifica
       case "message":
         router.push("/chat");
         break;
-      case "system":
-        // System notifications could have a target route in metadata
-        // Fallback to home if no specific route provided
-        router.push("/");
+      case "system": {
+        // For admin action notifications (CONTENT_HIDDEN), route to the affected content
+        if (notification.hubId) {
+          router.push(`/chat?id=${notification.hubId}`);
+        } else if (notification.projectId) {
+          router.push(`/projects/${notification.projectId}`);
+        } else if (notification.postId) {
+          router.push(`/post/${notification.postId}`);
+        } else {
+          // Fallback to home for other system notifications (hub approved, etc.)
+          router.push("/");
+        }
         break;
+      }
       case "hub_join_request":
         if (notification.entityId) {
           router.push(`/chat?id=${notification.entityId}`);

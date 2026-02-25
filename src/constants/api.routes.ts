@@ -74,6 +74,7 @@ export const API_ROUTES = {
     COMMENTS: `${API_VERSION}/admin/comments`,
     COMMENTS_REPORTED: `${API_VERSION}/admin/comments/reported`,
     COMMENT_BY_ID: (id: string) => `${API_VERSION}/admin/comments/${id}`,
+    COMMENT_HIDE: (id: string) => `${API_VERSION}/admin/comments/${id}/hide`,
     COMMENT_DELETE: (id: string) => `${API_VERSION}/admin/comments/${id}`,
     // Projects Management (Project Service)
     PROJECTS: `${API_VERSION}/admin/projects`,

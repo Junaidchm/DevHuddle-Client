@@ -1,8 +1,8 @@
 
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { DomainHub, HubMember, HubChannel } from '../types/hub.types';
-import { hubService } from '../services/hub.service';
+import { DomainHub, HubMember, HubChannel } from '@/src/types/hub.types';
+import { hubService } from '@/src/services/api/hub.service';
 import { useSession } from "next-auth/react"; // Use next-auth
 import { useWebSocket } from './WebSocketContext';
 import { useAuthHeaders } from '../customHooks/useAuthHeaders';

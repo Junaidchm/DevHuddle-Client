@@ -29,14 +29,14 @@ export default function PostDetailPage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-post", postId, userId, userRole],
-    queryFn: () => getPostById(postId, apiClient.getHeaders()),
+    queryFn: () => getPostById(postId, apiClient.getHeaders() as any),
     enabled:
       status !== "loading" && !!userId && userRole === "superAdmin" && apiClient.isReady,
   });
 
   const hideMutation = useMutation({
     mutationFn: ({ hidden, reason }: { hidden: boolean; reason?: string }) =>
-      hidePost(postId, { hidden, reason }, apiClient.getHeaders()),
+      hidePost(postId, { hidden, reason }, apiClient.getHeaders() as any),
     onSuccess: () => {
       toast.success("Post updated successfully");
       setHideModal(false);
@@ -49,7 +49,7 @@ export default function PostDetailPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => deletePostAdmin(postId, apiClient.getHeaders()),
+    mutationFn: () => deletePostAdmin(postId, apiClient.getHeaders() as any),
     onSuccess: () => {
       toast.success("Post deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["admin-posts"] });

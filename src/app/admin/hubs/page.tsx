@@ -51,14 +51,14 @@ export default function HubsPage() {
     queryKey: ["admin-hubs", page, limit, filters.status, debouncedSearch, showReportedOnly, userId, userRole],
     queryFn: () =>
       showReportedOnly
-        ? getReportedHubs({ page, limit, search: debouncedSearch }, apiClient.getHeaders())
-        : getHubs({ page, limit, ...filters, search: debouncedSearch }, apiClient.getHeaders()),
+        ? getReportedHubs({ page, limit, search: debouncedSearch }, apiClient.getHeaders() as any)
+        : getHubs({ page, limit, ...filters, search: debouncedSearch }, apiClient.getHeaders() as any),
     enabled: status !== "loading" && !!userId && userRole === "superAdmin" && apiClient.isReady,
   });
 
   const suspendMutation = useMutation({
     mutationFn: ({ hubId, suspended, reason }: { hubId: string; suspended: boolean; reason?: string }) =>
-      suspendHub(hubId, { suspended, reason }, apiClient.getHeaders()),
+      suspendHub(hubId, { suspended, reason }, apiClient.getHeaders() as any),
     onSuccess: () => {
       toast.success("Hub status updated successfully");
       setSuspendModal({ isOpen: false, hubId: null });
@@ -70,7 +70,7 @@ export default function HubsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (hubId: string) => deleteHubAdmin(hubId, apiClient.getHeaders()),
+    mutationFn: (hubId: string) => deleteHubAdmin(hubId, apiClient.getHeaders() as any),
     onSuccess: () => {
       toast.success("Hub deleted successfully");
       setDeleteModal({ isOpen: false, hubId: null });

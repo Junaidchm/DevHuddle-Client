@@ -19,6 +19,7 @@ const BACKEND_TO_FRONTEND_TYPE_MAP: Record<string, MappedNotification["type"]> =
   HUB_JOIN_REQUEST: "hub_join_request",
   HUB_JOIN_APPROVED: "system",
   HUB_JOIN_REJECTED: "system",
+  CONTENT_HIDDEN: "system",
   // Handle legacy types
   COLLAB: "collab",
   EVENT: "event",
@@ -64,7 +65,8 @@ const getActionText = (
   type: string,
   entityType: string,
   isReply: boolean,
-  isShare: boolean
+  isShare: boolean,
+  metadata?: any
 ): string => {
   if (type === "NEW_MESSAGE") {
     return "sent you a post";
@@ -80,17 +82,15 @@ const getActionText = (
   
   switch (type) {
     case "LIKE":
-      return entityType === "POST" ? "liked your post" : "liked your comment";
+      if (entityType === "POST") return "liked your post";
+      if (entityType === "PROJECT") return "liked your project";
+      return "liked your comment";
     case "COMMENT":
       return isReply ? "replied to your comment" : "commented on your post";
     case "MENTION":
       return "mentioned you in a comment";
     case "FOLLOW":
       return "started following you";
-    case "NEW_MESSAGE":
-      return "sent you a post";
-    case "CHAT_MESSAGE":
-      return "sent you a message";
     case "ROOM_REMINDER":
       return "reminder";
     case "SHARE":
@@ -103,6 +103,15 @@ const getActionText = (
       return "approved your request to join the hub";
     case "HUB_JOIN_REJECTED":
       return "rejected your request to join the hub";
+    case "CONTENT_HIDDEN": {
+      // Use metadata to get the specific action and content type
+      const action = metadata?.action as string | undefined;
+      const contentType = (metadata?.entityType as string || entityType || "content").toLowerCase();
+      if (action === "HIDE") return `hid your ${contentType}`;
+      if (action === "UNHIDE") return `restored your ${contentType}`;
+      if (action === "DELETE") return `permanently deleted your ${contentType}`;
+      return `took action on your ${contentType}`;
+    }
     default:
       return "interacted with your content";
   }
@@ -288,8 +297,8 @@ export const mapNotificationToLinkedInStyle = (
   const primaryActorName = getPrimaryActorName(actors, notification.summary);
   const primaryActorAvatar = getPrimaryActorAvatar(actors, notification.summary);
   
-  // Get action text
-  const actionText = getActionText(backendType, entityType, isReplyNotification, isShareNotification);
+  // Get action text — pass metadata so CONTENT_HIDDEN can render specific verb
+  const actionText = getActionText(backendType, entityType, isReplyNotification, isShareNotification, notification.metadata);
   
   // Get preview
   const preview = extractPreview(notification);
@@ -303,15 +312,41 @@ export const mapNotificationToLinkedInStyle = (
     const namedActors = actors.filter((a: NotificationActor) => a.name && a.name !== "Someone");
     
     if (namedActors.length >= 2 && aggregatedCount === 2) {
-      // "John and Jane"
       title = `${namedActors[0].name} and ${namedActors[1].name}`;
     } else if (aggregatedCount > 2) {
-      // "John and 2 others"
       title = `${primaryActorName} and ${aggregatedCount - 1} others`;
     } else if (aggregatedCount > 1) {
-      // Fallback: "John and 1 other"
       title = `${primaryActorName} and ${aggregatedCount - 1} other${aggregatedCount - 1 > 1 ? 's' : ''}`;
     }
+  }
+
+  // Derive entity routing IDs
+  // For admin CONTENT_HIDDEN: entityType & entityId carry the target content
+  const isAdminAction = backendType === "CONTENT_HIDDEN";
+  let projectId: string | undefined;
+  let postId: string | undefined;
+  let commentId: string | undefined;
+  let hubId: string | undefined;
+
+  if (isAdminAction) {
+    // contextId holds the real entity ID (the DB entityId is a composite key entityId::ACTION)
+    const realEntityId = notification.contextId || notification.entityId;
+    if (entityType === "PROJECT") {
+      projectId = realEntityId;
+    } else if (entityType === "POST") {
+      postId = realEntityId;
+    } else if (entityType === "HUB") {
+      hubId = realEntityId;
+    } else if (entityType === "COMMENT") {
+      commentId = realEntityId;
+      // Comments are nested — navigate to parent post or project
+      postId = notification.metadata?.postId || undefined;
+      projectId = notification.metadata?.projectId || undefined;
+    }
+  } else {
+    projectId = notification.metadata?.projectId || (notification.entityType === "PROJECT" ? notification.entityId : (notification.entityType === "COMMENT" && notification.metadata?.projectId ? notification.contextId : undefined));
+    postId = notification.metadata?.postId || (notification.entityType === "POST" ? notification.entityId : (notification.entityType === "COMMENT" && !notification.metadata?.projectId ? notification.contextId : undefined));
+    commentId = notification.metadata?.commentId || (notification.entityType === "COMMENT" ? notification.entityId : undefined);
   }
   
   return {
@@ -329,9 +364,10 @@ export const mapNotificationToLinkedInStyle = (
     aggregatedCount,
     entityType,
     entityId: notification.entityId,
-    projectId: notification.metadata?.projectId || (notification.entityType === "PROJECT" ? notification.entityId : (notification.entityType === "COMMENT" && notification.metadata?.projectId ? notification.contextId : undefined)),
-    postId: notification.metadata?.postId || (notification.entityType === "POST" ? notification.entityId : (notification.entityType === "COMMENT" && !notification.metadata?.projectId ? notification.contextId : undefined)),
-    commentId: notification.metadata?.commentId || (notification.entityType === "COMMENT" ? notification.entityId : undefined),
+    projectId,
+    postId,
+    commentId,
+    hubId,
     preview,
     actionText,
   };

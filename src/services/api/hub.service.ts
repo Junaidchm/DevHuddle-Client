@@ -1,7 +1,7 @@
 
-import { axiosInstance } from '../axios/axios';
-import { DomainHub, HubMember, CreateHubData, HubChannel } from '../types/hub.types';
-import { API_ROUTES } from '../constants/api.routes';
+import { axiosInstance } from '@/src/axios/axios';
+import { DomainHub, HubMember, CreateHubData, HubChannel } from '@/src/types/hub.types';
+import { API_ROUTES } from "@/src/constants/api.routes";
 
 export const hubService = {
     async createHub(data: CreateHubData, headers: Record<string, string>): Promise<DomainHub> {

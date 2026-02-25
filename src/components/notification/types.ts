@@ -37,6 +37,7 @@ export interface MappedNotification {
   postId?: string;
   projectId?: string;
   commentId?: string;
+  hubId?: string;
   preview?: {
     type: "post" | "comment" | "reply";
     content: string;

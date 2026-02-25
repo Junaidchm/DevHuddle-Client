@@ -35,6 +35,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { mapNotificationToLinkedInStyle } from "@/src/components/notification/notificationMapper";
 import { queryKeys } from "@/src/lib/queryKeys";
 import { Message, WebSocketMessage } from "@/src/types/chat.types";
+import toast from "react-hot-toast";
 
 // ==================== Types ====================
 
@@ -1085,6 +1086,30 @@ class WebSocketManager {
           
           return { ...oldData, pages: newPages };
         });
+
+        // Trigger toast for admin actions
+        const notificationData = message.data as any;
+        const notificationAction = notificationData?.metadata?.action;
+        const entityType = notificationData?.metadata?.entityType;
+        const isHub = entityType === "HUB" || entityType === "CONVERSATION";
+
+        if (notificationData?.type === "CONTENT_HIDDEN") {
+          let actionText = "hidden";
+          if (notificationAction === "UNHIDE") actionText = "restored";
+          else if (notificationAction === "DELETE") actionText = "permanently deleted";
+          else if (notificationAction === "SUSPEND") actionText = isHub ? "suspended" : "temporarily restricted";
+          else if (notificationAction === "BAN") actionText = "banned";
+
+          const entityLabel = isHub ? "Hub" : "content";
+          const messageStr = notificationAction === "SUSPEND" && isHub 
+            ? `System Alert: Your Hub has been suspended for a policy violation.`
+            : `System Alert: Your ${entityLabel} has been ${actionText}.`;
+
+          toast.success(messageStr, {
+            icon: notificationAction === "UNHIDE" ? "🟢" : "🔴",
+            duration: 6000,
+          });
+        }
 
         // 2. Refresh count query
         this.queryClient.invalidateQueries({

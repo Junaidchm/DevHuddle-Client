@@ -1,9 +1,11 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @next/next/no-img-element */
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getComments, getReportedComments, deleteCommentAdmin } from "@/src/services/api/admin-panel.service";
+import { getComments, getReportedComments, deleteCommentAdmin, hideComment } from "@/src/services/api/admin-panel.service";
+import { MODERATION_REASONS } from "@/src/constants/moderation.constants";
 import { useApiClient } from "@/src/lib/api-client";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
@@ -27,6 +29,10 @@ export default function CommentsPage() {
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+  const searchParams = useSearchParams();
+  const highlightId = searchParams.get("id");
+  const highlightedRowRef = useRef<HTMLTableRowElement>(null);
+
   const [filters, setFilters] = useState({
     status: "all",
     postId: "",
@@ -43,6 +49,11 @@ export default function CommentsPage() {
     isOpen: false,
     commentId: null,
   });
+  const [hideModal, setHideModal] = useState<{ isOpen: boolean; commentId: string | null; isHidden: boolean }>({
+    isOpen: false,
+    commentId: null,
+    isHidden: false,
+  });
 
   const queryClient = useQueryClient();
 
@@ -50,13 +61,21 @@ export default function CommentsPage() {
     queryKey: ["admin-comments", page, limit, filters.status, filters.postId, filters.userId, debouncedSearch, filters.sortBy, showReportedOnly, userId, userRole],
     queryFn: () =>
       showReportedOnly
-        ? getReportedComments({ page, limit, postId: filters.postId, userId: filters.userId, search: debouncedSearch }, apiClient.getHeaders())
-        : getComments({ page, limit, ...filters, search: debouncedSearch }, apiClient.getHeaders()),
+        ? getReportedComments({ page, limit, postId: filters.postId, userId: filters.userId, search: debouncedSearch }, apiClient.getHeaders() as any)
+        : getComments({ page, limit, ...filters, search: debouncedSearch }, apiClient.getHeaders() as any),
     enabled: status !== "loading" && !!userId && userRole === "superAdmin" && apiClient.isReady,
   });
 
+  useEffect(() => {
+    if (highlightId && !isLoading) {
+      setTimeout(() => {
+        highlightedRowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 500);
+    }
+  }, [highlightId, isLoading]);
+
   const deleteMutation = useMutation({
-    mutationFn: (commentId: string) => deleteCommentAdmin(commentId, apiClient.getHeaders()),
+    mutationFn: (commentId: string) => deleteCommentAdmin(commentId, apiClient.getHeaders() as any),
     onSuccess: () => {
       toast.success("Comment deleted successfully");
       setDeleteModal({ isOpen: false, commentId: null });
@@ -64,6 +83,19 @@ export default function CommentsPage() {
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to delete comment");
+    },
+  });
+
+  const hideMutation = useMutation({
+    mutationFn: ({ commentId, hidden, reason }: { commentId: string; hidden: boolean; reason?: string }) =>
+      hideComment(commentId, { hidden, reason }, apiClient.getHeaders() as any),
+    onSuccess: (_, variables) => {
+      toast.success(variables.hidden ? "Comment hidden successfully" : "Comment unhidden successfully");
+      setHideModal({ isOpen: false, commentId: null, isHidden: false });
+      queryClient.invalidateQueries({ queryKey: ["admin-comments"] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Action failed");
     },
   });
 
@@ -194,7 +226,13 @@ export default function CommentsPage() {
                 </tr>
               ) : (
                 comments.map((comment: any) => (
-                  <tr key={comment.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                  <tr 
+                    key={comment.id} 
+                    ref={comment.id === highlightId ? highlightedRowRef : null}
+                    className={`border-b border-gray-200 hover:bg-gray-50 transition-all duration-500 ${
+                      comment.id === highlightId ? "bg-indigo-50/50 shadow-[inset_4px_0_0_0_#4f46e5]" : ""
+                    }`}
+                  >
                     <td className="p-4">
                       <div className="relative inline-block">
                         <input type="checkbox" id={`comment-${comment.id}`} className="peer sr-only" />
@@ -235,7 +273,7 @@ export default function CommentsPage() {
                       </div>
                     </td>
                     <td className="p-4">
-                      <StatusBadge status={comment.deletedAt ? "deleted" : "active"} />
+                      <StatusBadge status={comment.deletedAt ? "deleted" : comment.isHidden ? "hidden" : "active"} />
                     </td>
                     <td className="p-4 text-sm text-gray-600">
                       {new Date(comment.createdAt).toLocaleDateString()}
@@ -250,14 +288,32 @@ export default function CommentsPage() {
                           <i className="fas fa-eye"></i>
                         </Link>
                         {!comment.deletedAt && (
-                          <button
-                            onClick={() => setDeleteModal({ isOpen: true, commentId: comment.id })}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors"
-                            title="Delete Comment"
-                            disabled={deleteMutation.isPending}
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
+                          <>
+                            <button
+                              onClick={() => setHideModal({ 
+                                isOpen: true, 
+                                commentId: comment.id, 
+                                isHidden: !comment.isHidden 
+                              })}
+                              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                                comment.isHidden 
+                                  ? "text-green-500 hover:bg-green-50" 
+                                  : "text-amber-500 hover:bg-amber-50"
+                              }`}
+                              title={comment.isHidden ? "Unhide Comment" : "Hide Comment"}
+                              disabled={hideMutation.isPending}
+                            >
+                              <i className={`fas ${comment.isHidden ? "fa-eye" : "fa-eye-slash"}`}></i>
+                            </button>
+                            <button
+                              onClick={() => setDeleteModal({ isOpen: true, commentId: comment.id })}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors"
+                              title="Delete Comment"
+                              disabled={deleteMutation.isPending}
+                            >
+                              <i className="fas fa-trash"></i>
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -338,6 +394,28 @@ export default function CommentsPage() {
         confirmLabel="Delete Permanently"
         confirmVariant="danger"
         isLoading={deleteMutation.isPending}
+      />
+
+      <ConfirmModal
+        isOpen={hideModal.isOpen}
+        onClose={() => setHideModal({ isOpen: false, commentId: null, isHidden: false })}
+        onConfirm={(reason) => {
+          if (hideModal.commentId) {
+            hideMutation.mutate({ 
+              commentId: hideModal.commentId, 
+              hidden: hideModal.isHidden,
+              reason 
+            });
+          }
+        }}
+        title={hideModal.isHidden ? "Hide Comment" : "Unhide Comment"}
+        message={hideModal.isHidden 
+          ? "Are you sure you want to hide this comment? It will no longer be visible to users." 
+          : "Are you sure you want to make this comment visible again?"}
+        confirmLabel={hideModal.isHidden ? "Hide Comment" : "Unhide Comment"}
+        confirmVariant={hideModal.isHidden ? "warning" : "primary"}
+        isLoading={hideMutation.isPending}
+        reasonOptions={hideModal.isHidden ? MODERATION_REASONS : undefined}
       />
     </div>
   );

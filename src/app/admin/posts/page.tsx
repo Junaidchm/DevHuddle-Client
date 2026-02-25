@@ -1,7 +1,8 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @next/next/no-img-element */
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getPosts, getReportedPosts, hidePost, deletePostAdmin } from "@/src/services/api/admin-panel.service";
 import { useApiClient } from "@/src/lib/api-client";
@@ -17,6 +18,7 @@ import StatusBadge from "@/src/components/admin/ui/StatusBadge";
 import ConfirmModal from "@/src/components/admin/ui/ConfirmModal";
 import ContentIdentityCell from "@/src/components/admin/ui/ContentIdentityCell";
 import useDebounce from "@/src/customHooks/useDebounce";
+import { MODERATION_REASONS } from "@/src/constants/moderation.constants";
 
 export default function PostsPage() {
   const { data: session, status } = useSession();
@@ -28,6 +30,10 @@ export default function PostsPage() {
   
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+  const searchParams = useSearchParams();
+  const highlightId = searchParams.get("id");
+  const highlightedRowRef = useRef<HTMLTableRowElement>(null);
+
   const [filters, setFilters] = useState({
     status: "all",
     userId: "",
@@ -54,14 +60,23 @@ export default function PostsPage() {
     queryKey: ["admin-posts", page, limit, filters.status, filters.userId, debouncedSearch, filters.sortBy, showReportedOnly, userId, userRole],
     queryFn: () =>
       showReportedOnly
-        ? getReportedPosts({ page, limit, userId: filters.userId, search: debouncedSearch }, apiClient.getHeaders())
-        : getPosts({ page, limit, ...filters, search: debouncedSearch }, apiClient.getHeaders()),
+        ? getReportedPosts({ page, limit, userId: filters.userId, search: debouncedSearch }, apiClient.getHeaders() as any)
+        : getPosts({ page, limit, ...filters, search: debouncedSearch }, apiClient.getHeaders() as any),
     enabled: status !== "loading" && !!userId && userRole === "superAdmin" && apiClient.isReady,
+    refetchInterval: 45_000,
   });
+
+  useEffect(() => {
+    if (highlightId && !isLoading) {
+      setTimeout(() => {
+        highlightedRowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 500);
+    }
+  }, [highlightId, isLoading]);
 
   const hideMutation = useMutation({
     mutationFn: ({ postId, hidden, reason }: { postId: string; hidden: boolean; reason?: string }) =>
-      hidePost(postId, { hidden, reason }, apiClient.getHeaders()),
+      hidePost(postId, { hidden, reason }, apiClient.getHeaders() as any),
     onSuccess: () => {
       toast.success("Post updated successfully");
       setHideModal({ isOpen: false, postId: null });
@@ -73,7 +88,7 @@ export default function PostsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (postId: string) => deletePostAdmin(postId, apiClient.getHeaders()),
+    mutationFn: (postId: string) => deletePostAdmin(postId, apiClient.getHeaders() as any),
     onSuccess: () => {
       toast.success("Post deleted successfully");
       setDeleteModal({ isOpen: false, postId: null });
@@ -212,7 +227,13 @@ export default function PostsPage() {
                 </tr>
               ) : posts.length > 0 ? (
                 posts.map((post: any) => (
-                  <tr key={post.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                  <tr 
+                    key={post.id} 
+                    ref={post.id === highlightId ? highlightedRowRef : null}
+                    className={`border-b border-gray-200 hover:bg-gray-50 transition-all duration-500 ${
+                      post.id === highlightId ? "bg-indigo-50/50 shadow-[inset_4px_0_0_0_#4f46e5]" : ""
+                    }`}
+                  >
                     <td className="p-4">
                       <div className="relative inline-block">
                         <input type="checkbox" id={`post-${post.id}`} className="peer sr-only" />
@@ -381,6 +402,7 @@ export default function PostsPage() {
         confirmLabel="Hide Post"
         confirmVariant="warning"
         reasonRequired={true}
+        reasonOptions={MODERATION_REASONS}
         isLoading={hideMutation.isPending}
       />
 
