@@ -198,6 +198,7 @@ export const API_ROUTES = {
     LIKE: (projectId: string) => `${API_VERSION}/projects/${projectId}/like`,
     UNLIKE: (projectId: string) => `${API_VERSION}/projects/${projectId}/like`,
     SHARE: (projectId: string) => `${API_VERSION}/projects/${projectId}/share`,
+    SEND: (projectId: string) => `${API_VERSION}/projects/${projectId}/send`,
     REPORT: (projectId: string) => `${API_VERSION}/projects/${projectId}/report`,
     VIEW: (projectId: string) => `${API_VERSION}/projects/${projectId}/view`,
     // Comments
@@ -206,6 +207,9 @@ export const API_ROUTES = {
     UPDATE_COMMENT: (commentId: string) => `${API_VERSION}/comments/${commentId}`,
     DELETE_COMMENT: (commentId: string) => `${API_VERSION}/comments/${commentId}`,
     GET_REPLIES: (commentId: string) => `${API_VERSION}/comments/${commentId}/replies`,
+    LIKE_COMMENT: (commentId: string) => `${API_VERSION}/comments/${commentId}/like`,
+    UNLIKE_COMMENT: (commentId: string) => `${API_VERSION}/comments/${commentId}/like`,
+    REPORT_COMMENT: (commentId: string) => `${API_VERSION}/comments/${commentId}/report`,
   },
 
   // Add to API_ROUTES object

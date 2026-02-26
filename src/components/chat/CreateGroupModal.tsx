@@ -79,6 +79,13 @@ export function CreateGroupModal({ isOpen, onClose, onGroupCreated }: CreateGrou
       toast.success("Group created successfully");
   });
 
+  // Handle mutation error to reset loading state
+  React.useEffect(() => {
+    if (createGroupMutation.isError) {
+      setIsLoading(false);
+    }
+  }, [createGroupMutation.isError]);
+
   const handleUserToggle = (user: User) => {
     if (selectedUsers.some(u => u.id === user.id)) {
       setSelectedUsers(selectedUsers.filter(u => u.id !== user.id));

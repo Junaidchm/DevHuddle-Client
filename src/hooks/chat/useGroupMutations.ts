@@ -32,13 +32,13 @@ export const useCreateGroup = (onSuccess?: (group: ConversationWithMetadata) => 
         
         // Map backend response to ConversationWithMetadata
         const mappedGroup: ConversationWithMetadata = {
-            conversationId: group.id,
+            conversationId: group.conversationId || group.id,
             type: 'GROUP',
             name: group.name || "Group",
             icon: group.icon || undefined,
             description: group.description || undefined,
             ownerId: group.ownerId || undefined,
-            participantIds: (group as any).participants?.map((p: any) => p.userId) || [],
+            participantIds: (group as any).participantIds || (group as any).participants?.map((p: any) => p.userId) || [],
             participants: (group as any).participants?.map((p: any) => ({
                 userId: p.userId,
                 username: p.username || p.user?.username || "user",
@@ -46,7 +46,7 @@ export const useCreateGroup = (onSuccess?: (group: ConversationWithMetadata) => 
                 profilePhoto: p.profilePhoto || p.user?.profilePhoto,
                 role: p.role,
                 // Add default values for required Participant fields
-                conversationId: group.id,
+                conversationId: group.conversationId || group.id,
                 createdAt: new Date().toISOString(),
                 lastReadAt: new Date().toISOString()
             })) || [],
@@ -62,7 +62,33 @@ export const useCreateGroup = (onSuccess?: (group: ConversationWithMetadata) => 
         return mappedGroup;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.list() });
+      // ✅ DO NOT invalidateQueries here — the socket 'group_created' event already
+      // prepends the new group to the cache in useGroupSocketEvents. Calling
+      // invalidateQueries would trigger a server refetch that adds the item a second
+      // time, causing the duplicate entry visible in the conversation list.
+      // Instead, use setQueryData with a duplicate-check guard (same pattern as the socket handler).
+      queryClient.setQueryData(queryKeys.chat.conversations.list(), (oldData: any) => {
+        if (!oldData || !oldData.pages || oldData.pages.length === 0) {
+          return {
+            pages: [{ data: [data], total: 1, pagination: { limit: 20, offset: 0, count: 1 } }],
+            pageParams: [0],
+          };
+        }
+        // If already in cache (put there by the socket event), skip
+        const exists = oldData.pages.some((page: any) =>
+          page.data.some((conv: any) => conv.conversationId === data.conversationId)
+        );
+        if (exists) return oldData;
+
+        const firstPage = oldData.pages[0];
+        return {
+          ...oldData,
+          pages: [
+            { ...firstPage, data: [data, ...(firstPage.data || [])] },
+            ...oldData.pages.slice(1),
+          ],
+        };
+      });
       toast.success("Group created successfully");
       if (onSuccess) onSuccess(data);
     },

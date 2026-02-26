@@ -28,6 +28,7 @@ import {
 
 export const CallControls = () => {
   const {
+    activeCall,
     leaveCall,
     toggleAudio,
     toggleVideo,
@@ -75,30 +76,32 @@ export const CallControls = () => {
         </Tooltip>
 
         {/* Toggle Video */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              onClick={toggleVideo}
-              variant="ghost"
-              size="icon"
-              className={cn(
-                "w-12 h-12 rounded-full transition-all duration-300",
-                !isVideoEnabled 
-                  ? "bg-red-500 text-white hover:bg-red-600 shadow-[0_0_15px_rgba(239,68,68,0.4)]" 
-                  : "bg-white/10 text-white hover:bg-white/20"
-              )}
-            >
-              {!isVideoEnabled ? (
-                <VideoOff className="w-5 h-5" />
-              ) : (
-                <Video className="w-5 h-5" />
-              )}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="bg-black/80 border-white/10 text-white">
-            <p>{isVideoEnabled ? 'Stop Video' : 'Start Video'}</p>
-          </TooltipContent>
-        </Tooltip>
+        {activeCall?.isVideoCall && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={toggleVideo}
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "w-12 h-12 rounded-full transition-all duration-300",
+                  !isVideoEnabled 
+                    ? "bg-red-500 text-white hover:bg-red-600 shadow-[0_0_15px_rgba(239,68,68,0.4)]" 
+                    : "bg-white/10 text-white hover:bg-white/20"
+                )}
+              >
+                {!isVideoEnabled ? (
+                  <VideoOff className="w-5 h-5" />
+                ) : (
+                  <Video className="w-5 h-5" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="bg-black/80 border-white/10 text-white">
+              <p>{isVideoEnabled ? 'Stop Video' : 'Start Video'}</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
 
         <div className="w-px h-6 bg-white/10 mx-1" />
 

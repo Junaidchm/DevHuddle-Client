@@ -193,8 +193,8 @@ export async function createGroup(
   icon?: string,
   topics?: string[],
   headers?: Record<string, string>
-): Promise<Conversation> {
-  const response = await axiosInstance.post<Conversation>(
+): Promise<any> {
+  const response = await axiosInstance.post<any>(
       API_ROUTES.CHAT.GROUPS,
       { name, participantIds, icon, topics },
       { headers }

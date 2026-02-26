@@ -15,6 +15,7 @@ interface ParticipantTileProps {
   isLocal: boolean;
   isMuted?: boolean;
   isVideoOff?: boolean;
+  profileImage?: string;
   className?: string;
 }
 
@@ -25,6 +26,7 @@ export const ParticipantTile = ({
   isLocal,
   isMuted = false,
   isVideoOff = false,
+  profileImage,
 }: ParticipantTileProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -80,8 +82,12 @@ export const ParticipantTile = ({
       >
         <div className="relative">
             <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl animate-pulse" />
-            <div className="w-24 h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shadow-2xl relative z-10">
-                 <User className="w-12 h-12 text-white/20" />
+            <div className="w-24 h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shadow-2xl relative z-10 overflow-hidden text-center">
+                 {profileImage ? (
+                     <img src={profileImage} alt={displayName} className="w-full h-full object-cover" />
+                 ) : (
+                     <User className="w-12 h-12 text-white/20" />
+                 )}
             </div>
         </div>
         {!isLocal && (

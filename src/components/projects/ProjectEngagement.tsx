@@ -1,9 +1,10 @@
 import { Project } from "@/src/services/api/project.service";
-import { Heart, Share2, MessageCircle, Flag } from "lucide-react";
+import { Heart, Share2, MessageCircle, Flag, Send } from "lucide-react";
 import { useState } from "react";
 import ProjectCommentSection from "./ProjectCommentSection";
 import ShareProjectModal from "./ShareProjectModal";
 import ReportProjectModal from "./ReportProjectModal";
+import SendProjectModal from "./SendProjectModal";
 import { Button } from "@/src/components/ui/button";
 import { cn } from "@/src/lib/utils";
 
@@ -20,6 +21,7 @@ export default function ProjectEngagement({
 }: ProjectEngagementProps) {
   const [showComments, setShowComments] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
 
   return (
@@ -71,6 +73,16 @@ export default function ProjectEngagement({
               <Share2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
               <span className="font-semibold">{project.engagement.sharesCount}</span>
             </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSendModal(true)}
+              className="group flex items-center gap-2 px-3 py-2 text-muted-foreground"
+            >
+              <Send className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span className="font-semibold hidden sm:inline">Send</span>
+            </Button>
           </div>
 
           <Button
@@ -109,6 +121,12 @@ export default function ProjectEngagement({
         onClose={() => setShowShareModal(false)}
         projectId={project.id}
         projectTitle={project.title}
+      />
+      <SendProjectModal
+        isOpen={showSendModal}
+        onClose={() => setShowSendModal(false)}
+        projectId={project.id}
+        project={project}
       />
       <ReportProjectModal
         isOpen={showReportModal}

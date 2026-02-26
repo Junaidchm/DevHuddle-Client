@@ -170,7 +170,19 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
         </div>
       </Card>
 
-      {/* Discussion Section Removed as requested */}
+      {/* Comments Section */}
+      <Card className="card-base overflow-hidden border-none shadow-sm">
+        <div className="p-6 md:p-8">
+          <h2 className="text-lg font-bold text-foreground mb-4 inline-flex items-center gap-2">
+            <div className="w-1.5 h-6 bg-primary rounded-full" />
+            Discussion
+          </h2>
+        </div>
+        <CommentSection
+          projectId={project.id}
+          projectAuthorId={project.author?.id || project.userId}
+        />
+      </Card>
     </div>
   );
 }

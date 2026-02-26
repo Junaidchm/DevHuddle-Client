@@ -33,7 +33,7 @@ export default function ProjectsPage() {
   const topQuery = useTopProjectsQuery(filter === "top" ? period : undefined);
 
   const listQuery = useListProjectsQuery({
-    myProjects: filter === "my-projects" ? true : undefined,
+    filter: filter === "my-projects" ? "my-projects" : undefined,
   });
 
   const searchQueryResult = useQuery({

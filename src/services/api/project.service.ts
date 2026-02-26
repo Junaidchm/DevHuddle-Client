@@ -76,6 +76,9 @@ export interface ProjectComment {
   createdAt: string;
   updatedAt: string;
   editedAt?: string;
+  likesCount: number;
+  isLiked?: boolean;
+  isAuthor?: boolean;
   replies?: ProjectComment[];
   author?: {
     id: string;
@@ -299,6 +302,23 @@ export const shareProject = async (
   }
 };
 
+export const sendProject = async (
+  projectId: string,
+  data: { recipientIds: string[]; message?: string },
+  headers: Record<string, string>
+): Promise<{ success: boolean; sentTo: string[] }> => {
+  try {
+    const res = await axiosInstance.post(
+      API_ROUTES.PROJECTS.SEND(projectId),
+      data,
+      { headers }
+    );
+    return res.data.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.message || "Failed to send project");
+  }
+};
+
 export const reportProject = async (
   projectId: string,
   reason: string,
@@ -438,5 +458,53 @@ export const getProjectReplies = async (
     return res.data.data;
   } catch (err: any) {
     throw new Error(err.response?.data?.message || "Failed to get replies");
+  }
+};
+
+export const likeProjectComment = async (
+  commentId: string,
+  headers: Record<string, string>
+): Promise<{ isLiked: boolean; likesCount: number }> => {
+  try {
+    const res = await axiosInstance.post(
+      API_ROUTES.PROJECTS.LIKE_COMMENT(commentId),
+      {},
+      { headers }
+    );
+    return res.data.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.message || "Failed to like comment");
+  }
+};
+
+export const unlikeProjectComment = async (
+  commentId: string,
+  headers: Record<string, string>
+): Promise<{ isLiked: boolean; likesCount: number }> => {
+  try {
+    const res = await axiosInstance.delete(
+      API_ROUTES.PROJECTS.UNLIKE_COMMENT(commentId),
+      { headers }
+    );
+    return res.data.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.message || "Failed to unlike comment");
+  }
+};
+
+export const reportProjectComment = async (
+  commentId: string,
+  reason: string,
+  headers: Record<string, string>
+): Promise<{ reportId: string; success: boolean }> => {
+  try {
+    const res = await axiosInstance.post(
+      API_ROUTES.PROJECTS.REPORT_COMMENT(commentId),
+      { reason },
+      { headers }
+    );
+    return res.data.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.message || "Failed to report comment");
   }
 };

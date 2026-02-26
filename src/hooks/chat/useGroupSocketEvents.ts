@@ -79,8 +79,32 @@ export function useGroupSocketEvents() {
             });
         };
 
+        const handleGroupDeleted = (e: CustomEvent) => {
+            const data = e.detail;
+            console.log('🗑️ [Socket] handling group_deleted', data);
+
+            // Remove the deleted group from the conversation cache immediately
+            queryClient.setQueryData(queryKeys.chat.conversations.list(), (oldData: any) => {
+                if (!oldData || !oldData.pages) return oldData;
+                return {
+                    ...oldData,
+                    pages: oldData.pages.map((page: any) => ({
+                        ...page,
+                        data: Array.isArray(page.data)
+                            ? page.data.filter((conv: any) => conv.conversationId !== data.conversationId)
+                            : []
+                    }))
+                };
+            });
+
+            // Also invalidate my-groups cache on the hubs page
+            queryClient.invalidateQueries({ queryKey: ['my-groups'] });
+            toast.info(`The group "${data.groupName || 'Group'}" has been deleted`);
+        };
+
         window.addEventListener('group_created', handleGroupCreated as EventListener);
         window.addEventListener('group_updated', handleGroupUpdated as EventListener);
+        window.addEventListener('group_deleted', handleGroupDeleted as EventListener);
         window.addEventListener('participants_added', invalidateList as EventListener);
         window.addEventListener('participant_removed', invalidateList as EventListener);
         window.addEventListener('participant_left', invalidateList as EventListener);
@@ -89,6 +113,7 @@ export function useGroupSocketEvents() {
         return () => {
             window.removeEventListener('group_created', handleGroupCreated as EventListener);
             window.removeEventListener('group_updated', handleGroupUpdated as EventListener);
+            window.removeEventListener('group_deleted', handleGroupDeleted as EventListener);
             window.removeEventListener('participants_added', invalidateList as EventListener);
             window.removeEventListener('participant_removed', invalidateList as EventListener);
             window.removeEventListener('participant_left', invalidateList as EventListener);

@@ -14,11 +14,10 @@ export const ActiveCallLayout = () => {
   const currentUserId = session?.user?.id;
   const [participantDetails, setParticipantDetails] = useState<Map<string, { name: string; image?: string }>>(new Map());
   
-  // PiP State
-  const [isPipSwapped, setIsPipSwapped] = useState(false);
-
-  // Group layout selection
+  // Layout State
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [isPipSwapped, setIsPipSwapped] = useState(false);
+  const [isGroup, setIsGroup] = useState(false);
 
   // Fetch participant details
   useEffect(() => {
@@ -39,7 +38,8 @@ export const ActiveCallLayout = () => {
              });
          });
          setParticipantDetails(map);
-         console.log('[ActiveCallLayout] Fetched participants:', map);
+         setIsGroup(convo.type === 'GROUP');
+         console.log('[ActiveCallLayout] Fetched participants:', map, 'isGroup:', convo.type === 'GROUP');
        } catch (error) {
            console.error("Failed to fetch participant details:", error);
        }
@@ -59,7 +59,8 @@ export const ActiveCallLayout = () => {
         stream,
         isLocal: false,
         name: details?.name || 'Unknown User',
-        image: details?.image
+        image: details?.image,
+        profileImage: details?.image // Explicitly added for clarity
       };
     });
 
@@ -68,8 +69,8 @@ export const ActiveCallLayout = () => {
 
   // --- Render Layouts ---
 
-  // 1. Voice Only Layout
-  if (!activeCall?.isVideoCall) {
+  // 1. Voice Only Layout (ONLY for 1:1)
+  if (!activeCall?.isVideoCall && !isGroup) {
        const remoteUser = participants[0]; // For 1:1 Voice Call
        const showWaitingState = !remoteUser;
        
@@ -90,6 +91,7 @@ export const ActiveCallLayout = () => {
                                 displayName={p.name}
                                 isLocal={false}
                                 isVideoOff={true}
+                                profileImage={p.image}
                             />
                         </div>
                     ))}
@@ -133,7 +135,7 @@ export const ActiveCallLayout = () => {
   }
 
   // 2. One-on-One Video Layout (WhatsApp Style PiP)
-  if (isOneOnOne && activeCall?.isVideoCall) {
+  if (isOneOnOne && activeCall?.isVideoCall && !isGroup) {
       const remoteUser = participants[0]; // Might be undefined if waiting
       const localUser = { 
           id: 'local', 
@@ -231,15 +233,28 @@ export const ActiveCallLayout = () => {
       );
   }
 
+  // For local user video status tracking (simplified)
+  const isVideoSwitchedOnOrContextState = localStream?.getVideoTracks()[0]?.enabled ?? false;
+
   // 3. Group layout (WhatsApp Style: Main Area + Sidebar)
   const allParticipants = [
-      { id: 'local', stream: localStream, isLocal: true, name: 'You', image: session?.user?.image },
-      ...participants
+      { 
+        id: 'local', 
+        stream: localStream, 
+        isLocal: true, 
+        name: 'You', 
+        image: session?.user?.image as string | undefined,
+        isVideoOff: !isVideoSwitchedOnOrContextState // Ideally we get this from context
+      },
+      ...participants.map(p => ({
+          ...p,
+          isVideoOff: activeCall?.participants.get(p.id)?.isVideoOff ?? false
+      }))
   ];
 
   // Determine which user to show in the main area
   // Priority: 1. Manually selected user, 2. First remote participant, 3. Local user
-  const mainUser = allParticipants.find(p => p.id === selectedUser) || participants[0] || allParticipants[0];
+  const mainUser = allParticipants.find(p => p.id === selectedUser) || allParticipants.find(p => !p.isLocal) || allParticipants[0];
 
   return (
     <div className="flex flex-row h-full bg-[#080808] relative overflow-hidden">
@@ -265,6 +280,7 @@ export const ActiveCallLayout = () => {
                                     displayName={p.name}
                                     isLocal={false}
                                     isVideoOff={true}
+                                    profileImage={p.image}
                                 />
                             )
                         ))}
@@ -276,6 +292,8 @@ export const ActiveCallLayout = () => {
                             userId={mainUser.id}
                             displayName={mainUser.name}
                             isLocal={mainUser.isLocal}
+                            isVideoOff={!activeCall?.isVideoCall || mainUser.isVideoOff}
+                            profileImage={mainUser.image}
                             className="w-full h-full object-cover"
                         />
                     ) : (

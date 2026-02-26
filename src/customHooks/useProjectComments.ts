@@ -6,13 +6,15 @@ import {
   createProjectComment, 
   updateProjectComment, 
   deleteProjectComment,
+  likeProjectComment,
+  unlikeProjectComment,
   ProjectComment
 } from "../services/api/project.service";
 import { useAuthHeaders } from "./useAuthHeaders";
 import { useToast } from "@/src/components/ui/use-toast";
 
 export const useProjectComments = (projectId: string) => {
-  const { authHeaders } = useAuthHeaders();
+  const authHeaders = useAuthHeaders();
 
   return useQuery({
     queryKey: queryKeys.projects.comments.all(projectId),
@@ -22,7 +24,7 @@ export const useProjectComments = (projectId: string) => {
 };
 
 export const useProjectReplies = (commentId: string) => {
-  const { authHeaders } = useAuthHeaders();
+  const authHeaders = useAuthHeaders();
 
   return useQuery({
     queryKey: queryKeys.projects.comments.replies(commentId),
@@ -33,7 +35,7 @@ export const useProjectReplies = (commentId: string) => {
 
 export const useCreateProjectComment = () => {
   const qc = useQueryClient();
-  const { authHeaders } = useAuthHeaders();
+  const authHeaders = useAuthHeaders();
   const { toast } = useToast();
 
   return useMutation({
@@ -48,9 +50,10 @@ export const useCreateProjectComment = () => {
     }) => createProjectComment(projectId, content, authHeaders, parentCommentId),
     
     onSuccess: (newComment, variables) => {
-      // Invalidate comments or replies depending on what was created
       if (variables.parentCommentId) {
         qc.invalidateQueries({ queryKey: queryKeys.projects.comments.replies(variables.parentCommentId) });
+        // Also invalidate the parent comment list so reply count updates
+        qc.invalidateQueries({ queryKey: queryKeys.projects.comments.all(variables.projectId) });
       } else {
         qc.invalidateQueries({ queryKey: queryKeys.projects.comments.all(variables.projectId) });
       }
@@ -74,7 +77,7 @@ export const useCreateProjectComment = () => {
 
 export const useUpdateProjectComment = () => {
   const qc = useQueryClient();
-  const { authHeaders } = useAuthHeaders();
+  const authHeaders = useAuthHeaders();
   const { toast } = useToast();
 
   return useMutation({
@@ -87,7 +90,6 @@ export const useUpdateProjectComment = () => {
     }) => updateProjectComment(commentId, content, authHeaders),
     
     onSuccess: (updatedComment) => {
-      // Invalidate the relevant project comments
       qc.invalidateQueries({ queryKey: queryKeys.projects.comments.all(updatedComment.projectId) });
       if (updatedComment.parentCommentId) {
         qc.invalidateQueries({ queryKey: queryKeys.projects.comments.replies(updatedComment.parentCommentId) });
@@ -110,7 +112,7 @@ export const useUpdateProjectComment = () => {
 
 export const useDeleteProjectComment = () => {
   const qc = useQueryClient();
-  const { authHeaders } = useAuthHeaders();
+  const authHeaders = useAuthHeaders();
   const { toast } = useToast();
 
   return useMutation({
@@ -144,5 +146,36 @@ export const useDeleteProjectComment = () => {
         variant: "destructive",
       });
     }
+  });
+};
+
+export const useProjectCommentLikeMutation = () => {
+  const qc = useQueryClient();
+  const authHeaders = useAuthHeaders();
+
+  return useMutation({
+    mutationFn: async ({
+      commentId,
+      projectId,
+      isLiked,
+      parentCommentId,
+    }: {
+      commentId: string;
+      projectId: string;
+      isLiked: boolean;
+      parentCommentId?: string;
+    }) => {
+      if (isLiked) {
+        return unlikeProjectComment(commentId, authHeaders);
+      } else {
+        return likeProjectComment(commentId, authHeaders);
+      }
+    },
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: queryKeys.projects.comments.all(variables.projectId) });
+      if (variables.parentCommentId) {
+        qc.invalidateQueries({ queryKey: queryKeys.projects.comments.replies(variables.parentCommentId) });
+      }
+    },
   });
 };

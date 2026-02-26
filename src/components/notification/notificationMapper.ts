@@ -86,7 +86,9 @@ const getActionText = (
       if (entityType === "PROJECT") return "liked your project";
       return "liked your comment";
     case "COMMENT":
-      return isReply ? "replied to your comment" : "commented on your post";
+      if (isReply) return "replied to your comment";
+      if (entityType === "PROJECT") return "commented on your project";
+      return "commented on your post";
     case "MENTION":
       return "mentioned you in a comment";
     case "FOLLOW":

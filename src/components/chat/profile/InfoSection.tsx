@@ -5,7 +5,7 @@ import { ConversationWithMetadata } from "@/src/types/chat.types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import { Button } from "@/src/components/ui/button";
 import { PROFILE_DEFAULT_URL } from "@/src/constants";
-import { Clock, Flag, ShieldAlert, Trash2, Loader2 } from "lucide-react";
+import { Clock, Flag, ShieldAlert, Trash2, Loader2, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/src/components/ui/badge";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +15,7 @@ import toast from "react-hot-toast";
 import { queryKeys } from "@/src/lib/queryKeys";
 import { ReportModal } from "./ReportModal";
 import { confirmToast } from "@/src/utils/confirmToast";
+import { useDeleteGroup } from "@/src/hooks/chat/useGroupMutations";
 
 interface InfoSectionProps {
     conversation: ConversationWithMetadata;
@@ -30,6 +31,7 @@ export function InfoSection({ conversation, currentUserId, minimal = false, onCo
     const authHeaders = useAuthHeaders();
     const isGroup = conversation.type === 'GROUP';
     const participant = !isGroup ? conversation.participants.find(p => p.userId !== currentUserId) : null;
+    const isOwner = isGroup && conversation.ownerId === currentUserId;
 
     const blockMutation = useMutation({
         mutationFn: () => blockUser(participant!.userId, authHeaders),
@@ -96,6 +98,8 @@ export function InfoSection({ conversation, currentUserId, minimal = false, onCo
         }
     });
 
+    const deleteGroupMutation = useDeleteGroup(conversation.conversationId);
+
     const handleBlock = () => {
         if (conversation.isBlockedByMe) {
             confirmToast(`Are you sure you want to unblock ${participant?.name}?`, () => {
@@ -122,6 +126,19 @@ export function InfoSection({ conversation, currentUserId, minimal = false, onCo
 
     const handleReport = () => {
         setIsReportModalOpen(true);
+    };
+
+    const handleDeleteGroup = () => {
+        confirmToast(
+            `Are you sure you want to permanently delete "${conversation.name}"? This cannot be undone and all messages will be lost for every member.`,
+            () => {
+                deleteGroupMutation.mutate(undefined, {
+                    onSuccess: () => {
+                        if (onConversationDeleted) onConversationDeleted();
+                    }
+                });
+            }
+        );
     };
 
     return (
@@ -208,6 +225,27 @@ export function InfoSection({ conversation, currentUserId, minimal = false, onCo
                         <Flag className="w-4 h-4" />
                         <span className="text-xs font-bold">Report {isGroup ? "Group" : (participant?.name || "User")}</span>
                     </Button>
+
+                    {/* Delete Group — owner only */}
+                    {isGroup && isOwner && (
+                        <>
+                            <div className="my-1 border-t border-destructive/20" />
+                            <Button 
+                                variant="ghost" 
+                                className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 gap-3 h-11 rounded-xl px-3 border border-red-200"
+                                onClick={handleDeleteGroup}
+                                disabled={deleteGroupMutation.isPending}
+                            >
+                                {deleteGroupMutation.isPending 
+                                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                                    : <AlertTriangle className="w-4 h-4" />
+                                }
+                                <span className="text-xs font-bold">
+                                    {deleteGroupMutation.isPending ? "Deleting group..." : "Delete Group (Owner Only)"}
+                                </span>
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
 
