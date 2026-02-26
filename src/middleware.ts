@@ -1,9 +1,16 @@
 /**
- * ✅ NEW: Export auth as middleware (Next.js 15 best practice)
- * 
- * References:
- * - https://next-auth.js.org/configuration/nextjs#middleware
- * - https://nextjs.org/docs/app/building-your-application/routing/middleware
+ * Next.js Middleware — Route Protection
+ *
+ * Uses ONLY the NextAuth session (req.auth) to determine authentication.
+ * The session is managed by NextAuth and stored in the next-auth.session-token cookie.
+ *
+ * IMPORTANT: We do NOT check the access_token / refresh_token httpOnly cookies here.
+ * Those are for the API Gateway only. Mixing both causes desync bugs.
+ *
+ * Auth states:
+ * - req.auth?.user?.id  → authenticated
+ * - req.auth === null   → not authenticated
+ * - req.auth?.error === "RefreshTokenExpired" → refresh token expired → force re-login
  */
 
 import { auth } from "@/auth";
@@ -11,89 +18,106 @@ import { NextResponse } from "next/server";
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
-  
-  // IMMEDIATELY SKIP NEXT.JS INTERNAL ASSETS
+
+  // Skip Next.js internals and NextAuth API routes
   if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
-    pathname === '/favicon.ico'
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api/auth") ||
+    pathname === "/favicon.ico"
   ) {
     return NextResponse.next();
   }
-  
-  const hasAuthCookie = req.cookies.get('access_token');
-  const isAuthenticated = !!req.auth?.user || !!hasAuthCookie;
-  const userRole = req.auth?.user?.role;
 
-  // NEW: Check for desync between backend cookies and NextAuth session
-  // This happens after google auth when backend cookie is set but NextAuth session is empty
-  const isDesynced = hasAuthCookie && !req.auth?.user;
+  // ─────────────────────────────────────────────
+  // Determine auth state
+  // ─────────────────────────────────────────────
+  const session = req.auth;
+  const isAuthenticated = !!session?.user?.id;
+  const hasRefreshError = session?.error === "RefreshTokenExpired";
+  const userRole = session?.user?.role;
 
-  if (isDesynced) {
-    if (pathname !== '/success' && !pathname.startsWith('/api') && !pathname.startsWith('/_next')) {
-      const url = new URL('/success', req.url);
-      url.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(url);
-    }
-    // If they are on /success and desynced, we MUST let it render so they can sync.
-    // Otherwise, the "already logged in" check below will redirect them back to "/" and cause a loop.
-    if (pathname === '/success') {
-      return NextResponse.next();
-    }
+  // ─────────────────────────────────────────────
+  // Refresh token expired — force re-login
+  // Redirect to /signIn regardless of the page the user is on
+  // (except if already on a public page to avoid loops)
+  // ─────────────────────────────────────────────
+  const publicRoutes = [
+    "/signIn",
+    "/signup",
+    "/forgotPassword",
+    "/verify-user",
+    "/success",
+    "/admin/signIn",
+    "/reset-password",
+    "/api/auth", // NextAuth internal routes (session, callback, etc.)
+  ];
+  const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
+
+  if (hasRefreshError && !isPublicRoute) {
+    const url = new URL("/signIn", req.url);
+    url.searchParams.set("error", "session_expired");
+    return NextResponse.redirect(url);
   }
 
-  // Public routes that don't need authentication
-  const publicRoutes = ['/signIn', '/signup', '/forgotPassword', '/verify-user', '/success', '/admin/signIn', '/reset-password'];
-  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
+  // ─────────────────────────────────────────────
+  // Admin routes
+  // ─────────────────────────────────────────────
+  const isAdminRoute = pathname.startsWith("/admin");
+  const isAdminSignIn = pathname === "/admin/signIn";
 
-  // Admin routes - require superAdmin role
-  const isAdminRoute = pathname.startsWith('/admin');
-  const isAdminSignIn = pathname === '/admin/signIn';
+  // Authenticated admin user on admin sign-in → redirect to dashboard
+  if (isAdminSignIn && isAuthenticated && userRole === "superAdmin") {
+    return NextResponse.redirect(new URL("/admin/dashboard", req.url));
+  }
 
-  // Protect admin routes (except admin sign-in page)
+  // Admin routes (not the sign-in page) require auth + superAdmin role
   if (isAdminRoute && !isAdminSignIn) {
     if (!isAuthenticated) {
-      // Not authenticated, redirect to admin sign-in
-      return NextResponse.redirect(new URL('/admin/signIn', req.url));
+      return NextResponse.redirect(new URL("/admin/signIn", req.url));
     }
-    if (userRole !== 'superAdmin') {
-      // Authenticated but not superAdmin, redirect to home with error
-      const url = new URL('/', req.url);
-      url.searchParams.set('error', 'unauthorized');
+    if (userRole !== "superAdmin") {
+      const url = new URL("/", req.url);
+      url.searchParams.set("error", "unauthorized");
       return NextResponse.redirect(url);
     }
+    return NextResponse.next();
   }
 
-  // Redirect to admin dashboard if already logged in as superAdmin and trying to access admin sign-in
-  if (isAdminSignIn && isAuthenticated && userRole === 'superAdmin') {
-    return NextResponse.redirect(new URL('/admin/dashboard', req.url));
-  }
-
-  // Redirect to home if already logged in and trying to access regular auth pages
-  if (isPublicRoute && !isAdminSignIn && isAuthenticated) {
+  // ─────────────────────────────────────────────
+  // Authenticated user on public/auth pages → redirect to home
+  // (Exclude NextAuth internal API routes from this redirect)
+  // ─────────────────────────────────────────────
+  if (isPublicRoute && !isAdminSignIn && !pathname.startsWith("/api/auth") && isAuthenticated) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
-  // Redirect to sign-in if not authenticated and trying to access protected routes
-  // Protect all routes except public routes and admin routes (admin routes are handled separately above)
+  // ─────────────────────────────────────────────
+  // Unauthenticated user on protected routes → redirect to sign-in
+  // ─────────────────────────────────────────────
   if (!isPublicRoute && !isAdminRoute && !isAuthenticated) {
-    return NextResponse.redirect(new URL('/signIn', req.url));
+    const url = new URL("/signIn", req.url);
+    // Preserve the intended destination so we can redirect back after login
+    if (pathname !== "/") {
+      url.searchParams.set("callbackUrl", pathname);
+    }
+    return NextResponse.redirect(url);
   }
 
   return NextResponse.next();
 });
 
-// Configure which paths this middleware runs on
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public files (public folder)
+     * Match all paths EXCEPT:
+     * - _next/static (Next.js build assets)
+     * - _next/image (image optimization)
+     * - favicon.ico
+     * - Public static files (anything with a file extension)
+     *
+     * NOTE: /api routes are NOT excluded here — they need the middleware to
+     * pass-through. The NextAuth handler at /api/auth/* is handled by NextAuth.
      */
-    "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)",
   ],
 };

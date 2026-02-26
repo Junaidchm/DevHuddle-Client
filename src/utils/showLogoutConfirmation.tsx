@@ -2,17 +2,15 @@
 "use client";
 
 import toast from "react-hot-toast";
-import { signOut } from "next-auth/react";
 
 /**
- * ✅ FIXED: Logout confirmation
- * 
- * Simplified to only use NextAuth signOut - no Redux or QueryClient needed
- * 
- * @param redirectUrl - URL to redirect to after logout (default: "/admin/signIn")
+ * Shows a confirmation toast for logout.
+ * On confirm: calls POST /api/auth/logout to blacklist tokens + clear all cookies,
+ * then does a hard redirect to ensure clean client state.
+ *
+ * @param redirectUrl - URL to redirect to after logout (default: "/signIn")
  */
 export default function showLogoutConfirmation(redirectUrl: string = "/signIn") {
-
   toast(
     (t) => (
       <div className="flex flex-col items-start text-sm">
@@ -22,30 +20,30 @@ export default function showLogoutConfirmation(redirectUrl: string = "/signIn") 
             onClick={async () => {
               toast.dismiss(t.id);
               try {
-                // ✅ FIXED: Logout flow using NextAuth
-                // signOut will clear cookies and session
-                // Use window.location for hard reload to ensure clean state
-                
-                await signOut({ redirect: false });
+                // 1. Call the centralized logout endpoint:
+                //    - Blacklists tokens in Redis (backend)
+                //    - Clears access_token + refresh_token cookies
+                //    - Clears next-auth.session-token cookie
+                await fetch("/api/auth/logout", { method: "POST" });
 
-                // Clear localStorage
-                localStorage.clear();
+                // 2. Clear any local app state
+                try { localStorage.clear(); } catch {}
 
-                toast.success("Logged out successfully!");
+                toast.success("Logged out successfully!", { duration: 2000 });
 
-                // ✅ Use window.location for hard reload to ensure clean state
-                // Small delay to show toast
+                // 3. Hard redirect (full page reload ensures clean React state)
                 setTimeout(() => {
-                  window.location.href = `/api/auth/logout?callbackUrl=${encodeURIComponent(redirectUrl)}`;
+                  window.location.href = redirectUrl;
                 }, 300);
               } catch (err) {
                 console.error("Logout error:", err);
-                toast.error("Logout failed");
+                // Even on error, redirect to sign-in as fallback
+                window.location.href = redirectUrl;
               }
             }}
             className="bg-red-600 text-white px-3 py-1 rounded text-sm"
           >
-            Yes
+            Yes, Logout
           </button>
           <button
             onClick={() => toast.dismiss(t.id)}

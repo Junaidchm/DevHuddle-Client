@@ -73,7 +73,10 @@ export default function AdminSignIn() {
       }
 
       if (session.user.role !== "superAdmin") {
+        // Use centralized logout to clear all cookies and session
+        await fetch("/api/auth/logout", { method: "POST" });
         await signOut({ redirect: false });
+        
         toast.error("You don't have admin privileges. Access denied.", {
           position: "bottom-center",
         });

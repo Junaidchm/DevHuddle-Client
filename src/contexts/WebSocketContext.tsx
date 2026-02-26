@@ -495,6 +495,7 @@ class WebSocketManager {
       const groupEvents = [
           'group_created', 
           'group_updated', 
+          'group_deleted',
           'participants_added', 
           'participant_removed',
           'participant_left',
@@ -705,7 +706,7 @@ class WebSocketManager {
       }
 
       // --- Group Governance Events ---
-      if (['participants_added', 'participant_removed', 'role_updated', 'group_updated', 'participant_left'].includes(message.type)) {
+      if (['participants_added', 'participant_removed', 'role_updated', 'group_updated', 'participant_left', 'group_deleted'].includes(message.type)) {
           console.log(`[WebSocket] 👥 Group Event: ${message.type}`, message.data);
           
           if (typeof window !== 'undefined') {

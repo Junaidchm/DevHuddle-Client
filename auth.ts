@@ -1,10 +1,44 @@
-
 import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { API_ROUTES, getApiBaseUrl } from "./src/constants/api.routes";
 
+/**
+ * ARCHITECTURE:
+ *
+ * Tokens live in TWO places simultaneously:
+ *   1. httpOnly cookies (access_token, refresh_token) — set by API Gateway/Auth Service
+ *      → Used by the API Gateway to authenticate backend API calls
+ *   2. NextAuth JWT session (next-auth.session-token) — encrypted cookie managed by NextAuth
+ *      → Used by Next.js middleware to protect pages
+ *
+ * On login (credentials or Google OAuth):
+ *   - The backend sets httpOnly cookies AND returns tokens in the JSON response
+ *   - NextAuth stores the tokens in its own encrypted session (next-auth.session-token)
+ *   - Both stay in sync because the JWT callback refreshes proactively
+ *
+ * Token refresh:
+ *   - NextAuth JWT callback checks if the access token will expire in <1 minute
+ *   - If so, calls the backend /auth/refresh endpoint
+ *   - Backend rotates both tokens (new httpOnly cookies + new tokens in response)
+ *   - NextAuth updates its session with the new tokens
+ *
+ * On failure:
+ *   - Returns { ...token, error: "RefreshTokenExpired" } — NEVER null
+ *   - Client middleware detects the error and redirects to /signIn
+ *   - This avoids the "logout storm" caused by returning null
+ */
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
+    /**
+     * Google Sync Provider
+     *
+     * Used ONLY after the Google OAuth redirect completes.
+     * The backend has already set httpOnly cookies for access_token and refresh_token.
+     * This provider reads those cookies server-side and creates a NextAuth session.
+     *
+     * Flow: Google OAuth → Auth Service → /success page → signIn('google-sync') → NextAuth session
+     */
     Credentials({
       id: "google-sync",
       name: "Google Sync",
@@ -15,36 +49,56 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const accessToken = cookieStore.get("access_token")?.value;
         const refreshToken = cookieStore.get("refresh_token")?.value;
 
-        if (!accessToken) return null;
+        if (!accessToken || !refreshToken) {
+          console.error("[google-sync] Missing access_token or refresh_token cookie");
+          return null;
+        }
 
         try {
           const res = await fetch(`${getApiBaseUrl()}${API_ROUTES.AUTH.ME}`, {
             headers: { Authorization: `Bearer ${accessToken}` },
+            // Ensure fresh data, don't use cached response
+            cache: "no-store",
           });
 
-          if (!res.ok) return null;
+          if (!res.ok) {
+            console.error("[google-sync] /auth/me failed:", res.status, res.statusText);
+            return null;
+          }
 
           const data = await res.json();
-          
-          // /auth/me returns the user object directly, not wrapped in { user: ... }
-          if (!data?.id) return null;
+
+          if (!data?.id) {
+            console.error("[google-sync] /auth/me returned no user id:", data);
+            return null;
+          }
 
           return {
-            id: data.id,
-            username: data.username,
-            email: data.email,
-            role: data.role,
+            id: String(data.id),
+            username: data.username ?? undefined,
+            email: data.email ?? undefined,
+            role: data.role ?? undefined,
             image: data.profilePicture ?? null,
             accessToken,
             refreshToken,
           };
         } catch (error) {
-          console.error("Token sync failed", error);
+          console.error("[google-sync] Token sync failed:", error);
           return null;
         }
       },
     }),
+
+    /**
+     * Credentials Provider (Email + Password)
+     *
+     * Calls the backend /auth/login endpoint.
+     * The backend sets httpOnly cookies AND returns tokens in the JSON body.
+     * NextAuth extracts tokens from the JSON body and stores them in its session.
+     */
     Credentials({
+      id: "credentials",
+      name: "Credentials",
       credentials: {
         email: {
           label: "Email",
@@ -54,7 +108,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: {
           label: "Password",
           type: "password",
-          placeholder: "******",
+          placeholder: "••••••",
         },
       },
       authorize: async (credentials) => {
@@ -68,115 +122,100 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 email: credentials?.email,
                 password: credentials?.password,
               }),
+              cache: "no-store",
             }
           );
 
           if (!res.ok) {
-            // Try to get error message from response
-            let errorData: any = {};
+            let errorData: Record<string, any> = {};
             try {
               const text = await res.text();
-              if (text) {
-                errorData = JSON.parse(text);
-              }
-            } catch (parseError) {
-              // If JSON parsing fails, use status text
+              if (text) errorData = JSON.parse(text);
+            } catch {
               errorData = { message: res.statusText || "Login failed" };
             }
 
-            // Extract the exact error message from the backend
-            // API Gateway sends: { status: number, message: string }
-            // Auth service might send: { message: string } or { error: string }
-            // Extract the exact error message from the backend
-            // API Gateway sends: { status: number, message: string }
-            // Auth service might send: { message: string } or { error: string }
-            const backendMessage = errorData?.message ||
+            const backendMessage =
+              errorData?.message ||
               errorData?.error ||
-              (typeof errorData === 'string' ? errorData : null);
+              (typeof errorData === "string" ? errorData : null);
 
-            // Map backend messages to specific error codes
+            const msg = (backendMessage?.toLowerCase() || "");
+
             let errorCode = "login_failed";
-            
-            // Normalize message for comparison
-            const msg = backendMessage?.toLowerCase() || "";
-            
-            if (msg.includes("user not found")) {
-              errorCode = "user_not_found";
-            } else if (msg.includes("invalid credentials")) {
-              errorCode = "invalid_credentials";
-            } else if (msg.includes("blocked")) {
-              errorCode = "user_blocked";
-            } else if (msg.includes("google")) {
-              errorCode = "google_account_only";
-            } else if (msg.includes("verified email")) {
-              errorCode = "email_not_verified";
-            } else if (msg.includes("internel server error") || msg.includes("server error")) {
-              errorCode = "server_error";
-            }
-            
-            // Throw error with the specific code
-            class InvalidLoginError extends CredentialsSignin {
+            if (msg.includes("user not found")) errorCode = "user_not_found";
+            else if (msg.includes("invalid credentials")) errorCode = "invalid_credentials";
+            else if (msg.includes("blocked")) errorCode = "user_blocked";
+            else if (msg.includes("google")) errorCode = "google_account_only";
+            else if (msg.includes("verified email") || msg.includes("verify")) errorCode = "email_not_verified";
+            else if (msg.includes("server error")) errorCode = "server_error";
+
+            class LoginError extends CredentialsSignin {
               code = errorCode;
             }
-            throw new InvalidLoginError();
+            throw new LoginError();
           }
 
           const data = await res.json();
 
-          // Validate that user data exists
           if (!data?.user) {
             throw new Error("Invalid response from server");
           }
 
+          // The backend returns tokens in the body so we can store them in NextAuth
           return {
-            id: data.user.id,
-            username: data.user.username,
-            email: data.user.email,
-            role: data.user.role,
+            id: String(data.user.id),
+            username: data.user.username ?? undefined,
+            email: data.user.email ?? undefined,
+            role: data.user.role ?? undefined,
             image: data.user.profilePicture ?? null,
             accessToken: data.user.accessToken,
             refreshToken: data.user.refreshToken,
           };
         } catch (err: any) {
-          console.error("Login failed:", err);
-          
-          // If it's already a CredentialsSignin (our custom error), rethrow it
-          if (err instanceof CredentialsSignin) {
-            throw err;
+          if (err instanceof CredentialsSignin) throw err;
+
+          class GenericError extends CredentialsSignin {
+            code = "something_went_wrong";
           }
-          
-          class GenericLoginError extends CredentialsSignin {
-              code = "something_went_wrong";
-          }
-          throw new GenericLoginError();
+          throw new GenericError();
         }
       },
     }),
   ],
 
   pages: {
-    signIn: "/signIn",   // 👈 This is where unauthenticated users will be sent
+    signIn: "/signIn",
   },
 
   session: {
-    strategy: "jwt", // important for refresh handling
-    maxAge: 7 * 24 * 60 * 60,
+    strategy: "jwt",
+    maxAge: 7 * 24 * 60 * 60, // 7 days (matches refresh token lifetime)
   },
 
   callbacks: {
-
+    /**
+     * JWT Callback
+     *
+     * Called every time the session is accessed. Handles:
+     * 1. Initial login: attaches user data and tokens to the JWT
+     * 2. Session update: allows client-side session.update() calls
+     * 3. Token refresh: proactively refreshes the access token before it expires
+     *
+     * CRITICAL: Never return null. Return { ...token, error: "RefreshTokenExpired" }
+     * on failure. Returning null causes a "logout storm" where every subsequent
+     * request redirects to /signIn before the page renders.
+     */
     async jwt({ token, user, trigger, session }) {
-      // Handle session update via useSession().update()
+      // 1. Handle explicit session update (e.g. profile picture change)
       if (trigger === "update" && session) {
-        // Update user image if provided
-        if (session.inputImage) token.image = session.inputImage;
-        // Allows updating other fields if needed
-        if (session.name) token.name = session.name;
-        // Add other fields you might want to update here
+        if (session.image !== undefined) token.image = session.image;
+        if (session.username !== undefined) token.username = session.username;
+        if (session.role !== undefined) token.role = session.role;
         return token;
       }
 
-      // On first login → attach tokens
+      // 2. Initial login — attach user data and tokens to the JWT
       if (user) {
         return {
           id: String(user.id),
@@ -185,109 +224,93 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           image: user.image ?? null,
           accessToken: user.accessToken,
           refreshToken: user.refreshToken,
-          expiresAt: Date.now() + 15 * 60 * 1000, // 15 minutes
+          // Expire 1 minute early to avoid race conditions
+          expiresAt: Date.now() + 14 * 60 * 1000,
+          error: undefined,
         };
       }
 
-      // ✅ FIXED: Refresh token before it expires (5 minutes buffer)
-      // This prevents 401 errors by refreshing proactively
-      const shouldRefresh = token.expiresAt && Date.now() >= ((token.expiresAt as number) - 5 * 60 * 1000);
-
-      // If no token or no refreshToken, return null (sign out)
-      if (!token || !token.refreshToken) {
-        return null;
-      }
-
-      // Otherwise try to refresh (only if refreshToken exists)
-      if (!token.refreshToken) {
-        console.error("[NextAuth JWT] No refresh token available");
-        return null; // No refresh token, sign out
-      }
-
-      // Only return if token is valid AND we don't need to refresh yet
-      if (!shouldRefresh && token.expiresAt && Date.now() < (token.expiresAt as number)) {
+      // 3. If we already have a refresh error, propagate it (don't loop)
+      if (token.error === "RefreshTokenExpired") {
         return token;
       }
 
+      // 4. Check if access token is still valid (with 1-minute buffer)
+      const isTokenValid =
+        token.expiresAt && Date.now() < (token.expiresAt as number);
+
+      if (isTokenValid) {
+        return token; // Token still valid, return as-is
+      }
+
+      // 5. No refresh token — cannot refresh
+      if (!token.refreshToken) {
+        console.error("[NextAuth JWT] No refresh token — marking session as expired");
+        return { ...token, error: "RefreshTokenExpired" };
+      }
+
+      // 6. Attempt token refresh
       try {
-        console.log("[NextAuth JWT] Attempting to refresh token...");
-        const apiBaseUrl = getApiBaseUrl();
-        if (!apiBaseUrl) {
-          throw new Error("API base URL not configured");
-        }
+        console.log("[NextAuth JWT] Access token expired — refreshing...");
 
         const res = await fetch(
-          `${apiBaseUrl}${API_ROUTES.AUTH.REFRESH}`,
+          `${getApiBaseUrl()}${API_ROUTES.AUTH.REFRESH}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ refreshToken: token.refreshToken }),
-            // Add timeout to prevent hanging (Node 18+)
-            ...(typeof AbortSignal !== "undefined" && AbortSignal.timeout
-              ? { signal: AbortSignal.timeout(10000) } // Increased to 10 seconds
-              : {}),
+            cache: "no-store",
+            signal: AbortSignal.timeout(10_000),
           }
         );
 
         if (!res.ok) {
-          const errorText = await res.text();
-          console.error("[NextAuth JWT] Refresh failed:", {
-            status: res.status,
-            statusText: res.statusText,
-            error: errorText,
-          });
-          throw new Error(`Refresh failed with status ${res.status}: ${errorText}`);
+          const errorText = await res.text().catch(() => "");
+          console.error("[NextAuth JWT] Refresh failed:", res.status, errorText);
+          return { ...token, error: "RefreshTokenExpired" };
         }
 
         const data = await res.json();
 
         if (!data?.user?.accessToken) {
-          console.error("[NextAuth JWT] No access token in refresh response:", data);
-          throw new Error("No access token in refresh response");
+          console.error("[NextAuth JWT] Refresh response missing accessToken:", data);
+          return { ...token, error: "RefreshTokenExpired" };
         }
 
         console.log("[NextAuth JWT] Token refreshed successfully");
+
         return {
           ...token,
           accessToken: data.user.accessToken,
-          // Update refreshToken if provided (some backends rotate refresh tokens)
-          refreshToken: data.user.refreshToken || token.refreshToken,
-          expiresAt: Date.now() + 15 * 60 * 1000, // 15 minutes
+          refreshToken: data.user.refreshToken ?? token.refreshToken,
+          expiresAt: Date.now() + 14 * 60 * 1000,
+          error: undefined,
         };
       } catch (err) {
-        console.error("[NextAuth JWT] Token refresh failed:", err);
-        // Return null to sign the user out and prevent infinite refresh loop
-        return null;
+        console.error("[NextAuth JWT] Token refresh threw:", err);
+        return { ...token, error: "RefreshTokenExpired" };
       }
     },
 
-    //  Session callback: expose token data to client
+    /**
+     * Session Callback
+     *
+     * Exposes selected token fields to the client via useSession() / getServerSession().
+     * Only expose what the client actually needs.
+     */
     async session({ session, token }) {
-      // If token is null or invalid, return empty session
-      if (!token || !token.id) {
-        return {
-          ...session,
-          user: {
-            ...session.user,
-            id: "",
-          },
-        };
-      }
-
       return {
         ...session,
+        error: token.error,
         user: {
           ...session.user,
-          id: String(token.id || ""),
+          id: String(token.id ?? ""),
           username: token.username ? String(token.username) : undefined,
           role: token.role ? String(token.role) : undefined,
-          accessToken: token.accessToken
-            ? String(token.accessToken)
-            : undefined,
-          refreshToken: token.refreshToken
-            ? String(token.refreshToken)
-            : undefined,
+          accessToken: token.accessToken ? String(token.accessToken) : undefined,
+          refreshToken: token.refreshToken ? String(token.refreshToken) : undefined,
           image: token.image ? String(token.image) : null,
+          error: token.error,
         },
       };
     },

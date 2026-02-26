@@ -278,8 +278,8 @@ export const API_ROUTES = {
     APPROVE_REQUEST: (requestId: string) => `${API_VERSION}/chat/hubs/requests/${requestId}/approve`,
     REJECT_REQUEST: (requestId: string) => `${API_VERSION}/chat/hubs/requests/${requestId}/reject`,
 
-    // WebSocket
-    WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3003',
+    // WebSocket - Now routing through API Gateway for centralized auth
+    WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/api/v1/chat',
   },
 
   HUBS: {

@@ -178,8 +178,8 @@ export default function ProfilePage() {
                     
                     toast.success("Account deleted successfully", { id: loadingToast });
                     
-                    // Cleanup and Logout
-                    localStorage.clear();
+                    // Cleanup and Logout - using centralized endpoint for full blacklist + cookie clearing
+                    await fetch("/api/auth/logout", { method: "POST" });
                     await signOut({ redirect: false });
                     
                     setTimeout(() => {
