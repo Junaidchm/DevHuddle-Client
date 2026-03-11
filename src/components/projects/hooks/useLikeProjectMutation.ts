@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { likeProject, unlikeProject } from "@/src/services/api/project.service";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
+import { queryKeys } from "@/src/lib/queryKeys";
 
 export function useLikeProjectMutation(projectId: string) {
   const queryClient = useQueryClient();
@@ -13,8 +14,8 @@ export function useLikeProjectMutation(projectId: string) {
       return await likeProject(projectId, authHeaders);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
     },
   });
 

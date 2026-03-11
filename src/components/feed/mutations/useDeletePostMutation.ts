@@ -8,6 +8,7 @@ import {
 import { deletePost } from "../feedEditor/actions/deletePost";
 import { NewPost, PostsPage } from "@/src/app/types/feed";
 import toast from "react-hot-toast";
+import { queryKeys } from "@/src/lib/queryKeys";
 
 export function useDeletePostMutation() {
   const queryClient = useQueryClient();
@@ -18,7 +19,7 @@ export function useDeletePostMutation() {
   const mutation = useMutation({
     mutationFn: deletePost,
     onSuccess: async (deletedPost) => {
-      const queryFilter: QueryFilters = { queryKey: ["post-feed"] };
+      const queryFilter: QueryFilters = { queryKey: queryKeys.feed.all };
        
       console.log('this is the delete')
       await queryClient.cancelQueries(queryFilter);

@@ -191,8 +191,17 @@ export default function ChatPage() {
          }
     };
 
+    const handleActiveGroupDeleted = (e: CustomEvent) => {
+        const data = e.detail;
+        if (data.conversationId === selectedConversation.conversationId) {
+            console.log("🚫 [Redirect] Active group deleted, deselecting", data.conversationId);
+            setSelectedConversation(null);
+        }
+    };
+
     // For now, let's just handle metadata updates (name, icon)
     window.addEventListener('group_updated', handleGroupUpdated as EventListener);
+    window.addEventListener('active_group_deleted', handleActiveGroupDeleted as EventListener);
     window.addEventListener('participants_added', handleParticipantsAdded as EventListener);
     window.addEventListener('participant_removed', handleParticipantRemoved as EventListener); // handling remove by admin
     window.addEventListener('participant_left', handleParticipantRemoved as EventListener); // handling self leave (same logic)
@@ -201,6 +210,7 @@ export default function ChatPage() {
 
     return () => {
         window.removeEventListener('group_updated', handleGroupUpdated as EventListener);
+        window.removeEventListener('active_group_deleted', handleActiveGroupDeleted as EventListener);
         window.removeEventListener('participants_added', handleParticipantsAdded as EventListener);
         window.removeEventListener('participant_removed', handleParticipantRemoved as EventListener);
         window.removeEventListener('participant_left', handleParticipantRemoved as EventListener);
@@ -215,7 +225,7 @@ export default function ChatPage() {
   return (
     <div className="flex h-[calc(100vh-3.5rem)] md:h-[calc(100vh-4rem)] max-w-7xl mx-auto bg-background shadow-sm rounded-lg overflow-hidden border border-border my-2 md:my-4">
       {/* Left Sidebar - Conversations */}
-      <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 bg-card border-r border-border ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-border bg-background ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
         <ConversationList
           selectedId={selectedConversation?.conversationId}
           onSelect={handleSelectConversation}

@@ -15,6 +15,7 @@ import toast from "react-hot-toast";
 import { queryKeys } from "@/src/lib/queryKeys";
 import { ReportModal } from "./ReportModal";
 import { confirmToast } from "@/src/utils/confirmToast";
+import { useDeleteGroup } from "@/src/hooks/chat/useGroupMutations";
 
 interface InfoSectionProps {
     conversation: ConversationWithMetadata;
@@ -30,6 +31,7 @@ export function InfoSection({ conversation, currentUserId, minimal = false, onCo
     const authHeaders = useAuthHeaders();
     const isGroup = conversation.type === 'GROUP';
     const participant = !isGroup ? conversation.participants.find(p => p.userId !== currentUserId) : null;
+    const deleteGroupMutation = useDeleteGroup(conversation.conversationId);
 
     const blockMutation = useMutation({
         mutationFn: () => blockUser(participant!.userId, authHeaders),
@@ -208,6 +210,26 @@ export function InfoSection({ conversation, currentUserId, minimal = false, onCo
                         <Flag className="w-4 h-4" />
                         <span className="text-xs font-bold">Report {isGroup ? "Group" : (participant?.name || "User")}</span>
                     </Button>
+
+                    {isGroup && conversation.ownerId === currentUserId && (
+                        <div className="pt-2">
+                             <Button 
+                                variant="outline" 
+                                className="w-full justify-start border-destructive/30 text-destructive hover:text-white hover:bg-destructive gap-3 h-11 rounded-xl px-3 transition-all duration-300"
+                                onClick={() => {
+                                    confirmToast("Are you sure you want to permanently delete this group? This action cannot be undone and will remove the group for ALL members.", () => {
+                                        deleteGroupMutation.mutate();
+                                    });
+                                }}
+                                disabled={deleteGroupMutation.isPending}
+                            >
+                                {deleteGroupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldAlert className="w-4 h-4" />}
+                                <span className="text-xs font-bold">
+                                    {deleteGroupMutation.isPending ? "Deleting Group..." : "Delete Group Permanently"}
+                                </span>
+                            </Button>
+                        </div>
+                    )}
                 </div>
             </div>
 

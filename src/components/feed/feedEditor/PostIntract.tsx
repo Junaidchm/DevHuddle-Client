@@ -17,6 +17,7 @@ import useGetUserData from "@/src/customHooks/useGetUserData";
 import { Button } from "@/src/components/ui/button";
 import { cn } from "@/lib/utils";
 import LikesModal from "./LikesModal";
+import { queryKeys } from "@/src/lib/queryKeys";
 
 // SocialActionButton component
 interface SocialActionButtonProps {
@@ -97,7 +98,7 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
 
     // Fallback: try to get from cache
     const cachedPost = queryClient.getQueryData<InfiniteData<PostsPage, string | null>>(
-      ["post-feed", "for-you"]
+      queryKeys.feed.all
     );
     
     if (cachedPost) {

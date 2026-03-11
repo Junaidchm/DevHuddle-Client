@@ -38,6 +38,14 @@ import {
   Trash2 
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/src/components/ui/dialog";
 
 export default function ProfilePage() {
   const authHeaders = useAuthHeaders();
@@ -45,6 +53,9 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const {
     data: profileData,
@@ -159,52 +170,30 @@ export default function ProfilePage() {
   };
 
   const handleDeleteAccount = async () => {
-    toast(
-        (t) => (
-          <div className="flex flex-col items-start text-sm">
-            <span className="font-medium mb-1 text-destructive">Delete Account?</span>
-            <span className="text-muted-foreground mb-3 text-xs">
-              This action is permanent and cannot be undone.
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={async () => {
-                  toast.dismiss(t.id);
-                  const loadingToast = toast.loading("Deleting your account...");
-                  try {
-                    await deleteAccount(authHeaders);
-                    
-                    toast.success("Account deleted successfully", { id: loadingToast });
-                    
-                    // Cleanup and Logout
-                    localStorage.clear();
-                    await signOut({ redirect: false });
-                    
-                    setTimeout(() => {
-                      window.location.href = "/signIn";
-                    }, 500);
-                  } catch (err: any) {
-                    console.error("Delete account error:", err);
-                    toast.error("Failed to delete account", { id: loadingToast });
-                  }
-                }}
-              >
-                Yes, Delete
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => toast.dismiss(t.id)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        ),
-        { duration: 10000, position: "bottom-center" }
-      );
+    if (deleteConfirmation !== "DELETE") {
+      toast.error("Please type DELETE to confirm");
+      return;
+    }
+
+    setIsDeleting(true);
+    const loadingToast = toast.loading("Deleting your account...");
+    try {
+      await deleteAccount(authHeaders);
+      
+      toast.success("Account deleted successfully", { id: loadingToast });
+      
+      // Cleanup and Logout
+      localStorage.clear();
+      await signOut({ redirect: false });
+      
+      setTimeout(() => {
+        window.location.href = "/signIn";
+      }, 500);
+    } catch (err: any) {
+      console.error("Delete account error:", err);
+      toast.error(err.response?.data?.message || "Failed to delete account", { id: loadingToast });
+      setIsDeleting(false);
+    }
   };
 
   const SidebarItem = ({ icon: Icon, label, isActive, onClick, variant = "default" }: any) => (
@@ -233,7 +222,6 @@ export default function ProfilePage() {
           <Card className="p-2 border-border shadow-sm">
              <div className="space-y-1">
                 <SidebarItem icon={User} label="Profile" isActive={true} />
-                <SidebarItem icon={Settings} label="General" />
                 <div className="my-2 border-t border-border" />
                 <SidebarItem 
                     icon={LogOut} 
@@ -346,13 +334,65 @@ export default function ProfilePage() {
                         variant="destructive" 
                         type="button" 
                         className="shrink-0 gap-2"
-                        onClick={handleDeleteAccount}
+                        onClick={() => setIsDeleteDialogOpen(true)}
                     >
                         <Trash2 className="w-4 h-4" />
                         Delete Account
                     </Button>
                  </CardContent>
               </Card>
+
+              {/* Delete Confirmation Modal */}
+              <Dialog open={isDeleteDialogOpen} onOpenChange={(open) => {
+                  setIsDeleteDialogOpen(open);
+                  if (!open) setDeleteConfirmation("");
+              }}>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle className="text-destructive flex items-center gap-2">
+                       <Trash2 className="w-5 h-5" />
+                       Delete Account
+                    </DialogTitle>
+                    <DialogDescription className="py-2">
+                      This action is <strong>permanent</strong>. All your posts, projects, messages and connections will be permanently removed.
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmation" className="text-sm font-medium">
+                        To confirm, type <span className="font-bold text-foreground">DELETE</span> below:
+                      </Label>
+                      <Input
+                        id="confirmation"
+                        value={deleteConfirmation}
+                        onChange={(e) => setDeleteConfirmation(e.target.value)}
+                        placeholder="TYPE DELETE"
+                        className="border-destructive/30 focus-visible:ring-destructive"
+                        autoComplete="off"
+                      />
+                    </div>
+                  </div>
+
+                  <DialogFooter className="gap-2 sm:gap-0">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsDeleteDialogOpen(false)}
+                      disabled={isDeleting}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={handleDeleteAccount}
+                      disabled={deleteConfirmation !== "DELETE" || isDeleting}
+                      className="gap-2"
+                    >
+                      {isDeleting ? "Deleting..." : "Permanently Delete Account"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
             </form>
           </main>

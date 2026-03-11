@@ -170,7 +170,6 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
         </div>
       </Card>
 
-      {/* Discussion Section Removed as requested */}
     </div>
   );
 }

@@ -35,16 +35,16 @@ export function useLikeMutation() {
     },
     onMutate: async ({ postId, isLiked }) => {
       // Cancel ongoing queries
-      await queryClient.cancelQueries({ queryKey: ["post-feed"] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.feed.all });
 
       // Snapshot previous data for rollback
       const previousFeedData = queryClient.getQueryData<
         InfiniteData<PostsPage, string | null>
-      >(["post-feed", "for-you"]);
+      >(queryKeys.feed.list({ sortBy: "RECENT" })); // Fallback snaphot if for-you is missing
 
       // Optimistically update the feed cache
       queryClient.setQueriesData<InfiniteData<PostsPage, string | null>>(
-        { queryKey: ["post-feed"] },
+        { queryKey: queryKeys.feed.all },
         (oldData) => {
           if (!oldData) return oldData;
 
@@ -102,8 +102,8 @@ export function useLikeMutation() {
     onError: (error, variables, context) => {
       // Rollback on error
       if (context?.previousFeedData) {
-        queryClient.setQueryData(
-          ["post-feed", "for-you"],
+        queryClient.setQueriesData(
+          { queryKey: queryKeys.feed.all },
           context.previousFeedData
         );
       }
@@ -117,8 +117,7 @@ export function useLikeMutation() {
     onSuccess: (data, variables) => {
       // Invalidate to refetch fresh data (but keep optimistic update visible)
       queryClient.invalidateQueries({
-        queryKey: ["post-feed"],
-        refetchType: "none", // Don't refetch immediately, just mark as stale
+        queryKey: queryKeys.feed.all,
       });
       
       queryClient.invalidateQueries({
@@ -128,18 +127,17 @@ export function useLikeMutation() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.engagement.postLikes.status(variables.postId, ""),
       });
-
+ 
       // Invalidate likes list to ensure modal shows updated data
       queryClient.invalidateQueries({
         queryKey: queryKeys.engagement.postLikes.list(variables.postId),
       });
-
+ 
       // ✅ FIXED: Invalidate notifications to ensure new like notifications appear instantly
       // (WebSocket should handle this, but this is a backup)
       if (session?.user?.id) {
         queryClient.invalidateQueries({
           queryKey: ["notifications", session.user.id],
-          refetchType: "none", // Don't refetch immediately, let WebSocket handle it
         });
       }
 

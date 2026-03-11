@@ -5,6 +5,7 @@ import { AudienceType, CommentControl } from "@/src/contexts/PostCreationContext
 import { useSession } from "next-auth/react";
 import { NewPost, PostsPage } from "@/src/app/types/feed";
 import { toast } from "sonner"; 
+import { queryKeys } from "@/src/lib/queryKeys";
 
 interface CreatePostPayload {
   content: string;
@@ -29,10 +30,10 @@ export function useSubmitPostMutation() {
     // Optimistic Update: Update UI before server response
     onMutate: async (payload: CreatePostPayload) => {
       // 1. Cancel any outgoing refetches so they don't overwrite our optimistic update
-      await queryClient.cancelQueries({ queryKey: ["post-feed", "for-you"] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.feed.all });
 
       // 2. Snapshot the previous value
-      const previousFeed = queryClient.getQueryData<InfiniteData<PostsPage>>(["post-feed", "for-you"]);
+      const previousFeed = queryClient.getQueryData<InfiniteData<PostsPage>>(queryKeys.feed.list({ sortBy: "RECENT" }));
 
       // 3. Optimistically update to the new value
       if (session?.user) {
@@ -59,7 +60,7 @@ export function useSubmitPostMutation() {
           },
         };
 
-        queryClient.setQueryData<InfiniteData<PostsPage>>(["post-feed", "for-you"], (old) => {
+        queryClient.setQueriesData<InfiniteData<PostsPage>>({ queryKey: queryKeys.feed.all }, (old) => {
           if (!old) return old;
           
           return {
@@ -84,14 +85,14 @@ export function useSubmitPostMutation() {
     // If the mutation fails, use the context returned from onMutate to roll back
     onError: (err, newPost, context) => {
       if (context?.previousFeed) {
-        queryClient.setQueryData(["post-feed", "for-you"], context.previousFeed);
+        queryClient.setQueriesData({ queryKey: queryKeys.feed.all }, context.previousFeed);
       }
       toast.error("Failed to create post");
     },
     // Always refetch after error or success:
     onSettled: () => {
       queryClient.invalidateQueries({
-        queryKey: ["post-feed", "for-you"],
+        queryKey: queryKeys.feed.all,
       });
     },
   });

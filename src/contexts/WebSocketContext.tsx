@@ -491,6 +491,39 @@ class WebSocketManager {
           return;
       }
 
+      // ✅ FIX: Handle group_deleted separately - directly remove from cache
+      // Do NOT use invalidateQueries here - it triggers a race-condition refetch
+      // that can re-add the deleted group before the filter takes effect.
+      if (message.type === 'group_deleted') {
+          const { conversationId: deletedConvId } = message.data as any;
+          console.log(`[WebSocket] 🗑️ group_deleted received, removing ${deletedConvId} from cache`);
+
+          if (this.queryClient && deletedConvId) {
+              this.queryClient.setQueryData(
+                  queryKeys.chat.conversations.list(),
+                  (oldData: any) => {
+                      if (!oldData || !oldData.pages) return oldData;
+                      return {
+                          ...oldData,
+                          pages: oldData.pages.map((page: any) => ({
+                              ...page,
+                              data: Array.isArray(page.data)
+                                  ? page.data.filter((conv: any) => conv.conversationId !== deletedConvId)
+                                  : []
+                          }))
+                      };
+                  }
+              );
+          }
+
+          // Dispatch event so chat page can deselect if it's the active conversation
+          if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('group_deleted', { detail: message.data }));
+              window.dispatchEvent(new CustomEvent('active_group_deleted', { detail: message.data }));
+          }
+          return;
+      }
+
       // Handle Group Events
       const groupEvents = [
           'group_created', 

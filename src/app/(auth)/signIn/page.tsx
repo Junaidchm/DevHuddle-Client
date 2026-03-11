@@ -3,7 +3,7 @@
 
 import { signIn } from "next-auth/react";
 import useRedirectIfAuthenticated from "@/src/customHooks/useRedirectIfAuthenticated";
-import { googleAuth } from "@/src/store/actions/authActions";
+// import { googleAuth } from "@/src/store/actions/authActions";
 import { AppDispatch } from "@/src/store/store";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
@@ -42,11 +42,10 @@ export default function SignIn() {
   // Check for blocked user error from query params
   useEffect(() => {
     const error = searchParams.get("error");
-    const message = searchParams.get("message");
     
-    if (error === "blocked" && message) {
-      toast.error(decodeURIComponent(message), {
-        duration: 6000,
+    if (error === "user_blocked" || error === "blocked") {
+      toast.error("Your account has been blocked by the admin. Please contact support.", {
+        duration: 8000,
         position: "top-center",
       });
       // Clean up URL
@@ -57,7 +56,7 @@ export default function SignIn() {
   const handleGoogleAuth = async () => {
     setIsGoogleLoading(true);
     try {
-      await dispatch(googleAuth()).unwrap();
+      await signIn("google");
     } catch (err: any) {
       const errorMessage =
         err?.message || err?.error || "Google authentication failed.";

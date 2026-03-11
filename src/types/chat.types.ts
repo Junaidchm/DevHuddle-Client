@@ -177,6 +177,7 @@ export type WebSocketMessageType =
   // Group Types
   | 'group_created'
   | 'group_updated'
+  | 'group_deleted'
   | 'participants_added'
   | 'participant_joined'
   | 'participant_removed'

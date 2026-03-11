@@ -54,7 +54,7 @@ export function useCreateCommentMutation() {
 
       // Optimistically update comment count in feed
       queryClient.setQueriesData<InfiniteData<PostsPage, string | null>>(
-        { queryKey: ["post-feed"] },
+        { queryKey: queryKeys.feed.all },
         (oldData) => {
           if (!oldData) return oldData;
 
@@ -118,16 +118,14 @@ export function useCreateCommentMutation() {
 
       // Invalidate feed to update comment count
       queryClient.invalidateQueries({
-        queryKey: ["post-feed"],
-        refetchType: "none",
+        queryKey: queryKeys.feed.all,
       });
-
+ 
       // ✅ FIXED: Invalidate notifications to ensure new comment notifications appear instantly
       // (WebSocket should handle this, but this is a backup)
       if (session?.user?.id) {
         queryClient.invalidateQueries({
           queryKey: ["notifications", session.user.id],
-          refetchType: "none", // Don't refetch immediately, let WebSocket handle it
         });
       }
     },
@@ -291,7 +289,7 @@ export function useDeleteCommentMutation() {
 
       // Optimistically update comment count in feed
       queryClient.setQueriesData<InfiniteData<PostsPage, string | null>>(
-        { queryKey: ["post-feed"] },
+        { queryKey: queryKeys.feed.all },
         (oldData) => {
           if (!oldData) return oldData;
 
@@ -353,8 +351,7 @@ export function useDeleteCommentMutation() {
       });
 
       queryClient.invalidateQueries({
-        queryKey: ["post-feed"],
-        refetchType: "none",
+        queryKey: queryKeys.feed.all,
       });
     },
   });

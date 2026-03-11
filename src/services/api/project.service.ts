@@ -73,16 +73,12 @@ export interface ProjectComment {
   userId: string;
   content: string;
   parentCommentId?: string;
+  likesCount: number;
+  isLiked?: boolean;
   createdAt: string;
   updatedAt: string;
   editedAt?: string;
   replies?: ProjectComment[];
-  author?: {
-    id: string;
-    name: string;
-    username: string;
-    avatar: string;
-  };
   user?: {
     id: string;
     name: string;
@@ -438,5 +434,43 @@ export const getProjectReplies = async (
     return res.data.data;
   } catch (err: any) {
     throw new Error(err.response?.data?.message || "Failed to get replies");
+  }
+};
+
+export const likeProjectComment = async (
+  commentId: string,
+  headers: Record<string, string>
+): Promise<void> => {
+  try {
+    await axiosInstance.post(API_ROUTES.PROJECTS.LIKE_COMMENT(commentId), {}, { headers });
+  } catch (err: any) {
+    throw new Error(err.response?.data?.message || "Failed to like comment");
+  }
+};
+
+export const unlikeProjectComment = async (
+  commentId: string,
+  headers: Record<string, string>
+): Promise<void> => {
+  try {
+    await axiosInstance.post(API_ROUTES.PROJECTS.UNLIKE_COMMENT(commentId), {}, { headers });
+  } catch (err: any) {
+    throw new Error(err.response?.data?.message || "Failed to unlike comment");
+  }
+};
+
+export const reportProjectComment = async (
+  commentId: string,
+  reason: string,
+  headers: Record<string, string>
+): Promise<void> => {
+  try {
+    await axiosInstance.post(
+      API_ROUTES.PROJECTS.REPORT_COMMENT(commentId),
+      { reason },
+      { headers }
+    );
+  } catch (err: any) {
+    throw new Error(err.response?.data?.message || "Failed to report comment");
   }
 };

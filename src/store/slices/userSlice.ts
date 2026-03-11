@@ -1,6 +1,6 @@
 import { User } from "@/src/types/auth";
 import { createSlice } from "@reduxjs/toolkit";
-import { register, loginUser, googleAuth, requestPasswordReset, resetPassword, verifyOtp, getUser } from "../actions/authActions";
+import { register, loginUser, requestPasswordReset, resetPassword, verifyOtp, getUser } from "../actions/authActions";
 
 
 
@@ -90,18 +90,6 @@ const userSlice = createSlice({
         state.success = true;
       })
 
-      // Google Auth
-      .addCase(googleAuth.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(googleAuth.fulfilled, (state) => {
-        state.loading = false;
-      })
-      .addCase(googleAuth.rejected, (state, { payload }) => {
-        state.loading = false;
-        state.error = payload;
-      })
       
       // Get User
       .addCase(getUser.pending, (state) => {

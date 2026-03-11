@@ -1,9 +1,9 @@
 import { Project } from "@/src/services/api/project.service";
 import { Heart, Share2, MessageCircle, Flag } from "lucide-react";
 import { useState } from "react";
-import ProjectCommentSection from "./ProjectCommentSection";
-import ShareProjectModal from "./ShareProjectModal";
-import ReportProjectModal from "./ReportProjectModal";
+import CommentSection from "./comments/CommentSection";
+import ShareProjectModal from "./modals/ShareProjectModal";
+import ReportProjectModal from "./modals/ReportProjectModal";
 import { Button } from "@/src/components/ui/button";
 import { cn } from "@/src/lib/utils";
 
@@ -62,7 +62,7 @@ export default function ProjectEngagement({
               <span className="font-semibold">{project.engagement.commentsCount}</span>
             </Button>
 
-            <Button
+            {/* <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowShareModal(true)}
@@ -70,7 +70,7 @@ export default function ProjectEngagement({
             >
               <Share2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
               <span className="font-semibold">{project.engagement.sharesCount}</span>
-            </Button>
+            </Button> */}
           </div>
 
           <Button
@@ -95,9 +95,9 @@ export default function ProjectEngagement({
         {/* Collapsible Comments Section */}
         {showComments && (
           <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
-            <ProjectCommentSection
+            <CommentSection
               projectId={project.id}
-              projectAuthorId={project.userId}
+              projectAuthorId={project.author.id}
             />
           </div>
         )}
@@ -113,7 +113,7 @@ export default function ProjectEngagement({
       <ReportProjectModal
         isOpen={showReportModal}
         onClose={() => setShowReportModal(false)}
-        projectId={project.id}
+        targetId={project.id}
       />
     </>
   );

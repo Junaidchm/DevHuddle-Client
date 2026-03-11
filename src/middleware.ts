@@ -21,29 +21,39 @@ export default auth((req) => {
     return NextResponse.next();
   }
   
-  const hasAuthCookie = req.cookies.get('access_token');
-  const isAuthenticated = !!req.auth?.user || !!hasAuthCookie;
+  const isBlocked = (req.auth as any)?.error === 'UserBlocked' || (req.auth?.user as any)?.error === 'UserBlocked';
+  // If they are blocked, they are forcefully unauthenticated
+  const isAuthenticated = !isBlocked && !!req.auth?.user;
   const userRole = req.auth?.user?.role;
 
-  // NEW: Check for desync between backend cookies and NextAuth session
-  // This happens after google auth when backend cookie is set but NextAuth session is empty
-  const isDesynced = hasAuthCookie && !req.auth?.user;
+  // ✅ BLOCKED USER ENFORCEMENT
+  // If the JWT callback detected the user is blocked, force sign out immediately.
+  // We MUST clear the auth cookies, including NextAuth cookies, otherwise it causes a redirect loop.
+  if (isBlocked) {
+    const isAdminUser = userRole === 'superAdmin';
+    const loginPage = isAdminUser ? '/admin/signIn' : '/signIn';
 
-  if (isDesynced) {
-    if (pathname !== '/success' && !pathname.startsWith('/api') && !pathname.startsWith('/_next')) {
-      const url = new URL('/success', req.url);
-      url.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(url);
+    // If already on the login page with the error param, just let the request proceed but clear session
+    if (pathname === loginPage && req.nextUrl.searchParams.get('error') === 'user_blocked') {
+      const response = NextResponse.next();
+      response.cookies.delete('next-auth.session-token');
+      response.cookies.delete('__Secure-next-auth.session-token');
+      return response;
     }
-    // If they are on /success and desynced, we MUST let it render so they can sync.
-    // Otherwise, the "already logged in" check below will redirect them back to "/" and cause a loop.
-    if (pathname === '/success') {
-      return NextResponse.next();
-    }
+
+    const redirectUrl = new URL(loginPage, req.url);
+    redirectUrl.searchParams.set('error', 'user_blocked');
+    const response = NextResponse.redirect(redirectUrl);
+    // Clear session cookies so the user is fully unauthenticated
+    response.cookies.delete('next-auth.session-token');
+    response.cookies.delete('__Secure-next-auth.session-token');
+    return response;
   }
 
+  // (No more desync checking needed, NextAuth is the single source of truth)
+
   // Public routes that don't need authentication
-  const publicRoutes = ['/signIn', '/signup', '/forgotPassword', '/verify-user', '/success', '/admin/signIn', '/reset-password'];
+  const publicRoutes = ['/signIn', '/signup', '/forgotPassword', '/verify-user', '/admin/signIn', '/reset-password'];
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
 
   // Admin routes - require superAdmin role

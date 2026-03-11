@@ -33,7 +33,7 @@ export function useUpdatePostMutation() {
     onSuccess: (data, variables) => {
       // Invalidate feed and specific post queries
       queryClient.invalidateQueries({
-        queryKey: ["post-feed", "for-you"],
+        queryKey: queryKeys.feed.all,
       });
       // Also invalidate the specific post if it uses a detail query
       // queryClient.invalidateQueries({ queryKey: queryKeys.posts.detail(variables.id) });

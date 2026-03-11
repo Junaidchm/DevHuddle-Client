@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { X, Share2, Link2, Copy, Check } from "lucide-react";
-import { useShareProjectMutation } from "./hooks/useShareProjectMutation";
+import { useShareProjectMutation } from "../hooks/useShareProjectMutation";
 import toast from "react-hot-toast";
 
 interface ShareProjectModalProps {

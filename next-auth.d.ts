@@ -14,6 +14,7 @@ declare module "next-auth" {
 
   // Extend Session interface
   interface Session {
+    error?: "RefreshTokenExpired" | "UserBlocked";
     user: {
       id: string;
       username?: string;
@@ -33,5 +34,7 @@ declare module "next-auth/jwt" {
     accessToken?: string;
     refreshToken?: string;
     image?: string | null;
+    expiresAt?: number;
+    error?: "RefreshTokenExpired" | "UserBlocked";
   }
 }

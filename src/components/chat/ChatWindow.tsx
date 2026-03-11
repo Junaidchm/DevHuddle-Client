@@ -56,7 +56,6 @@ export default function ChatWindow({
 }: ChatWindowProps) {
 
 
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
@@ -154,11 +153,33 @@ export default function ChatWindow({
   // Fetch pinned messages when conversation changes
   useEffect(() => {
     if (conversation?.conversationId && !conversation.conversationId.startsWith('temp-') && !conversation.conversationId.startsWith('optimistic-')) {
+      setPinnedMessages([]); // Reset while fetching
       getPinnedMessages(conversation.conversationId, authHeaders)
         .then(setPinnedMessages)
-        .catch(err => console.error("Failed to fetch pinned messages", err));
-        
-      setPinnedMessages([]); // Reset while fetching
+        .catch(err => {
+          // 403 means the group was deleted but still in stale cache (owner edge-case)
+          // Force-purge the stale conversation and redirect away
+          const status = (err as any)?.response?.status ?? (err as any)?.status;
+          if (status === 403) {
+            console.warn('[ChatWindow] 403 on getPinnedMessages — group likely deleted. Purging from cache.', conversation.conversationId);
+            queryClient.setQueryData(queryKeys.chat.conversations.list(), (oldData: any) => {
+              if (!oldData || !oldData.pages) return oldData;
+              return {
+                ...oldData,
+                pages: oldData.pages.map((page: any) => ({
+                  ...page,
+                  data: Array.isArray(page.data)
+                    ? page.data.filter((conv: any) => conv.conversationId !== conversation.conversationId)
+                    : [],
+                })),
+              };
+            });
+            // Trigger the same redirect that WebSocket group_deleted would trigger
+            window.dispatchEvent(new CustomEvent('active_group_deleted', { detail: { conversationId: conversation.conversationId } }));
+          } else {
+            console.error('Failed to fetch pinned messages', err);
+          }
+        });
     }
   }, [conversation?.conversationId, authHeaders]); // Add authHeaders dependency
 

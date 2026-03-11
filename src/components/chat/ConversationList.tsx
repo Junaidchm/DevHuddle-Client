@@ -118,7 +118,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
   // Loading state
   if (isLoading) {
     return (
-      <div className="relative flex flex-col h-full bg-background border-r border-border">
+      <div className="relative flex flex-col h-full bg-background">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h1 className="text-xl font-bold text-foreground">Messages</h1>
           <Button variant="ghost" size="icon" disabled>
@@ -142,7 +142,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
   // Empty state
   if (conversations.length === 0) {
     return (
-      <div className="relative flex flex-col h-full bg-background border-r border-border">
+      <div className="relative flex flex-col h-full bg-background">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h1 className="text-xl font-bold text-foreground">Messages</h1>
           <Button 
@@ -165,7 +165,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
   }
 
   return (
-    <div className="relative flex flex-col h-full bg-background border-r border-border overflow-hidden">
+    <div className="relative flex flex-col h-full bg-background overflow-hidden">
       {/* Header & Search Grouped */}
       <div className="flex flex-col bg-background sticky top-0 z-20 shadow-sm">
         {/* Header */}

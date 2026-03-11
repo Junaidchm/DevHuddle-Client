@@ -23,7 +23,8 @@ import { useDispatch } from "react-redux";
 import type { AppDispatch } from "@/src/store/store";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { googleAuth, register } from "@/src/store/actions/authActions";
+import { register } from "@/src/store/actions/authActions";
+import { signIn } from "next-auth/react";
 import useRedirectIfAuthenticated from "@/src/customHooks/useRedirectIfAuthenticated";
 
 const formSchema = z
@@ -100,7 +101,7 @@ export default function SignUpForm() {
   const handleGoogleAuth = async () => {
     setIsGoogleLoading(true);
     try {
-      await dispatch(googleAuth()).unwrap();
+      await signIn("google");
     } catch (err: any) {
       const errorMessage =
         err?.message || err?.error || "Google authentication failed.";

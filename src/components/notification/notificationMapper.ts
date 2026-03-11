@@ -86,7 +86,9 @@ const getActionText = (
       if (entityType === "PROJECT") return "liked your project";
       return "liked your comment";
     case "COMMENT":
-      return isReply ? "replied to your comment" : "commented on your post";
+      if (isReply) return "replied to your comment";
+      if (entityType === "PROJECT") return "commented on your project";
+      return "commented on your post";
     case "MENTION":
       return "mentioned you in a comment";
     case "FOLLOW":
@@ -344,9 +346,14 @@ export const mapNotificationToLinkedInStyle = (
       projectId = notification.metadata?.projectId || undefined;
     }
   } else {
-    projectId = notification.metadata?.projectId || (notification.entityType === "PROJECT" ? notification.entityId : (notification.entityType === "COMMENT" && notification.metadata?.projectId ? notification.contextId : undefined));
-    postId = notification.metadata?.postId || (notification.entityType === "POST" ? notification.entityId : (notification.entityType === "COMMENT" && !notification.metadata?.projectId ? notification.contextId : undefined));
-    commentId = notification.metadata?.commentId || (notification.entityType === "COMMENT" ? notification.entityId : undefined);
+    // If entity type is PROJECT or PROJECT_COMMENT, prioritize projectId
+    const isProjectEntity = notification.entityType === "PROJECT" || notification.entityType === "PROJECT_COMMENT";
+    const isPostEntity = notification.entityType === "POST";
+    const isCommentEntity = notification.entityType === "COMMENT";
+
+    projectId = notification.metadata?.projectId || (isProjectEntity ? notification.entityId : ((isCommentEntity || notification.entityType === "PROJECT_COMMENT") && notification.metadata?.projectId ? notification.contextId : undefined));
+    postId = notification.metadata?.postId || (isPostEntity ? notification.entityId : (isCommentEntity && !notification.metadata?.projectId ? notification.contextId : undefined));
+    commentId = notification.metadata?.commentId || ((isCommentEntity || notification.entityType === "PROJECT_COMMENT") ? notification.entityId : undefined);
   }
   
   return {

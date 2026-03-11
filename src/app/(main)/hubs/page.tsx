@@ -8,6 +8,7 @@ import { Badge } from "@/src/components/ui/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/src/components/ui/tabs";
+import { cn } from "@/src/lib/utils";
 import { PROFILE_DEFAULT_URL } from "@/src/constants";
 import { useDiscoverGroups } from "@/src/hooks/chat/useDiscoverGroups";
 import { useMyGroups } from "@/src/hooks/chat/useMyGroups";
@@ -62,125 +63,167 @@ export default function HubsPage() {
     const myGroups = myGroupsData || [];
 
     return (
-        <div className="container max-w-6xl mx-auto py-8 space-y-8">
-            {/* Header Section */}
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Hubs</h1>
-                    <p className="text-muted-foreground mt-1">Discover communities, join discussions, and connect with peers.</p>
-                </div>
-                {/* Future: Create Hub Button. Hide for now or redirect to chat modal */}
+        <div className="relative min-h-[calc(100vh-4rem)] bg-[#f8fafc]">
+            {/* Vibrant Background Accents */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full animate-pulse" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-400/10 blur-[120px] rounded-full animate-pulse delay-700" />
             </div>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="mb-6 grid w-full max-w-[400px] grid-cols-2">
-                    <TabsTrigger value="discover">Discover</TabsTrigger>
-                    <TabsTrigger value="my-hubs">My Hubs</TabsTrigger>
-                </TabsList>
-
-                {/* Search and Filters */}
-                <div className="space-y-4 mb-8">
-                    <div className="relative max-w-xl">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="Search hubs by name or description..." 
-                            className="pl-9 h-11 bg-background"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                    
-                    {activeTab === "discover" && topics.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                            <Button 
-                                variant={selectedTopic === null ? "default" : "outline"} 
-                                size="sm" 
-                                onClick={() => setSelectedTopic(null)}
-                                className="rounded-full"
-                            >
-                                All
-                            </Button>
-                            {topics.map(topic => (
-                                <Button
-                                    key={topic}
-                                    variant={selectedTopic === topic ? "default" : "outline"}
-                                    size="sm"
-                                    onClick={() => setSelectedTopic(topic === selectedTopic ? null : topic)}
-                                    className="rounded-full"
-                                >
-                                    <Hash className="w-3 h-3 mr-1" />
-                                    {topic}
-                                </Button>
-                            ))}
-                        </div>
-                    )}
+            <div className="container max-w-6xl mx-auto py-12 px-4 relative z-10 space-y-12">
+                {/* Header Section */}
+                <div className="space-y-4 text-center max-w-2xl mx-auto mb-16">
+                    <h1 className="text-5xl font-extrabold tracking-tight text-foreground bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+                        Hubs
+                    </h1>
+                    <p className="text-lg text-muted-foreground font-medium">
+                        Discover communities, join discussions, and connect with peers around the world.
+                    </p>
                 </div>
 
-                <TabsContent value="discover" className="m-0 focus-visible:outline-none focus-visible:ring-0">
-                    {isDiscoverLoading ? (
-                        <div className="flex justify-center py-12">
-                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                        </div>
-                    ) : discoverGroups.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 px-4 text-center bg-card/50 backdrop-blur-sm rounded-3xl border border-border/50 shadow-sm space-y-4">
-                            <div className="w-16 h-16 rounded-full bg-primary/5 flex items-center justify-center">
-                                <Search className="w-8 h-8 text-primary/30" />
-                            </div>
-                            <div className="max-w-xs space-y-1">
-                                <p className="text-foreground font-semibold">No public hubs found</p>
-                                <p className="text-sm text-muted-foreground text-balance">We couldn't find any hubs matching your current search or topic filters.</p>
-                            </div>
-                            <Button variant="outline" size="sm" onClick={() => { setSearchQuery(""); setSelectedTopic(null); }} className="rounded-full">
-                                Clear all filters
-                            </Button>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {discoverGroups.map(group => (
-                                <GroupCard key={group.conversationId} group={group} currentUser={user} />
-                            ))}
-                        </div>
-                    )}
-                    
-                    {/* Infinite Scroll trigger */}
-                    {activeTab === "discover" && hasNextPage && (
-                        <div ref={ref} className="flex justify-center py-8">
-                            {isFetchingNextPage && <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />}
-                        </div>
-                    )}
-                </TabsContent>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <div className="flex flex-col items-center gap-8 mb-12">
+                        <TabsList className="p-1 bg-muted/50 backdrop-blur-md border border-border/50 rounded-2xl h-14 w-full max-w-[420px] grid grid-cols-2">
+                            <TabsTrigger 
+                                value="discover" 
+                                className="rounded-xl font-bold text-sm data-[state=active]:bg-background data-[state=active]:shadow-lg data-[state=active]:text-primary transition-all duration-300"
+                            >
+                                <Search className="w-4 h-4 mr-2" />
+                                Discover
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="my-hubs"
+                                className="rounded-xl font-bold text-sm data-[state=active]:bg-background data-[state=active]:shadow-lg data-[state=active]:text-primary transition-all duration-300"
+                            >
+                                <Users className="w-4 h-4 mr-2" />
+                                My Hubs
+                            </TabsTrigger>
+                        </TabsList>
 
-                <TabsContent value="my-hubs" className="m-0 focus-visible:outline-none focus-visible:ring-0">
-                    {isMyGroupsLoading ? (
-                        <div className="flex justify-center py-12">
-                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                        </div>
-                    ) : myGroups.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 px-4 text-center bg-card/50 backdrop-blur-sm rounded-3xl border border-border/50 shadow-sm space-y-4">
-                            <div className="w-16 h-16 rounded-full bg-primary/5 flex items-center justify-center">
-                                <Users className="w-8 h-8 text-primary/30" />
+                        {/* Search and Filters Bar */}
+                        <div className="w-full space-y-6">
+                            <div className="relative max-w-3xl mx-auto group">
+                                <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-blue-500/20 rounded-2xl blur opacity-25 group-hover:opacity-100 transition duration-1000 group-hover:duration-200" />
+                                <div className="relative">
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                    <Input 
+                                        placeholder="Search hubs by name, description or topics..." 
+                                        className="pl-12 h-14 bg-background/80 border-border/50 backdrop-blur-xl rounded-2xl text-base shadow-sm group-focus-within:ring-2 group-focus-within:ring-primary/20 group-focus-within:border-primary transition-all"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                </div>
                             </div>
-                            <div className="max-w-xs space-y-1">
-                                <p className="text-foreground font-semibold">No joined hubs</p>
-                                <p className="text-sm text-muted-foreground text-balance">
-                                    {searchQuery ? "No joined hubs match your search." : "You haven't joined any hubs yet. Discover new communities in the Discover tab!"}
-                                </p>
-                            </div>
-                            {searchQuery && (
-                                <Button variant="outline" size="sm" onClick={() => setSearchQuery("")} className="rounded-full">
-                                    Clear search
-                                </Button>
+                            
+                            {activeTab === "discover" && topics.length > 0 && (
+                                <div className="flex flex-wrap justify-center gap-2 max-w-4xl mx-auto">
+                                    <Button 
+                                        variant={selectedTopic === null ? "default" : "secondary"} 
+                                        size="sm" 
+                                        onClick={() => setSelectedTopic(null)}
+                                        className={cn(
+                                            "rounded-full px-5 font-bold transition-all duration-300",
+                                            selectedTopic === null ? "shadow-md scale-105" : "bg-muted/50 hover:bg-muted"
+                                        )}
+                                    >
+                                        All Topics
+                                    </Button>
+                                    {topics.map(topic => (
+                                        <Button
+                                            key={topic}
+                                            variant={selectedTopic === topic ? "default" : "secondary"}
+                                            size="sm"
+                                            onClick={() => setSelectedTopic(topic === selectedTopic ? null : topic)}
+                                            className={cn(
+                                                "rounded-full px-5 font-bold transition-all duration-300",
+                                                selectedTopic === topic ? "shadow-md scale-105" : "bg-muted/50 hover:bg-muted"
+                                            )}
+                                        >
+                                            <Hash className="w-3 h-3 mr-1.5 opacity-60" />
+                                            {topic}
+                                        </Button>
+                                    ))}
+                                </div>
                             )}
                         </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {myGroups.map(group => (
-                                <GroupCard key={group.conversationId} group={group} currentUser={user} />
-                            ))}
-                        </div>
-                    )}
-                </TabsContent>
-            </Tabs>
+                    </div>
+
+                    <TabsContent value="discover" className="m-0 focus-visible:outline-none focus-visible:ring-0">
+                        {isDiscoverLoading ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                {[1, 2, 3, 4, 5, 6].map(i => (
+                                    <div key={i} className="h-[280px] rounded-3xl bg-muted/20 animate-pulse border border-border/50" />
+                                ))}
+                            </div>
+                        ) : discoverGroups.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-24 px-4 text-center bg-white/50 backdrop-blur-xl rounded-[40px] border border-white shadow-2xl space-y-6 max-w-lg mx-auto">
+                                <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center animate-bounce">
+                                    <Search className="w-10 h-10 text-primary/40" />
+                                </div>
+                                <div className="space-y-2">
+                                    <h3 className="text-2xl font-bold text-foreground">No public hubs found</h3>
+                                    <p className="text-muted-foreground text-balanced max-w-[280px]">
+                                        We couldn't find any hubs matching your current filter. Try a different search!
+                                    </p>
+                                </div>
+                                <Button 
+                                    variant="outline" 
+                                    onClick={() => { setSearchQuery(""); setSelectedTopic(null); }} 
+                                    className="rounded-2xl px-8 font-bold border-2"
+                                >
+                                    Clear all filters
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-12">
+                                {discoverGroups.map(group => (
+                                    <GroupCard key={group.conversationId} group={group} currentUser={user} />
+                                ))}
+                            </div>
+                        )}
+                        
+                        {/* Infinite Scroll trigger */}
+                        {activeTab === "discover" && hasNextPage && (
+                            <div ref={ref} className="flex justify-center py-12">
+                                {isFetchingNextPage && <Loader2 className="w-8 h-8 animate-spin text-primary/40" />}
+                            </div>
+                        )}
+                    </TabsContent>
+
+                    <TabsContent value="my-hubs" className="m-0 focus-visible:outline-none focus-visible:ring-0">
+                        {isMyGroupsLoading ? (
+                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                {[1, 2, 3].map(i => (
+                                    <div key={i} className="h-[280px] rounded-3xl bg-muted/20 animate-pulse border border-border/50" />
+                                ))}
+                            </div>
+                        ) : myGroups.length === 0 ? (
+                             <div className="flex flex-col items-center justify-center py-24 px-4 text-center bg-white/50 backdrop-blur-xl rounded-[40px] border border-white shadow-2xl space-y-6 max-w-lg mx-auto">
+                                <div className="w-20 h-20 rounded-3xl bg-blue-500/10 flex items-center justify-center">
+                                    <Users className="w-10 h-10 text-blue-500/40" />
+                                </div>
+                                <div className="space-y-2">
+                                    <h3 className="text-2xl font-bold text-foreground">No joined hubs</h3>
+                                    <p className="text-muted-foreground text-balanced max-w-[280px]">
+                                        {searchQuery ? "No joined hubs match your search." : "You haven't joined any hubs yet. Discover new communities in the Discover tab!"}
+                                    </p>
+                                </div>
+                                {searchQuery && (
+                                    <Button variant="outline" onClick={() => setSearchQuery("")} className="rounded-2xl px-8 font-bold border-2">
+                                        Clear search
+                                    </Button>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-12">
+                                {myGroups.map(group => (
+                                    <GroupCard key={group.conversationId} group={group} currentUser={user} />
+                                ))}
+                            </div>
+                        )}
+                    </TabsContent>
+                </Tabs>
+            </div>
         </div>
     );
 }
@@ -208,59 +251,90 @@ function GroupCard({ group, currentUser }: { group: GroupListDto, currentUser: {
     };
 
     return (
-        <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-start gap-4 space-y-0 pb-2">
-                <Avatar className="w-12 h-12 rounded-lg">
-                    <AvatarImage src={group.icon || PROFILE_DEFAULT_URL} alt={group.name || "Group"} />
-                    <AvatarFallback className="rounded-lg">{group.name?.charAt(0) || "G"}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                    <CardTitle className="text-lg font-bold truncate leading-tight mb-1.5" title={group.name || "Group"}>
-                        {group.name || "Unnamed Group"}
+        <Card className="group flex flex-col h-full bg-white/70 backdrop-blur-xl border-white/20 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-500 rounded-[32px] overflow-hidden hover:-translate-y-2">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            
+            <CardHeader className="relative flex flex-row items-center gap-5 space-y-0 p-6 pb-4">
+                <div className="relative">
+                    <div className="absolute -inset-1.5 bg-gradient-to-tr from-primary/30 to-blue-400/30 rounded-2xl blur opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <Avatar className="w-16 h-16 rounded-2xl border-2 border-white shadow-sm transition-transform duration-500 group-hover:scale-105 relative z-10">
+                        <AvatarImage src={group.icon || PROFILE_DEFAULT_URL} alt={group.name || "Group"} className="object-cover" />
+                        <AvatarFallback className="rounded-2xl bg-muted text-xl font-bold">{group.name?.charAt(0) || "G"}</AvatarFallback>
+                    </Avatar>
+                </div>
+                <div className="flex-1 min-w-0 space-y-1.5">
+                    <CardTitle className="text-xl font-extrabold truncate leading-tight tracking-tight group-hover:text-primary transition-colors duration-300" title={group.name || "Group"}>
+                        {group.name || "Unnamed Hub"}
                     </CardTitle>
-                    <Badge variant="secondary" className="bg-primary/5 text-primary hover:bg-primary/10 border-none font-medium gap-1.5 px-2.5 py-0.5 pointer-events-none">
-                        <Users className="w-3.5 h-3.5" />
-                        {group.memberCount} member{group.memberCount !== 1 && 's'}
-                    </Badge>
+                    <div className="flex items-center gap-1.5">
+                        <div className="flex -space-x-2">
+                             {[1,2,3].map(i => (
+                                 <div key={i} className="w-5 h-5 rounded-full border-2 border-white bg-muted flex items-center justify-center overflow-hidden">
+                                     <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300" />
+                                 </div>
+                             ))}
+                        </div>
+                        <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider pl-1">
+                            {group.memberCount} members
+                        </span>
+                    </div>
                 </div>
             </CardHeader>
-            <CardContent className="flex-1 pb-4">
-                <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5em]">
-                    {group.description || "No description provided."}
+
+            <CardContent className="relative flex-1 p-6 pt-2 pb-6">
+                <p className="text-sm text-muted-foreground font-medium leading-relaxed line-clamp-2 min-h-[2.5em]">
+                    {group.description || "No description provided. Join to explore the community."}
                 </p>
                 {group.topics && group.topics.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-4">
+                    <div className="flex flex-wrap gap-2 mt-5">
                         {group.topics.slice(0, 3).map((topic: string) => (
-                            <Badge key={topic} variant="secondary" className="text-xs px-2 py-0.5 font-medium">
-                                #{topic}
+                            <Badge key={topic} variant="secondary" className="bg-muted/40 hover:bg-muted font-bold text-[10px] px-3 py-1 rounded-full border-none tracking-wide">
+                                #{topic.toLowerCase()}
                             </Badge>
                         ))}
                          {group.topics.length > 3 && (
-                            <span className="text-[10px] h-5 flex items-center px-1 text-muted-foreground">+{group.topics.length - 3}</span>
+                            <Badge variant="outline" className="text-[10px] font-bold h-6 px-2.5 rounded-full border-muted/50 text-muted-foreground">
+                                +{group.topics.length - 3}
+                            </Badge>
                         )}
                     </div>
                 )}
             </CardContent>
-            <CardFooter className="pt-0">
-                {isMember ? (
-                    <Button variant="secondary" className="w-full gap-2 border border-border" onClick={handleView}>
-                        View Hub
-                        <ArrowRight className="w-4 h-4" />
-                    </Button>
-                ) : isRequestPending ? (
-                    <Button variant="outline" className="w-full bg-muted/50 text-muted-foreground" disabled>
-                        Request Sent
-                    </Button>
-                ) : (
-                    <Button 
-                        className="w-full" 
-                        onClick={handleJoin} 
-                        disabled={isPending || !headers.Authorization}
-                    >
-                        {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Request to Join
-                    </Button>
-                )}
+
+            <CardFooter className="relative p-6 pt-0 mt-auto">
+                <div className="absolute inset-x-6 top-0 h-[1px] bg-gradient-to-r from-transparent via-border/40 to-transparent" />
+                <div className="w-full pt-4">
+                    {isMember ? (
+                        <Button 
+                            className="w-full h-12 rounded-2xl bg-foreground hover:bg-foreground/90 text-background font-bold gap-2 group/btn transition-all duration-300 shadow-xl shadow-foreground/10" 
+                            onClick={handleView}
+                        >
+                            View Hub
+                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        </Button>
+                    ) : isRequestPending ? (
+                        <Button 
+                            variant="secondary" 
+                            className="w-full h-12 rounded-2xl font-bold bg-muted/60 text-muted-foreground cursor-default" 
+                            disabled
+                        >
+                            Request Sent
+                        </Button>
+                    ) : (
+                        <Button 
+                            className="w-full h-12 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold group/btn shadow-xl shadow-primary/20 transition-all duration-300" 
+                            onClick={handleJoin} 
+                            disabled={isPending || !headers.Authorization}
+                        >
+                            {isPending ? (
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                                <Plus className="w-4 h-4 mr-2 group-hover:rotate-90 transition-transform duration-300" />
+                            )}
+                            Join Hub
+                        </Button>
+                    )}
+                </div>
             </CardFooter>
         </Card>
     );

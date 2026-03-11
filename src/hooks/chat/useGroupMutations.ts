@@ -30,38 +30,73 @@ export const useCreateGroup = (onSuccess?: (group: ConversationWithMetadata) => 
     mutationFn: async (data: CreateGroupVariables) => {
         const group = await createGroup(data.name, data.participantIds, data.icon, data.topics, headers);
         
+        // Handle field name variations between model and DTO
+        const id = group.id || (group as any).conversationId;
+        const conversationId = (group as any).conversationId || group.id;
+
         // Map backend response to ConversationWithMetadata
         const mappedGroup: ConversationWithMetadata = {
-            conversationId: group.id,
+            conversationId: conversationId,
             type: 'GROUP',
             name: group.name || "Group",
             icon: group.icon || undefined,
             description: group.description || undefined,
             ownerId: group.ownerId || undefined,
-            participantIds: (group as any).participants?.map((p: any) => p.userId) || [],
+            participantIds: (group as any).participantIds || (group as any).participants?.map((p: any) => p.userId) || [],
             participants: (group as any).participants?.map((p: any) => ({
                 userId: p.userId,
                 username: p.username || p.user?.username || "user",
                 name: p.name || p.user?.fullName || p.user?.name || "User",
                 profilePhoto: p.profilePhoto || p.user?.profilePhoto,
                 role: p.role,
-                // Add default values for required Participant fields
-                conversationId: group.id,
-                createdAt: new Date().toISOString(),
-                lastReadAt: new Date().toISOString()
+                conversationId: conversationId,
+                createdAt: (p as any).createdAt || new Date().toISOString(),
+                lastReadAt: (p as any).lastReadAt || new Date().toISOString()
             })) || [],
             lastMessage: null,
             lastMessageAt: (group.createdAt as any) instanceof Date ? (group.createdAt as any).toISOString() : (group.createdAt as any),
             unreadCount: 0,
-            // Add missing fields
             onlyAdminsCanPost: group.onlyAdminsCanPost,
             onlyAdminsCanEditInfo: group.onlyAdminsCanEditInfo,
-            createdAt: group.createdAt ? (group.createdAt instanceof Date ? group.createdAt.toISOString() : group.createdAt) : new Date().toISOString()
+            createdAt: group.createdAt ? ((group.createdAt as any) instanceof Date ? (group.createdAt as any).toISOString() : group.createdAt) : new Date().toISOString()
         };
         
         return mappedGroup;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: ConversationWithMetadata) => {
+      // ✅ Manual prepend for instantaneous UI update
+      queryClient.setQueryData(queryKeys.chat.conversations.list(), (oldData: any) => {
+        if (!oldData || !oldData.pages || oldData.pages.length === 0) {
+            return {
+                pages: [{
+                    data: [data],
+                    total: 1,
+                    pagination: { limit: 20, offset: 0, count: 1 }
+                }],
+                pageParams: [0]
+            };
+        }
+
+        const firstPage = oldData.pages[0];
+        // Prevent duplicates
+        const exists = oldData.pages.some((page: any) => 
+            page.data?.some((conv: any) => conv.conversationId === data.conversationId)
+        );
+        
+        if (exists) return oldData;
+
+        return {
+            ...oldData,
+            pages: [
+                {
+                    ...firstPage,
+                    data: [data, ...(firstPage.data || [])]
+                },
+                ...oldData.pages.slice(1)
+            ]
+        };
+      });
+
       queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.list() });
       toast.success("Group created successfully");
       if (onSuccess) onSuccess(data);
@@ -79,7 +114,7 @@ export const useAddParticipants = (groupId: string) => {
     return useMutation({
         mutationFn: (userIds: string[]) => addParticipants(groupId, userIds, headers),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["conversations"] }); // Refresh list
+            queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.list() }); // ✅ Corrected key
             // Also invalidate specific group details if we had a query for that
             toast.success("Participants added");
         },

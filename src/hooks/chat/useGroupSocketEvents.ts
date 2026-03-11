@@ -1,17 +1,21 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useWebSocket } from '@/src/contexts/WebSocketContext';
+import { useSession } from 'next-auth/react';
 import { queryKeys } from '@/src/lib/queryKeys';
 import { ConversationWithMetadata } from '@/src/types/chat.types';
 import { toast } from 'sonner';
 
 export function useGroupSocketEvents() {
     const queryClient = useQueryClient();
+    const { data: session } = useSession();
+    const currentUserId = session?.user?.id;
 
     useEffect(() => {
             const handleGroupCreated = (e: CustomEvent) => {
             const data = e.detail;
             console.log('✨ [Socket] handling group_created', data);
+
+            // We don't ignore creator anymore, de-duplication logic below handles it
             
             queryClient.setQueryData(queryKeys.chat.conversations.list(), (oldData: any) => {
                 if (!oldData || !oldData.pages || oldData.pages.length === 0) {
@@ -52,6 +56,30 @@ export function useGroupSocketEvents() {
             toast.info(`New group "${data.name}" created`);
         };
 
+        const handleGroupDeleted = (e: CustomEvent) => {
+            const data = e.detail;
+            console.log('🗑️ [Socket] handling group_deleted', data);
+
+            queryClient.setQueryData(queryKeys.chat.conversations.list(), (oldData: any) => {
+                if (!oldData || !oldData.pages) return oldData;
+                
+                return {
+                    ...oldData,
+                    pages: oldData.pages.map((page: any) => ({
+                        ...page,
+                        data: Array.isArray(page.data) ? page.data.filter((conv: ConversationWithMetadata) => 
+                            conv.conversationId !== data.conversationId
+                        ) : []
+                    }))
+                };
+            });
+
+            // Dispatch a global event so the chat view can redirect if the deleted group is currently active
+            window.dispatchEvent(new CustomEvent('active_group_deleted', { detail: data }));
+            
+            toast.error(`Group "${data.groupName || 'deleted'}" has been permanently removed by the owner`);
+        };
+
         const handleGroupUpdated = (e: CustomEvent) => {
             const data = e.detail;
             const updates = data.updates || data; // Handle if updates are nested or direct
@@ -81,6 +109,7 @@ export function useGroupSocketEvents() {
 
         window.addEventListener('group_created', handleGroupCreated as EventListener);
         window.addEventListener('group_updated', handleGroupUpdated as EventListener);
+        window.addEventListener('group_deleted', handleGroupDeleted as EventListener);
         window.addEventListener('participants_added', invalidateList as EventListener);
         window.addEventListener('participant_removed', invalidateList as EventListener);
         window.addEventListener('participant_left', invalidateList as EventListener);
@@ -89,6 +118,7 @@ export function useGroupSocketEvents() {
         return () => {
             window.removeEventListener('group_created', handleGroupCreated as EventListener);
             window.removeEventListener('group_updated', handleGroupUpdated as EventListener);
+            window.removeEventListener('group_deleted', handleGroupDeleted as EventListener);
             window.removeEventListener('participants_added', invalidateList as EventListener);
             window.removeEventListener('participant_removed', invalidateList as EventListener);
             window.removeEventListener('participant_left', invalidateList as EventListener);

@@ -1,48 +1,14 @@
 
 import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 import { API_ROUTES, getApiBaseUrl } from "./src/constants/api.routes";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
-    Credentials({
-      id: "google-sync",
-      name: "Google Sync",
-      credentials: {},
-      authorize: async () => {
-        const { cookies } = await import("next/headers");
-        const cookieStore = await cookies();
-        const accessToken = cookieStore.get("access_token")?.value;
-        const refreshToken = cookieStore.get("refresh_token")?.value;
-
-        if (!accessToken) return null;
-
-        try {
-          const res = await fetch(`${getApiBaseUrl()}${API_ROUTES.AUTH.ME}`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
-
-          if (!res.ok) return null;
-
-          const data = await res.json();
-          
-          // /auth/me returns the user object directly, not wrapped in { user: ... }
-          if (!data?.id) return null;
-
-          return {
-            id: data.id,
-            username: data.username,
-            email: data.email,
-            role: data.role,
-            image: data.profilePicture ?? null,
-            accessToken,
-            refreshToken,
-          };
-        } catch (error) {
-          console.error("Token sync failed", error);
-          return null;
-        }
-      },
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     }),
     Credentials({
       credentials: {
@@ -165,7 +131,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
   callbacks: {
 
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user, account, trigger, session }) {
       // Handle session update via useSession().update()
       if (trigger === "update" && session) {
         // Update user image if provided
@@ -176,8 +142,51 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return token;
       }
 
-      // On first login → attach tokens
-      if (user) {
+      // Initial Google Login -> Sync with Backend
+      if (account?.provider === "google" && user) {
+        console.log("[NextAuth JWT] Initial Google Login Entry", { userEmail: user.email });
+        try {
+          const apiBaseUrl = getApiBaseUrl();
+          const res = await fetch(`${apiBaseUrl}/api/v1/auth/google-login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: user.id || account.providerAccountId,
+              email: user.email,
+              name: user.name,
+              username: user.email?.split("@")[0] || user.name,
+            }),
+          });
+          
+          if (!res.ok) {
+            const errorText = await res.text();
+            console.error("[NextAuth] Backend Google login failed", {
+              status: res.status,
+              statusText: res.statusText,
+              error: errorText
+            });
+            return null; // Force sign out if we can't sync with backend
+          }
+          
+          const data = await res.json();
+          console.log("[NextAuth] Backend Google login successful", { userId: data.jwtpayload?.id });
+          return {
+            id: String(data.jwtpayload.id),
+            username: data.jwtpayload.username ?? undefined,
+            role: data.jwtpayload.role ?? undefined,
+            image: data.jwtpayload.image ?? user.image ?? null,
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken,
+            expiresAt: Date.now() + 15 * 60 * 1000, // 15 minutes
+          };
+        } catch (err) {
+          console.error("[NextAuth] Backend Google error", err);
+          return null;
+        }
+      }
+
+      // Initial Credentials Login
+      if (user && account?.provider === "credentials") {
         return {
           id: String(user.id),
           username: user.username ?? undefined,
@@ -198,14 +207,34 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return null;
       }
 
-      // Otherwise try to refresh (only if refreshToken exists)
-      if (!token.refreshToken) {
-        console.error("[NextAuth JWT] No refresh token available");
-        return null; // No refresh token, sign out
-      }
-
-      // Only return if token is valid AND we don't need to refresh yet
+      // ✅ BLOCK CHECK: On every token validation (page nav / session read),
+      // check if the user has been blocked by admin. This is the ONLY way to
+      // enforce instant block across all pages, not just API calls.
       if (!shouldRefresh && token.expiresAt && Date.now() < (token.expiresAt as number)) {
+        try {
+          const apiBaseUrl = getApiBaseUrl();
+          const checkRes = await fetch(`${apiBaseUrl}${API_ROUTES.AUTH.ME}`, {
+            headers: { Authorization: `Bearer ${token.accessToken}` },
+            // Short timeout — we don't want this to block navigation
+            ...(typeof AbortSignal !== "undefined" && AbortSignal.timeout
+              ? { signal: AbortSignal.timeout(3000) }
+              : {}),
+          });
+
+          if (checkRes.status === 401 || checkRes.status === 403) {
+            let body: any = {};
+            try { body = await checkRes.json(); } catch {}
+            const msg = (body?.message || "").toLowerCase();
+            if (msg.includes("blocked")) {
+              console.warn("[NextAuth JWT] User is blocked by admin. Forcing sign out.");
+              return { ...token, error: "UserBlocked" };
+            }
+          }
+        } catch (e) {
+          // Network error / timeout — don't block navigation, just carry on.
+          // The API gateway will handle enforcing the block on actual API calls.
+          console.warn("[NextAuth JWT] Block check failed (network/timeout), skipping.", e);
+        }
         return token;
       }
 
@@ -276,6 +305,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       return {
         ...session,
+        error: token.error, // Expose error to client (e.g., 'UserBlocked')
         user: {
           ...session.user,
           id: String(token.id || ""),
@@ -293,3 +323,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   },
 });
+
+
+
+
+

@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { v4 as uuidv4 } from "uuid";
 import { InfiniteData } from "@tanstack/react-query";
 import { PostsPage, NewPost } from "@/src/app/types/feed";
+import { queryKeys } from "@/src/lib/queryKeys";
 
 export interface EditPostData {
   content?: string;
@@ -44,16 +45,16 @@ export function useEditPost() {
     },
     onMutate: async ({ postId, data }) => {
       // Cancel ongoing queries
-      await queryClient.cancelQueries({ queryKey: ["post-feed"] });
+      await queryClient.cancelQueries({ queryKey: queryKeys.feed.all });
 
       // Snapshot previous data for rollback
       const previousFeedData = queryClient.getQueryData<
         InfiniteData<PostsPage, string | null>
-      >(["post-feed", "for-you"]);
+      >(queryKeys.feed.list({ sortBy: "RECENT" }));
 
       // Optimistically update the feed cache
       queryClient.setQueriesData<InfiniteData<PostsPage, string | null>>(
-        { queryKey: ["post-feed"] },
+        { queryKey: queryKeys.feed.all },
         (oldData) => {
           if (!oldData) return oldData;
 
@@ -82,8 +83,8 @@ export function useEditPost() {
     onError: (error, variables, context) => {
       // Rollback on error
       if (context?.previousFeedData) {
-        queryClient.setQueryData(
-          ["post-feed", "for-you"],
+        queryClient.setQueriesData(
+          { queryKey: queryKeys.feed.all },
           context.previousFeedData
         );
       }
@@ -92,7 +93,7 @@ export function useEditPost() {
     onSuccess: (data, variables) => {
       // Invalidate to refetch fresh data
       queryClient.invalidateQueries({
-        queryKey: ["post-feed"],
+        queryKey: queryKeys.feed.all,
       });
       toast.success("Post updated successfully!");
     },
@@ -140,7 +141,7 @@ export function useRestorePostVersion() {
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["post-feed"],
+        queryKey: queryKeys.feed.all,
       });
       queryClient.invalidateQueries({
         queryKey: ["post-versions", variables.postId],

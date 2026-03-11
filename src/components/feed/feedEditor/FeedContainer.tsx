@@ -12,6 +12,7 @@ import { NewPost } from "@/src/app/types/feed";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 
 import FeedSortDropdown from "./FeedSortDropdown";
+import { queryKeys } from "@/src/lib/queryKeys";
 
 export default function FeedContainer({userid}:{userid:string}) {
   const { data: session, status: sessionStatus } = useSession();
@@ -26,7 +27,7 @@ export default function FeedContainer({userid}:{userid:string}) {
     isLoading,
     status,
   } = useInfiniteQuery({
-    queryKey: ["post-feed", "for-you", { sortBy }], // ✅ Include sortBy in query key
+    queryKey: queryKeys.feed.list({ sortBy }), // ✅ Standardized query key
     queryFn: ({ pageParam }) => fetchFeed(
       pageParam, 
       authHeaders as Record<string, string>, 

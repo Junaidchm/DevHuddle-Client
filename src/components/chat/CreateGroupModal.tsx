@@ -151,15 +151,22 @@ export function CreateGroupModal({ isOpen, onClose, onGroupCreated }: CreateGrou
             iconUrl = result.mediaUrl;
         }
 
-        createGroupMutation.mutate({
+        await createGroupMutation.mutateAsync({
             name: groupName,
             participantIds: selectedUsers.map(u => u.id),
             topics: topics,
             icon: iconUrl
         });
-    } catch (error) {
+        
+        // Success logic is handled in onSuccess callback of useCreateGroup
+    } catch (error: any) {
+        console.error("Group creation failed:", error);
         setIsLoading(false);
-        toast.error("Failed to create group. Please try again.");
+        // Error toast is already handled by useCreateGroup's onError, 
+        // but we add it here too if it's a media upload error
+        if (error.message && !error.message.includes("Failed to create group")) {
+            toast.error(error.message || "Failed to create group. Please try again.");
+        }
     }
   };
 

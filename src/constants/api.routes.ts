@@ -206,6 +206,9 @@ export const API_ROUTES = {
     UPDATE_COMMENT: (commentId: string) => `${API_VERSION}/comments/${commentId}`,
     DELETE_COMMENT: (commentId: string) => `${API_VERSION}/comments/${commentId}`,
     GET_REPLIES: (commentId: string) => `${API_VERSION}/comments/${commentId}/replies`,
+    LIKE_COMMENT: (commentId: string) => `${API_VERSION}/comments/${commentId}/like`,
+    UNLIKE_COMMENT: (commentId: string) => `${API_VERSION}/comments/${commentId}/unlike`,
+    REPORT_COMMENT: (commentId: string) => `${API_VERSION}/comments/${commentId}/report`,
   },
 
   // Add to API_ROUTES object

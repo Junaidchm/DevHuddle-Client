@@ -72,18 +72,6 @@ export const loginUser = createAsyncThunk<
   }
 });
 
-export const googleAuth = createAsyncThunk<
-  void,
-  void,
-  { rejectValue: string }
->("auth/googleAuth", async (_, { rejectWithValue }) => {
-    try {
-      window.location.href = "http://localhost:8080/api/v1/auth/google";
-    } catch (error: any) {
-      return rejectWithValue("Failed to initiate Google authentication");
-    }
-  }
-);
 
 export const getUser = createAsyncThunk<User, void, { rejectValue: string }>(
   "auth/getUser",
