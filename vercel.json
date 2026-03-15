@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/clear-uploads",
-      "schedule": "*/1 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
