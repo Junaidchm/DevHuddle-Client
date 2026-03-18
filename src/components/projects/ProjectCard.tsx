@@ -23,7 +23,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
   const { joinPostRoom, leavePostRoom } = useWebSocket();
 
   // Reactively fetch like count
-  const { data: likeCountData } = usePostLikeCountQuery(project.id);
+  const { data: likeCountData } = usePostLikeCountQuery(project.id, true);
 
   const engagement = useMemo(() => {
     const reactiveLikesCount = likeCountData?.success ? likeCountData.count : undefined;

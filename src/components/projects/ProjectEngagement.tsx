@@ -26,8 +26,8 @@ export default function ProjectEngagement({
   const [showReportModal, setShowReportModal] = useState(false);
 
   // Reactively fetch engagement counts
-  const { data: likeCountData } = usePostLikeCountQuery(project.id);
-  const { data: commentCountData } = useCommentCountQuery(project.id);
+  const { data: likeCountData } = usePostLikeCountQuery(project.id, true);
+  const { data: commentCountData } = useCommentCountQuery(project.id, true);
 
   const engagement = useMemo(() => {
     const reactiveLikesCount = likeCountData?.success ? likeCountData.count : undefined;

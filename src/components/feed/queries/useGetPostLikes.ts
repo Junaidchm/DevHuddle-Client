@@ -1,7 +1,7 @@
 "use client";
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { getPostLikes, getPostLikeCount, getPostShareLink } from "@/src/services/api/engagement.service";
+import { getPostLikes, getPostLikeCount, getPostShareLink, getProjectLikeCount } from "@/src/services/api/engagement.service";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 import { queryKeys } from "@/src/lib/queryKeys";
 
@@ -32,12 +32,12 @@ export function useGetPostLikes(postId: string) {
 /**
  * Query for post like count
  */
-export function usePostLikeCountQuery(postId: string) {
+export function usePostLikeCountQuery(postId: string, isProject: boolean = false) {
   const authHeaders = useAuthHeaders();
 
   return useQuery({
     queryKey: queryKeys.engagement.postLikes.count(postId),
-    queryFn: () => getPostLikeCount(postId, authHeaders),
+    queryFn: () => isProject ? getProjectLikeCount(postId, authHeaders) : getPostLikeCount(postId, authHeaders),
     enabled: !!postId && !!authHeaders.Authorization,
     staleTime: 60 * 1000,
   });

@@ -100,6 +100,46 @@ export const getPostLikeCount = async (
 };
 
 /**
+ * Get project like count
+ */
+export const getProjectLikeCount = async (
+  projectId: string,
+  headers: Record<string, string>
+): Promise<LikeCountResponse> => {
+  try {
+    const res = await axiosInstance.get(
+      API_ROUTES.PROJECTS.LIKE_COUNT(projectId),
+      { headers }
+    );
+    return res.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to get project like count"
+    );
+  }
+};
+
+/**
+ * Get project comment count
+ */
+export const getProjectCommentCount = async (
+  projectId: string,
+  headers: Record<string, string>
+): Promise<{ success: boolean; count: number }> => {
+  try {
+    const res = await axiosInstance.get(
+      API_ROUTES.PROJECTS.COMMENT_COUNT(projectId),
+      { headers }
+    );
+    return res.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to get project comment count"
+    );
+  }
+};
+
+/**
  * Get post likes with pagination
  */
 export const getPostLikes = async (

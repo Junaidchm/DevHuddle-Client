@@ -200,7 +200,9 @@ export const API_ROUTES = {
     SHARE: (projectId: string) => `${API_VERSION}/projects/${projectId}/share`,
     REPORT: (projectId: string) => `${API_VERSION}/projects/${projectId}/report`,
     VIEW: (projectId: string) => `${API_VERSION}/projects/${projectId}/view`,
+    LIKE_COUNT: (projectId: string) => `${API_VERSION}/projects/${projectId}/like/count`,
     // Comments
+    COMMENT_COUNT: (projectId: string) => `${API_VERSION}/projects/${projectId}/comments/count`,
     CREATE_COMMENT: (projectId: string) => `${API_VERSION}/projects/${projectId}/comments`,
     GET_COMMENTS: (projectId: string) => `${API_VERSION}/projects/${projectId}/comments`,
     UPDATE_COMMENT: (commentId: string) => `${API_VERSION}/comments/${commentId}`,

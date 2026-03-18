@@ -788,7 +788,7 @@ class WebSocketManager {
           }
 
           // If the current user was removed, we should probably boot them from the chat window
-          if (message.type === 'participant_removed' && message.data.removedUserId === this.userId) {
+          if (message.type === 'participant_removed' && (message.data as any).removedUserId === this.userId) {
                console.log("🛑 Booting self from chat because I was removed from group", conversationId);
                this.queryClient?.invalidateQueries({ queryKey: queryKeys.chat.conversations.list() });
                if (typeof window !== 'undefined') {
@@ -1188,7 +1188,8 @@ class WebSocketManager {
     const data = message.data as any;
     if (!data) return;
 
-    const { type, postId, commentId } = data;
+    const { type, postId: directPostId, commentId, projectId } = data;
+    const postId = directPostId || projectId;
 
     // Invalidate relevant queries based on update type
     if (type === 'POST_LIKE_UPDATE' || type === 'PROJECT_LIKE_UPDATE') {
@@ -1199,6 +1200,12 @@ class WebSocketManager {
         console.log(`[WebSocket] 💬 Invalidating comments for post: ${postId}`);
         this.queryClient.invalidateQueries({ queryKey: queryKeys.engagement.comments.count(postId) });
         this.queryClient.invalidateQueries({ queryKey: queryKeys.engagement.comments.all(postId) });
+        
+        // Also invalidate project-specific comment queries if applicable
+        if (type.startsWith('PROJECT_')) {
+            this.queryClient.invalidateQueries({ queryKey: queryKeys.projects.comments.count(postId) });
+            this.queryClient.invalidateQueries({ queryKey: queryKeys.projects.comments.all(postId) });
+        }
     } else if (type === 'COMMENT_LIKE_UPDATE' || type === 'PROJECT_COMMENT_LIKE_UPDATE') {
         console.log(`[WebSocket] 💝 Invalidating likes for comment: ${commentId}`);
         this.queryClient.invalidateQueries({ queryKey: queryKeys.engagement.commentLikes.count(commentId) });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { getComments, getCommentCount, getCommentReplies, getCommentPreview, getCommentLikeCount } from "@/src/services/api/engagement.service";
+import { getComments, getCommentCount, getCommentReplies, getCommentPreview, getCommentLikeCount, getProjectCommentCount } from "@/src/services/api/engagement.service";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 import { CommentListResponse } from "@/src/app/types/feed";
 import { queryKeys } from "@/src/lib/queryKeys";
@@ -43,12 +43,12 @@ export function useCommentsInfiniteQuery(postId: string) {
 /**
  * Query for comment count
  */
-export function useCommentCountQuery(postId: string) {
+export function useCommentCountQuery(postId: string, isProject: boolean = false) {
   const authHeaders = useAuthHeaders();
 
   return useQuery({
     queryKey: queryKeys.engagement.comments.count(postId),
-    queryFn: () => getCommentCount(postId, authHeaders),
+    queryFn: () => isProject ? getProjectCommentCount(postId, authHeaders) : getCommentCount(postId, authHeaders),
     enabled: !!postId && !!authHeaders.Authorization,
     staleTime: 60 * 1000, // 1 minute
   });
