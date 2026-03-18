@@ -35,6 +35,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { mapNotificationToLinkedInStyle } from "@/src/components/notification/notificationMapper";
 import { queryKeys } from "@/src/lib/queryKeys";
 import { Message, WebSocketMessage } from "@/src/types/chat.types";
+import { getApiBaseUrl } from "@/src/constants/api.routes";
 import toast from "react-hot-toast";
 
 // ==================== Types ====================
@@ -311,25 +312,15 @@ class WebSocketManager {
    * @param service - 'notifications' (default) or 'chat'
    */
   private getWebSocketUrl(service: 'notifications' | 'chat' = 'chat'): string {
-    // Chat service has its own WebSocket server - connect via API Gateway
+    const apiBaseUrl = getApiBaseUrl();
+    const wsBaseUrl = apiBaseUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
+
     if (service === 'chat') {
-      // Use API Gateway URL (usually port 8080)
-      const baseUrl =
-        process.env.NEXT_PUBLIC_WS_URL ||
-        process.env.NEXT_PUBLIC_API_URL ||
-        "http://localhost:8080";
-      
-      const wsUrl = baseUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:") + "/api/v1/chat";
-      return `${wsUrl}?token=${this.token || ''}`;
+      return `${wsBaseUrl}/api/v1/chat?token=${this.token || ''}`;
     }
 
     // Default: Notifications WebSocket
-    const baseUrl =
-      process.env.NEXT_PUBLIC_WS_URL ||
-      process.env.NEXT_PUBLIC_API_URL ||
-      "http://localhost:8080";
-    return baseUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:") +
-      "/api/v1/notifications" + `?token=${this.token || ''}`; // Append token for Notification Service too
+    return `${wsBaseUrl}/api/v1/notifications?token=${this.token || ''}`;
   }
 
   // sendAuthMessage removed - handled by Gateway Handshake
