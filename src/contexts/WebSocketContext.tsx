@@ -1133,13 +1133,16 @@ class WebSocketManager {
           return { ...oldData, pages: newPages };
         });
 
-        // Trigger toast for admin actions
+        // ✅ NEW: Trigger toast for common engagement actions (Like, Comment, etc.)
         const notificationData = message.data as any;
+        const notificationType = notificationData?.type;
         const notificationAction = notificationData?.metadata?.action;
         const entityType = notificationData?.metadata?.entityType;
-        const isHub = entityType === "HUB" || entityType === "CONVERSATION";
+        const summaryText = notificationData?.summary?.text || "New interaction";
 
-        if (notificationData?.type === "CONTENT_HIDDEN") {
+        // Handle specific toast alerts
+        if (notificationType === "CONTENT_HIDDEN") {
+          const isHub = entityType === "HUB" || entityType === "CONVERSATION";
           let actionText = "hidden";
           if (notificationAction === "UNHIDE") actionText = "restored";
           else if (notificationAction === "DELETE") actionText = "permanently deleted";
@@ -1155,6 +1158,12 @@ class WebSocketManager {
             icon: notificationAction === "UNHIDE" ? "🟢" : "🔴",
             duration: 6000,
           });
+        } else if (notificationType === "LIKE" || notificationType === "COMMENT" || notificationType === "MENTION" || notificationType === "FOLLOW") {
+           // Standard interactive notifications
+           toast.success(summaryText, {
+             icon: notificationType === "LIKE" ? "💖" : notificationType === "COMMENT" ? "💬" : notificationType === "FOLLOW" ? "👤" : "🔔",
+             duration: 4000,
+           });
         }
 
         // 2. Refresh count query
@@ -1171,9 +1180,13 @@ class WebSocketManager {
         break;
 
       case "unread_count":
+        // ✅ FIXED: Correctly map unreadCount from backend payload
+        // Backend sends: { unreadCount: number }
+        // Frontend expects: { unreadCount: number } in cache
+        console.log("[WebSocket] 🔢 Received unread_count update:", data);
         this.queryClient.setQueryData(
-          queryKeys.notifications.count(this.userId),
-          data.count
+          queryKeys.notifications.count(this.userId!),
+          { unreadCount: data.unreadCount ?? data.count ?? 0 }
         );
         break;
     }
