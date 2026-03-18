@@ -14,7 +14,7 @@ const ProfileTabs = ({ activeTab, onTabChange }: ProfileTabsProps) => {
 
   return (
     <div className="border-b border-gray-200 mt-2">
-      <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+      <nav className="-mb-px flex space-x-4 sm:space-x-8 overflow-x-auto no-scrollbar" aria-label="Tabs">
         {tabs.map((tab) => (
           <button
             key={tab.id}

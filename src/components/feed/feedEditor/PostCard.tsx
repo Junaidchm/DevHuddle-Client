@@ -14,6 +14,7 @@ import dynamic from "next/dynamic";
 import { PostCreationProvider } from "@/src/contexts/PostCreationContext";
 import { MediaProvider } from "@/src/contexts/MediaContext";
 import { getMediaUrl } from "@/src/utils/media";
+import { useWebSocket } from "@/src/contexts/WebSocketContext";
 
 // Lazy load CreatePostModal
 const LazyCreatePostModal = dynamic(() => import("./CreatePostModal"), {
@@ -330,6 +331,19 @@ export default function PostCard({ post, onDeletePost,userid }: PostProp) {
     left: number;
   } | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const { joinPostRoom, leavePostRoom } = useWebSocket();
+
+  // Join post-specific WebSocket room for real-time engagement updates
+  useEffect(() => {
+    if (post.id) {
+      console.log(`[WebSocket] 🏠 Entering room for post: ${post.id}`);
+      joinPostRoom(post.id);
+      return () => {
+        console.log(`[WebSocket] 🚪 Leaving room for post: ${post.id}`);
+        leavePostRoom(post.id);
+      };
+    }
+  }, [post.id, joinPostRoom, leavePostRoom]);
 
 
   const handleDeleteClick = () => {

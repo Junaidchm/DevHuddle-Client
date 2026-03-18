@@ -10,6 +10,9 @@ import { Badge } from "@/src/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/src/components/ui/avatar";
 import { Button } from "@/src/components/ui/button";
 import { getMediaUrl } from "@/src/utils/media";
+import { useWebSocket } from "@/src/contexts/WebSocketContext";
+import { useEffect, useMemo } from "react";
+import { usePostLikeCountQuery } from "../feed/queries/useGetPostLikes";
 
 interface ProjectCardProps {
   project: Project;
@@ -17,6 +20,31 @@ interface ProjectCardProps {
 
 export default function ProjectCard({ project }: ProjectCardProps) {
   const previewMedia = project.media.find((m) => m.isPreview) || project.media[0];
+  const { joinPostRoom, leavePostRoom } = useWebSocket();
+
+  // Reactively fetch like count
+  const { data: likeCountData } = usePostLikeCountQuery(project.id);
+
+  const engagement = useMemo(() => {
+    const reactiveLikesCount = likeCountData?.success ? likeCountData.count : undefined;
+    return {
+      ...project.engagement,
+      likesCount: reactiveLikesCount ?? project.engagement.likesCount,
+    };
+  }, [project.engagement, likeCountData]);
+
+  // Join project-specific WebSocket room for real-time engagement updates
+  // Note: Project rooms use the same joinPostRoom logic as they are also "entities"
+  useEffect(() => {
+    if (project.id) {
+      console.log(`[WebSocket] 🛠️ Entering room for project: ${project.id}`);
+      joinPostRoom(project.id);
+      return () => {
+        console.log(`[WebSocket] 🚪 Leaving room for project: ${project.id}`);
+        leavePostRoom(project.id);
+      };
+    }
+  }, [project.id, joinPostRoom, leavePostRoom]);
 
   return (
     <Card className="card-base overflow-hidden hover:shadow-md transition-shadow duration-300 group flex flex-col h-full border-none shadow-xs">
@@ -87,7 +115,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
                         project.engagement.isLiked ? "fill-red-500 text-red-500" : ""
                         }`}
                     />
-                    <span>{project.engagement.likesCount}</span>
+                    <span>{engagement.likesCount}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                     <Eye className="w-3.5 h-3.5 text-muted-foreground/60" />

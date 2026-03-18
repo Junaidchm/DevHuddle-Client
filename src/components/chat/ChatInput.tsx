@@ -237,7 +237,7 @@ export function ChatInput({
 
         {/* RECORDING/PAUSED MODE - WhatsApp Style Recording Bar */}
         {(recordingState === 'recording' || recordingState === 'paused') && (
-          <div className="flex-1 flex items-center gap-4 px-2 py-1 w-full text-foreground">
+          <div className="flex-1 flex items-center gap-2 sm:gap-4 px-1 sm:px-2 py-1 w-full text-foreground">
             {/* Trash icon (Left) */}
             <Button
               type="button"
@@ -347,7 +347,7 @@ export function ChatInput({
                     <div className="absolute bottom-12 right-0 z-50 shadow-2xl rounded-lg overflow-hidden border border-border bg-background">
                       <EmojiPicker
                         onEmojiClick={handleEmojiClick}
-                        width={350}
+                        width={typeof window !== 'undefined' && window.innerWidth < 400 ? 280 : 350}
                         height={400}
                         searchDisabled={false}
                         skinTonesDisabled={false}

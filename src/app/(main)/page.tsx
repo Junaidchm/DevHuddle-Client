@@ -13,7 +13,7 @@ export default async function CommunityFeed({ params }: CommunityFeedProps) {
   const session = await auth();
 
   return (
-    <div className="max-w-[1128px] mx-auto px-0 sm:px-4 md:px-0 flex justify-center gap-6">
+    <div className="max-w-[1128px] mx-auto px-4 md:px-0 flex justify-center gap-6">
       {/* Main Feed */}
       <main className="flex-1 w-full max-w-[555px] min-w-0 flex flex-col gap-2">
         <PostComposer userId={userId} />

@@ -1,7 +1,7 @@
 "use client";
 
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { getPostLikes } from "@/src/services/api/engagement.service";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { getPostLikes, getPostLikeCount, getPostShareLink } from "@/src/services/api/engagement.service";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 import { queryKeys } from "@/src/lib/queryKeys";
 
@@ -27,5 +27,18 @@ export function useGetPostLikes(postId: string) {
     initialPageParam: 1,
     enabled: !!postId && !!authHeaders.Authorization,
     staleTime: 0, // Always refetch to ensure fresh data for likes modal
+  });
+}
+/**
+ * Query for post like count
+ */
+export function usePostLikeCountQuery(postId: string) {
+  const authHeaders = useAuthHeaders();
+
+  return useQuery({
+    queryKey: queryKeys.engagement.postLikes.count(postId),
+    queryFn: () => getPostLikeCount(postId, authHeaders),
+    enabled: !!postId && !!authHeaders.Authorization,
+    staleTime: 60 * 1000,
   });
 }

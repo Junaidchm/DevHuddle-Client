@@ -1,7 +1,7 @@
 "use client";
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { getComments, getCommentCount, getCommentReplies, getCommentPreview } from "@/src/services/api/engagement.service";
+import { getComments, getCommentCount, getCommentReplies, getCommentPreview, getCommentLikeCount } from "@/src/services/api/engagement.service";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 import { CommentListResponse } from "@/src/app/types/feed";
 import { queryKeys } from "@/src/lib/queryKeys";
@@ -65,6 +65,20 @@ export function useCommentRepliesQuery(commentId: string, enabled: boolean = fal
     queryFn: () => getCommentReplies(commentId, 10, authHeaders),
     enabled: enabled && !!commentId && !!authHeaders.Authorization,
     staleTime: 30 * 1000, // 30 seconds
+  });
+}
+
+/**
+ * Query for comment like count
+ */
+export function useCommentLikeCountQuery(commentId: string) {
+  const authHeaders = useAuthHeaders();
+
+  return useQuery({
+    queryKey: queryKeys.engagement.commentLikes.count(commentId),
+    queryFn: () => getCommentLikeCount(commentId, authHeaders),
+    enabled: !!commentId && !!authHeaders.Authorization,
+    staleTime: 60 * 1000,
   });
 }
 

@@ -52,6 +52,8 @@ export interface WebSocketContextType {
   isConnected: boolean;
   reconnect: () => void;
   sendReadReceipt: (conversationId: string, messageId: string) => void;
+  joinPostRoom: (postId: string) => void;
+  leavePostRoom: (postId: string) => void;
 }
 
 // ==================== Configuration ====================
@@ -281,6 +283,20 @@ class WebSocketManager {
     }
   }
 
+  joinRoom(roomId: string): void {
+    if (this.notificationSocket?.readyState === WebSocket.OPEN) {
+      this.notificationSocket.send(JSON.stringify({ type: 'join_room', roomId }));
+      console.log(`[WebSocket] 🚪 Joined room: ${roomId}`);
+    }
+  }
+
+  leaveRoom(roomId: string): void {
+    if (this.notificationSocket?.readyState === WebSocket.OPEN) {
+      this.notificationSocket.send(JSON.stringify({ type: 'leave_room', roomId }));
+      console.log(`[WebSocket] 🚪 Left room: ${roomId}`);
+    }
+  }
+
   // ==================== Private Methods ====================
 
   private updateState(newState: ConnectionState): void {
@@ -358,10 +374,15 @@ class WebSocketManager {
         return;
       }
 
-      // Handle notification messages (existing)
       if (message.type === "new_notification" || message.type === "unread_count") {
         console.log(`[WebSocket] 🔔 Routing notification message: ${message.type}`);
         this.handleNotificationMessage(message);
+        return;
+      }
+
+      if (message.type === "engagement_update") {
+        console.log(`[WebSocket] 📈 Routing engagement update`);
+        this.handleEngagementUpdate(message);
         return;
       }
 
@@ -1088,10 +1109,11 @@ class WebSocketManager {
 
   private handleNotificationMessage(message: WebSocketMessage): void {
     if (!this.userId || !this.queryClient) return;
+    const data = message.data as any;
 
     switch (message.type) {
       case "new_notification":
-        console.log("[WebSocket] 🔔 New notification received:", message.data);
+        console.log("[WebSocket] 🔔 New notification received:", data);
         
         // 1. Update Notification List Cache (Prepend to Infinite Query)
         const listQueryKey = queryKeys.notifications.list(this.userId);
@@ -1158,18 +1180,37 @@ class WebSocketManager {
         break;
 
       case "unread_count":
-        const unreadData = message.data as any;
-        if (unreadData && typeof unreadData.unreadCount === "number") {
-          console.log("[WebSocket] 🔢 Unread count updated:", unreadData.unreadCount);
-          this.queryClient.setQueryData(
-            queryKeys.notifications.count(this.userId),
-            { unreadCount: unreadData.unreadCount }
-          );
-        }
+        this.queryClient.setQueryData(
+          queryKeys.notifications.count(this.userId),
+          data.count
+        );
         break;
+    }
+  }
 
-      default:
-        console.warn("[WebSocket] Unknown message type:", message.type);
+  /**
+   * Handle real-time engagement updates (likes, comments)
+   */
+  private handleEngagementUpdate(message: WebSocketMessage): void {
+    if (!this.queryClient) return;
+    
+    const data = message.data as any;
+    if (!data) return;
+
+    const { type, postId, commentId } = data;
+
+    // Invalidate relevant queries based on update type
+    if (type === 'POST_LIKE_UPDATE' || type === 'PROJECT_LIKE_UPDATE') {
+      console.log(`[WebSocket] 💖 Invalidating likes for post: ${postId}`);
+      this.queryClient.invalidateQueries({ queryKey: queryKeys.engagement.postLikes.count(postId) });
+    } else if (type === 'POST_COMMENT_CREATED' || type === 'PROJECT_COMMENT_CREATED' || 
+               type === 'POST_COMMENT_DELETED' || type === 'PROJECT_COMMENT_DELETED') {
+        console.log(`[WebSocket] 💬 Invalidating comments for post: ${postId}`);
+        this.queryClient.invalidateQueries({ queryKey: queryKeys.engagement.comments.count(postId) });
+        this.queryClient.invalidateQueries({ queryKey: queryKeys.engagement.comments.all(postId) });
+    } else if (type === 'COMMENT_LIKE_UPDATE' || type === 'PROJECT_COMMENT_LIKE_UPDATE') {
+        console.log(`[WebSocket] 💝 Invalidating likes for comment: ${commentId}`);
+        this.queryClient.invalidateQueries({ queryKey: queryKeys.engagement.commentLikes.count(commentId) });
     }
   }
 
@@ -1433,12 +1474,26 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const joinPostRoom = useCallback((postId: string) => {
+    if (managerRef.current) {
+      managerRef.current.joinRoom(postId);
+    }
+  }, []);
+
+  const leavePostRoom = useCallback((postId: string) => {
+    if (managerRef.current) {
+      managerRef.current.leaveRoom(postId);
+    }
+  }, []);
+
   const value: WebSocketContextType = {
     connectionState,
     sendMessage,
     isConnected: connectionState === "connected",
     reconnect,
     sendReadReceipt,
+    joinPostRoom,
+    leavePostRoom,
   };
 
   return (

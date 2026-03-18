@@ -32,7 +32,7 @@ const NavLink = ({ href, icon, label, isActive, count }: NavLinkProps) => {
     <Link
       href={href}
       className={cn(
-        "flex flex-col items-center justify-center px-3 py-1 min-w-[70px] relative group transition-colors",
+        "flex flex-col items-center justify-center px-2 sm:px-3 py-1 min-w-[60px] sm:min-w-[70px] relative group transition-colors",
         isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
       )}
     >
@@ -46,7 +46,7 @@ const NavLink = ({ href, icon, label, isActive, count }: NavLinkProps) => {
           </span>
         ) : null}
       </div>
-      <span className="text-[10px] sm:text-xs mt-1 font-medium hidden md:block">{label}</span>
+      <span className="text-[10px] mt-1 font-medium hidden lg:block">{label}</span>
       {isActive && (
         <span className="absolute bottom-0 left-0 w-full h-[2px] bg-primary rounded-t-full" />
       )}
@@ -90,7 +90,7 @@ export default function NavBar() {
         </div>
 
         {/* Desktop Navigation */}
-        <div className="flex items-center gap-1 sm:gap-6 flex-1 justify-end md:justify-center">
+        <div className="hidden md:flex items-center gap-1 sm:gap-6 flex-1 justify-center">
             <NavLink
               href="/"
               label="Home"
@@ -124,7 +124,7 @@ export default function NavBar() {
              />
              
              {/* Profile Dropdown Logic - simplified for now */}
-             <div className="hidden md:flex flex-col items-center justify-center px-2 cursor-pointer group relative">
+             <div className="flex flex-col items-center justify-center px-2 cursor-pointer group relative">
                 <Link href={session?.user?.username ? `/profile/${session.user.username}` : "#"} className="flex flex-col items-center">
                     <img
                         src={avatarSrc}
@@ -140,7 +140,7 @@ export default function NavBar() {
         </div>
 
         {/* Mobile Search - Visible only on mobile */}
-        <div className="md:hidden flex-1 max-w-[200px]">
+        <div className="md:hidden flex-1 max-w-[200px] ml-auto mr-2">
             {session?.user && <UserSearch />}
         </div>
         
@@ -155,7 +155,7 @@ export default function NavBar() {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-border bg-white p-4 absolute w-full shadow-lg">
+        <div className="md:hidden border-t border-border bg-white p-4 absolute w-full shadow-lg z-50">
            <div className="flex flex-col gap-4">
                 <Link href={session?.user?.username ? `/profile/${session.user.username}` : "#"} className="flex items-center gap-3 p-2 hover:bg-muted rounded-md" onClick={() => setIsMobileMenuOpen(false)}>
                     <img
@@ -168,7 +168,32 @@ export default function NavBar() {
                         <span className="text-sm text-muted-foreground">View Profile</span>
                      </div>
                 </Link>
-                {/* Add other mobile links here if needed */}
+                <div className="h-px bg-border w-full" />
+                <Link href="/" className="flex items-center gap-3 p-2 hover:bg-muted rounded-md" onClick={() => setIsMobileMenuOpen(false)}>
+                    <Home className="w-5 h-5" />
+                    <span>Home</span>
+                </Link>
+                <Link href="/projects" className="flex items-center gap-3 p-2 hover:bg-muted rounded-md" onClick={() => setIsMobileMenuOpen(false)}>
+                    <Briefcase className="w-5 h-5" />
+                    <span>Projects</span>
+                </Link>
+                <Link href="/chat" className="flex items-center gap-3 p-2 hover:bg-muted rounded-md" onClick={() => setIsMobileMenuOpen(false)}>
+                    <MessageSquare className="w-5 h-5" />
+                    <span>Messaging</span>
+                </Link>
+                <Link href="/hubs" className="flex items-center gap-3 p-2 hover:bg-muted rounded-md" onClick={() => setIsMobileMenuOpen(false)}>
+                    <div className="font-bold text-lg leading-none w-5 text-center">#</div>
+                    <span>Hubs</span>
+                </Link>
+                <Link href="/notification" className="flex items-center gap-3 p-2 hover:bg-muted rounded-md relative" onClick={() => setIsMobileMenuOpen(false)}>
+                    <Bell className="w-5 h-5" />
+                    <span>Notifications</span>
+                    {unreadCount > 0 && (
+                      <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5 rounded-full">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                </Link>
            </div>
         </div>
       )}

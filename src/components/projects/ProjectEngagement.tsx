@@ -6,6 +6,9 @@ import ShareProjectModal from "./modals/ShareProjectModal";
 import ReportProjectModal from "./modals/ReportProjectModal";
 import { Button } from "@/src/components/ui/button";
 import { cn } from "@/src/lib/utils";
+import { usePostLikeCountQuery } from "../feed/queries/useGetPostLikes";
+import { useCommentCountQuery } from "../feed/queries/useCommentsQeury";
+import { useMemo } from "react";
 
 interface ProjectEngagementProps {
   project: Project;
@@ -21,6 +24,21 @@ export default function ProjectEngagement({
   const [showComments, setShowComments] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+
+  // Reactively fetch engagement counts
+  const { data: likeCountData } = usePostLikeCountQuery(project.id);
+  const { data: commentCountData } = useCommentCountQuery(project.id);
+
+  const engagement = useMemo(() => {
+    const reactiveLikesCount = likeCountData?.success ? likeCountData.count : undefined;
+    const reactiveCommentsCount = commentCountData?.success ? commentCountData.count : undefined;
+
+    return {
+      ...project.engagement,
+      likesCount: reactiveLikesCount ?? project.engagement.likesCount,
+      commentsCount: reactiveCommentsCount ?? project.engagement.commentsCount,
+    };
+  }, [project.engagement, likeCountData, commentCountData]);
 
   return (
     <>
@@ -46,7 +64,7 @@ export default function ProjectEngagement({
                   project.engagement.isLiked ? "fill-current scale-110" : "group-hover:scale-110"
                 )}
               />
-              <span className="font-semibold">{project.engagement.likesCount}</span>
+              <span className="font-semibold">{engagement.likesCount}</span>
             </Button>
 
             <Button
@@ -59,7 +77,7 @@ export default function ProjectEngagement({
               )}
             >
               <MessageCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
-              <span className="font-semibold">{project.engagement.commentsCount}</span>
+              <span className="font-semibold">{engagement.commentsCount}</span>
             </Button>
 
             {/* <Button

@@ -17,6 +17,7 @@ import { Badge } from "@/src/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/src/components/ui/avatar";
 import { Button } from "@/src/components/ui/button";
 import { getMediaUrl } from "@/src/utils/media";
+import { useWebSocket } from "@/src/contexts/WebSocketContext";
 
 interface ProjectDetailProps {
   project: Project;
@@ -29,12 +30,26 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
   );
 
 
+  const { joinPostRoom, leavePostRoom } = useWebSocket();
+
   // Track view on mount
   useEffect(() => {
     trackProjectView(project.id, authHeaders).catch(() => {
       // Silent fail for view tracking
     });
   }, [project.id, authHeaders]);
+
+  // Join project-specific WebSocket room for real-time engagement updates
+  useEffect(() => {
+    if (project.id) {
+      console.log(`[WebSocket] 🛠️ Entering room for project: ${project.id}`);
+      joinPostRoom(project.id);
+      return () => {
+        console.log(`[WebSocket] 🚪 Leaving room for project: ${project.id}`);
+        leavePostRoom(project.id);
+      };
+    }
+  }, [project.id, joinPostRoom, leavePostRoom]);
 
   const handleLike = () => {
     if (project.engagement.isLiked) {

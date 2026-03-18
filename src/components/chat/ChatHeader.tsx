@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useSession } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import { Button } from "@/src/components/ui/button";
-import { Phone, Video, MoreVertical, AlertCircle, Users } from "lucide-react";
+import { Phone, Video, MoreVertical, AlertCircle, Users, ChevronLeft } from "lucide-react";
 import { ConversationWithMetadata } from "@/src/types/chat.types";
 import { PROFILE_DEFAULT_URL } from "@/src/constants";
 import { useVideoCall } from "@/src/contexts/VideoCallContext";
@@ -15,13 +15,15 @@ interface ChatHeaderProps {
   currentUserId: string;
   isConnected: boolean;
   onViewInfo?: () => void;
+  onBack?: () => void;
 }
 
 export function ChatHeader({ 
   conversation, 
   currentUserId, 
   isConnected,
-  onViewInfo 
+  onViewInfo,
+  onBack
 }: ChatHeaderProps) {
   const { data: session } = useSession();
   const { startCall } = useVideoCall();
@@ -93,25 +95,37 @@ export function ChatHeader({
 
   return (
     <>
-      <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm h-[73px]">
-        <div 
-          className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 p-2 -ml-2 rounded-lg transition-colors"
-          onClick={onViewInfo}
-        >
-          <Avatar className="w-10 h-10 border border-border">
-            <AvatarImage src={image || undefined} alt={title} className="object-cover" />
-            <AvatarFallback className={isGroup ? "bg-primary/10 text-primary" : ""}>
-              {isGroup && !image ? <Users className="w-5 h-5" /> : fallback}
-            </AvatarFallback>
-          </Avatar>
-          
-          <div className="flex flex-col">
-            <h3 className="font-semibold text-foreground leading-none mb-1">
-              {title}
-            </h3>
-            <p className="text-xs text-muted-foreground leading-none">
-               {subtitle}
-            </p>
+      <div className="bg-card border-b border-border px-3 sm:px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm h-[73px]">
+        <div className="flex items-center gap-1 md:gap-3 min-w-0">
+          {onBack && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden -ml-4 shrink-0 rounded-full"
+              onClick={onBack}
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </Button>
+          )}
+          <div 
+            className="flex items-center gap-2 sm:gap-3 cursor-pointer hover:bg-muted/50 p-2 -ml-2 rounded-lg transition-colors min-w-0 overflow-hidden"
+            onClick={onViewInfo}
+          >
+            <Avatar className="w-10 h-10 border border-border">
+              <AvatarImage src={image || undefined} alt={title} className="object-cover" />
+              <AvatarFallback className={isGroup ? "bg-primary/10 text-primary" : ""}>
+                {isGroup && !image ? <Users className="w-5 h-5" /> : fallback}
+              </AvatarFallback>
+            </Avatar>
+            
+            <div className="flex flex-col">
+              <h3 className="font-semibold text-foreground leading-none mb-1">
+                {title}
+              </h3>
+              <p className="text-xs text-muted-foreground leading-none">
+                 {subtitle}
+              </p>
+            </div>
           </div>
         </div>
 

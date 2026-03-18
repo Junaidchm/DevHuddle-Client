@@ -39,6 +39,7 @@ interface ChatWindowProps {
   onLoadMore?: () => void;
   isConnected?: boolean;
   onConversationDeleted?: () => void;
+  onBack?: () => void;
 }
 
 export default function ChatWindow({
@@ -53,6 +54,7 @@ export default function ChatWindow({
   onLoadMore,
   isConnected = true,
   onConversationDeleted,
+  onBack,
 }: ChatWindowProps) {
 
 
@@ -383,6 +385,7 @@ export default function ChatWindow({
           currentUserId={currentUserId}
           isConnected={isConnected}
           onViewInfo={() => setShowDetails(prev => !prev)}
+          onBack={onBack}
         />
 
         {/* Pinned Messages Bar */}

@@ -182,7 +182,11 @@ export type WebSocketMessageType =
   | 'participant_joined'
   | 'participant_removed'
   | 'participant_left'
-  | 'role_updated';
+  | 'role_updated'
+  // Engagement/Real-time types
+  | 'join_room'
+  | 'leave_room'
+  | 'engagement_update';
 
 export interface WebSocketMessage<T = unknown> {
   type: WebSocketMessageType;

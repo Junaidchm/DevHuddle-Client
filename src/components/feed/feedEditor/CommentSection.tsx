@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
-import { useCommentsInfiniteQuery } from "../queries/useCommentsQeury";
+import { useCommentsInfiniteQuery, useCommentLikeCountQuery } from "../queries/useCommentsQeury";
 import {
   useCreateCommentMutation,
   useUpdateCommentMutation,
@@ -263,6 +263,13 @@ const ReplyItem: React.FC<{
   const updateMutation = useUpdateCommentMutation();
   const deleteMutation = useDeleteCommentMutation();
   const likeMutation = useCommentLikeMutation();
+  
+  // Reactively fetch like count
+  const { data: likeCountData } = useCommentLikeCountQuery(reply.id);
+
+  const likesCount = useMemo(() => {
+    return likeCountData?.success ? likeCountData.count : reply.likesCount;
+  }, [reply.likesCount, likeCountData]);
 
   const handleEdit = async () => {
     if (!editContent.trim()) return;
@@ -364,7 +371,7 @@ const ReplyItem: React.FC<{
             <Heart
               className={`w-3 h-3 ${reply.isLiked ? "fill-current" : ""}`}
             />
-            {reply.likesCount > 0 && reply.likesCount}
+            {likesCount > 0 && likesCount}
             <span>Like</span>
           </button>
           {commentControl !== "NOBODY" && (
@@ -433,6 +440,13 @@ const CommentItem: React.FC<{
   const updateMutation = useUpdateCommentMutation();
   const deleteMutation = useDeleteCommentMutation();
   const likeMutation = useCommentLikeMutation();
+  
+  // Reactively fetch like count
+  const { data: likeCountData } = useCommentLikeCountQuery(comment.id);
+
+  const likesCount = useMemo(() => {
+    return likeCountData?.success ? likeCountData.count : comment.likesCount;
+  }, [comment.likesCount, likeCountData]);
 
   const handleEdit = async () => {
     if (!editContent.trim()) return;
@@ -544,7 +558,7 @@ const CommentItem: React.FC<{
               <Heart
                 className={`w-3 h-3 ${comment.isLiked ? "fill-current" : ""}`}
               />
-              {comment.likesCount > 0 && comment.likesCount}
+              {likesCount > 0 && likesCount}
               <span>Like</span>
             </button>
             {commentControl !== "NOBODY" && (

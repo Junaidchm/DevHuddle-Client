@@ -113,7 +113,7 @@ const ProfileHeader = ({ username, initialProfile, currentUserId }: ProfileHeade
   const router = useRouter();
 
   return (
-    <div className="max-w-[1128px] mx-auto px-0 md:px-0 py-4 grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <div className="max-w-[1128px] mx-auto px-4 md:px-0 py-4 grid grid-cols-1 lg:grid-cols-4 gap-6">
 
       {/* Left Sidebar (Main Profile Card) - Spans 3 columns on large screens */}
       {/* ... (omitted for brevity, no changes here) */}
@@ -122,7 +122,7 @@ const ProfileHeader = ({ username, initialProfile, currentUserId }: ProfileHeade
         {/* Profile Card */}
         <Card className="rounded-lg shadow-sm border border-border overflow-hidden relative">
             {/* Same content as before */}
-            <div className="relative h-[201px] w-full bg-[#A0B4B7]">
+            <div className="relative h-[150px] sm:h-[201px] w-full bg-[#A0B4B7]">
                 <CoverImage 
                     src={profile.coverImage} 
                     editable={isOwnProfile && !isUploading} 
@@ -145,14 +145,14 @@ const ProfileHeader = ({ username, initialProfile, currentUserId }: ProfileHeade
                 />
             </div>
 
-            <div className="px-6 pb-6 relative">
+            <div className="px-4 sm:px-6 pb-6 relative">
                  {/* Avatar overlapping cover */}
-                 <div className="absolute -top-[100px] left-6">
+                 <div className="absolute -top-12 sm:-top-[100px] left-4 sm:left-6">
                     <div className="rounded-full p-0.5 bg-background">
                          <Avatar 
                              src={profile.profilePicture || PROFILE_DEFAULT_URL} 
                              alt={profile.name} 
-                             className="w-[152px] h-[152px] border-4 border-background shadow-md"
+                             className="w-24 h-24 sm:w-[152px] sm:h-[152px] border-4 border-background shadow-md"
                          />
                     </div>
                 </div>

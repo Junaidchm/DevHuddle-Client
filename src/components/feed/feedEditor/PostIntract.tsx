@@ -18,6 +18,8 @@ import { Button } from "@/src/components/ui/button";
 import { cn } from "@/lib/utils";
 import LikesModal from "./LikesModal";
 import { queryKeys } from "@/src/lib/queryKeys";
+import { usePostLikeCountQuery } from "../queries/useGetPostLikes";
+import { useCommentCountQuery } from "../queries/useCommentsQeury";
 
 // SocialActionButton component
 interface SocialActionButtonProps {
@@ -80,6 +82,10 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
   const currentUserId = user?.id || "";
   const isOwnPost = post.userId === currentUserId;
 
+  // Reactively fetch engagement counts (these will update via WebSocket invalidation)
+  const { data: likeCountData } = usePostLikeCountQuery(post.id || "");
+  const { data: commentCountData } = useCommentCountQuery(post.id || "");
+
   // Auto-expand comments if commentId is present in URL
   React.useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -91,35 +97,25 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
 
   // Get engagement data from post, with reactive cache updates
   const engagement: PostEngagement = useMemo(() => {
-    // First, try to get from post prop
-    if (post.engagement) {
-      return post.engagement;
-    }
+    // 1. Use reactive counts if available
+    const reactiveLikesCount = likeCountData?.success ? likeCountData.count : undefined;
+    const reactiveCommentsCount = commentCountData?.success ? commentCountData.count : undefined;
 
-    // Fallback: try to get from cache
-    const cachedPost = queryClient.getQueryData<InfiniteData<PostsPage, string | null>>(
-      queryKeys.feed.all
-    );
-    
-    if (cachedPost) {
-      const foundPost = cachedPost.pages
-        .flatMap(page => page.posts)
-        .find(p => p.id === post.id);
-      
-      if (foundPost?.engagement) {
-        return foundPost.engagement;
-      }
-    }
+    // 2. Try to get from post prop as baseline
+    const baseEngagement = post.engagement || {
+      likesCount: 0,
+      commentsCount: 0,
+      sharesCount: 0,
+      isLiked: false,
+      isShared: false,
+    };
 
-    // Default fallback
     return {
-    likesCount: 0,
-    commentsCount: 0,
-    sharesCount: 0,
-    isLiked: false,
-    isShared: false,
-  };
-  }, [post, queryClient]);
+      ...baseEngagement,
+      likesCount: reactiveLikesCount ?? baseEngagement.likesCount,
+      commentsCount: reactiveCommentsCount ?? baseEngagement.commentsCount,
+    };
+  }, [post.engagement, likeCountData, commentCountData]);
 
   const handleLike = () => {
     if (!post.id) return;
