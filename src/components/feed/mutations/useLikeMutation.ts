@@ -86,10 +86,31 @@ export function useLikeMutation() {
       );
 
       // Update like count query
+      // IMPORTANT: `old` is undefined when the query hasn't fetched yet (staleTime: 60s).
+      // In that case, read the real count from the already-loaded feed cache so we never reset to 0.
       queryClient.setQueryData(
         queryKeys.engagement.postLikes.count(postId),
         (old: { success: boolean; count: number } | undefined) => {
-          const currentCount = old?.count || 0;
+          let currentCount = old?.count;
+
+          // If per-post count query has no cached data yet, search ALL feed caches
+          // to find the real count (works for RECENT, FOR_YOU, user feeds, etc.)
+          if (currentCount === undefined) {
+            const allFeedQueries = queryClient.getQueriesData<InfiniteData<PostsPage, string | null>>(
+              { queryKey: queryKeys.feed.all }
+            );
+            for (const [, feedData] of allFeedQueries) {
+              const foundPost = feedData?.pages
+                ?.flatMap((p) => p.posts)
+                ?.find((p) => p.id === postId);
+              if (foundPost?.engagement?.likesCount !== undefined) {
+                currentCount = foundPost.engagement.likesCount;
+                break;
+              }
+            }
+            currentCount = currentCount ?? 0;
+          }
+
           return {
             success: true,
             count: isLiked ? Math.max(0, currentCount - 1) : currentCount + 1,
