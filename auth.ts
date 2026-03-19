@@ -5,6 +5,7 @@ import Google from "next-auth/providers/google";
 import { API_ROUTES, getApiBaseUrl } from "./src/constants/api.routes";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
