@@ -1,7 +1,8 @@
 "use client";
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { getPostLikes, getPostLikeCount, getPostShareLink, getProjectLikeCount } from "@/src/services/api/engagement.service";
+import { useSession } from "next-auth/react";
+import { getPostLikes, getPostLikeCount, getPostShareLink, getProjectLikeCount, getPostLikeStatus } from "@/src/services/api/engagement.service";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 import { queryKeys } from "@/src/lib/queryKeys";
 
@@ -38,6 +39,22 @@ export function usePostLikeCountQuery(postId: string, isProject: boolean = false
   return useQuery({
     queryKey: queryKeys.engagement.postLikes.count(postId),
     queryFn: () => isProject ? getProjectLikeCount(postId, authHeaders) : getPostLikeCount(postId, authHeaders),
+    enabled: !!postId && !!authHeaders.Authorization,
+    staleTime: 60 * 1000,
+  });
+}
+
+/**
+ * Query for post like status (is currently liked by user)
+ */
+export function usePostLikeStatusQuery(postId: string, isProject: boolean = false) {
+  const authHeaders = useAuthHeaders();
+  const { data: session } = useSession();
+  const userId = session?.user?.id || "";
+  
+  return useQuery({
+    queryKey: queryKeys.engagement.postLikes.status(postId, userId), 
+    queryFn: () => getPostLikeStatus(postId, authHeaders),
     enabled: !!postId && !!authHeaders.Authorization,
     staleTime: 60 * 1000,
   });

@@ -49,7 +49,7 @@ interface PostCreationState {
 }
 
 interface PostCreationContextType extends PostCreationState {
-    setContent: (content: string) => void;
+    setContent: React.Dispatch<React.SetStateAction<string>>;
     setStatus: (status: PostCreationStatus) => void;
     addMedia: (files: File[]) => Promise<void>;
     removeMedia: (id: string) => void;

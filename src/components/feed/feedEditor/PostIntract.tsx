@@ -18,7 +18,7 @@ import { Button } from "@/src/components/ui/button";
 import { cn } from "@/lib/utils";
 import LikesModal from "./LikesModal";
 import { queryKeys } from "@/src/lib/queryKeys";
-import { usePostLikeCountQuery } from "../queries/useGetPostLikes";
+import { usePostLikeCountQuery, usePostLikeStatusQuery } from "../queries/useGetPostLikes";
 import { useCommentCountQuery } from "../queries/useCommentsQeury";
 
 // SocialActionButton component
@@ -82,9 +82,10 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
   const currentUserId = user?.id || "";
   const isOwnPost = post.userId === currentUserId;
 
-  // Reactively fetch engagement counts (these will update via WebSocket invalidation)
+  // Reactively fetch engagement counts and status (these will update via WebSocket invalidation)
   const { data: likeCountData } = usePostLikeCountQuery(post.id || "");
   const { data: commentCountData } = useCommentCountQuery(post.id || "");
+  const { data: likeStatusData } = usePostLikeStatusQuery(post.id || "");
 
   // Auto-expand comments if commentId is present in URL
   React.useEffect(() => {
@@ -97,9 +98,10 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
 
   // Get engagement data from post, with reactive cache updates
   const engagement: PostEngagement = useMemo(() => {
-    // 1. Use reactive counts if available
+    // 1. Use reactive counts and status if available
     const reactiveLikesCount = likeCountData?.success ? likeCountData.count : undefined;
     const reactiveCommentsCount = commentCountData?.success ? commentCountData.count : undefined;
+    const reactiveIsLiked = likeStatusData?.success ? likeStatusData.isLiked : undefined;
 
     // 2. Try to get from post prop as baseline
     const baseEngagement = post.engagement || {
@@ -114,8 +116,9 @@ export const PostIntract: React.FC<PostIntractProps> = ({ post }) => {
       ...baseEngagement,
       likesCount: reactiveLikesCount ?? baseEngagement.likesCount,
       commentsCount: reactiveCommentsCount ?? baseEngagement.commentsCount,
+      isLiked: reactiveIsLiked ?? baseEngagement.isLiked,
     };
-  }, [post.engagement, likeCountData, commentCountData]);
+  }, [post.engagement, likeCountData, commentCountData, likeStatusData]);
 
   const handleLike = () => {
     if (!post.id) return;

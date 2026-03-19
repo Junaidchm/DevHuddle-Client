@@ -81,7 +81,7 @@ export function useLikeMutation() {
 
       // Update like status query
       queryClient.setQueryData(
-        queryKeys.engagement.postLikes.status(postId, ""),
+        queryKeys.engagement.postLikes.status(postId, session?.user?.id || ""),
         { success: true, isLiked: !isLiked }
       );
 
@@ -146,7 +146,7 @@ export function useLikeMutation() {
       });
       
       queryClient.invalidateQueries({
-        queryKey: queryKeys.engagement.postLikes.status(variables.postId, ""),
+        queryKey: queryKeys.engagement.postLikes.status(variables.postId, session?.user?.id || ""),
       });
  
       // Invalidate likes list to ensure modal shows updated data

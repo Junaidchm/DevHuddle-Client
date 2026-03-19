@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
-import { useCommentsInfiniteQuery, useCommentLikeCountQuery } from "../queries/useCommentsQeury";
+import { useCommentsInfiniteQuery, useCommentLikeCountQuery, useCommentLikeStatusQuery } from "../queries/useCommentsQeury";
 import {
   useCreateCommentMutation,
   useUpdateCommentMutation,
@@ -264,12 +264,17 @@ const ReplyItem: React.FC<{
   const deleteMutation = useDeleteCommentMutation();
   const likeMutation = useCommentLikeMutation();
   
-  // Reactively fetch like count
+  // Reactively fetch like count and status
   const { data: likeCountData } = useCommentLikeCountQuery(reply.id);
+  const { data: likeStatusData } = useCommentLikeStatusQuery(reply.id);
 
   const likesCount = useMemo(() => {
     return likeCountData?.success ? likeCountData.count : reply.likesCount;
   }, [reply.likesCount, likeCountData]);
+
+  const isLiked = useMemo(() => {
+    return likeStatusData?.success ? likeStatusData.isLiked : reply.isLiked;
+  }, [reply.isLiked, likeStatusData]);
 
   const handleEdit = async () => {
     if (!editContent.trim()) return;
@@ -357,19 +362,19 @@ const ReplyItem: React.FC<{
               if (likeMutation.isPending) return;
               likeMutation.mutate({
                 commentId: reply.id,
-                isLiked: reply.isLiked || false,
+                isLiked: isLiked || false,
                 postId,
               });
             }}
             disabled={likeMutation.isPending}
             className={`text-xs font-medium flex items-center gap-1 ${
-              reply.isLiked
+              isLiked
                 ? "text-blue-600 fill-blue-600"
                 : "text-gray-600 hover:text-blue-600"
             } ${likeMutation.isPending ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             <Heart
-              className={`w-3 h-3 ${reply.isLiked ? "fill-current" : ""}`}
+              className={`w-3 h-3 ${isLiked ? "fill-current" : ""}`}
             />
             {likesCount > 0 && likesCount}
             <span>Like</span>
@@ -441,12 +446,17 @@ const CommentItem: React.FC<{
   const deleteMutation = useDeleteCommentMutation();
   const likeMutation = useCommentLikeMutation();
   
-  // Reactively fetch like count
+  // Reactively fetch like count and status
   const { data: likeCountData } = useCommentLikeCountQuery(comment.id);
+  const { data: likeStatusData } = useCommentLikeStatusQuery(comment.id);
 
   const likesCount = useMemo(() => {
     return likeCountData?.success ? likeCountData.count : comment.likesCount;
   }, [comment.likesCount, likeCountData]);
+
+  const isLiked = useMemo(() => {
+    return likeStatusData?.success ? likeStatusData.isLiked : comment.isLiked;
+  }, [comment.isLiked, likeStatusData]);
 
   const handleEdit = async () => {
     if (!editContent.trim()) return;
@@ -542,13 +552,13 @@ const CommentItem: React.FC<{
                 if (likeMutation.isPending) return;
                 likeMutation.mutate({
                   commentId: comment.id,
-                  isLiked: comment.isLiked || false,
+                  isLiked: isLiked || false,
                   postId,
                 });
               }}
               disabled={likeMutation.isPending}
               className={`text-xs font-medium flex items-center gap-1 ${
-                comment.isLiked
+                isLiked
                   ? "text-blue-600 fill-blue-600"
                   : "text-gray-600 hover:text-blue-600"
               } ${
@@ -556,7 +566,7 @@ const CommentItem: React.FC<{
               }`}
             >
               <Heart
-                className={`w-3 h-3 ${comment.isLiked ? "fill-current" : ""}`}
+                className={`w-3 h-3 ${isLiked ? "fill-current" : ""}`}
               />
               {likesCount > 0 && likesCount}
               <span>Like</span>

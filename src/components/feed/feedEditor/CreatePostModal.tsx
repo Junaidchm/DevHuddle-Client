@@ -1,14 +1,19 @@
 "use client";
 
-import React, { useState, useRef, useContext, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   X,
   Image as ImageIcon,
   Video,
   Smile,
-  MoreHorizontal,
   BarChart2,
+  Globe,
+  Users,
+  Lock,
+  ChevronDown,
+  Trash2,
 } from "lucide-react";
+import EmojiPicker from "emoji-picker-react";
 import { Poll, NewPost } from "@/src/app/types/feed";
 import dynamic from "next/dynamic";
 import toast from "react-hot-toast";
@@ -77,6 +82,7 @@ export default function CreatePostModal({
   const [poll, setPoll] = useState<Poll | null>(null); // Poll still local for now as it's separate complex object
 
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   // Track active media for editing
   const [activeMediaId, setActiveMediaId] = useState<string | undefined>(undefined);
@@ -322,12 +328,28 @@ export default function CreatePostModal({
               >
                 <Video size={20} className="text-gray-600" />
               </button>
-              <button className="p-2 hover:bg-gray-100 rounded-lg">
-                <Smile size={20} className="text-gray-600" />
-              </button>
-              <button onClick={() => setShowPollModal(true)} className="p-2 hover:bg-gray-100 rounded-lg">
-                <BarChart2 size={20} className="text-gray-600" />
-              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <Smile size={20} className="text-gray-600" />
+                </button>
+                {showEmojiPicker && (
+                  <div className="absolute bottom-full left-0 z-50 mb-2 shadow-xl rounded-xl overflow-hidden">
+                    <EmojiPicker
+                      onEmojiClick={(emojiData) => {
+                        setContent((prev) => prev + emojiData.emoji);
+                        setShowEmojiPicker(false);
+                      }}
+                      autoFocusSearch={false}
+                      width={350}
+                      height={400}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

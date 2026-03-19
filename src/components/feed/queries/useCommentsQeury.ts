@@ -1,7 +1,8 @@
 "use client";
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { getComments, getCommentCount, getCommentReplies, getCommentPreview, getCommentLikeCount, getProjectCommentCount } from "@/src/services/api/engagement.service";
+import { useSession } from "next-auth/react";
+import { getComments, getCommentCount, getCommentReplies, getCommentPreview, getCommentLikeCount, getProjectCommentCount, getCommentLikeStatus } from "@/src/services/api/engagement.service";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 import { CommentListResponse } from "@/src/app/types/feed";
 import { queryKeys } from "@/src/lib/queryKeys";
@@ -77,6 +78,22 @@ export function useCommentLikeCountQuery(commentId: string) {
   return useQuery({
     queryKey: queryKeys.engagement.commentLikes.count(commentId),
     queryFn: () => getCommentLikeCount(commentId, authHeaders),
+    enabled: !!commentId && !!authHeaders.Authorization,
+    staleTime: 60 * 1000,
+  });
+}
+
+/**
+ * Query for comment like status (is currently liked by user)
+ */
+export function useCommentLikeStatusQuery(commentId: string) {
+  const authHeaders = useAuthHeaders();
+  const { data: session } = useSession();
+  const userId = session?.user?.id || "";
+
+  return useQuery({
+    queryKey: queryKeys.engagement.commentLikes.status(commentId, userId),
+    queryFn: () => getCommentLikeStatus(commentId, authHeaders),
     enabled: !!commentId && !!authHeaders.Authorization,
     staleTime: 60 * 1000,
   });

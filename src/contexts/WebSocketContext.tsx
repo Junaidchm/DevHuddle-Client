@@ -1225,6 +1225,18 @@ class WebSocketManager {
     if (type === 'POST_LIKE_UPDATE' || type === 'PROJECT_LIKE_UPDATE') {
       console.log(`[WebSocket] 💖 Invalidating likes for post: ${postId}`);
       this.queryClient.invalidateQueries({ queryKey: queryKeys.engagement.postLikes.count(postId) });
+      
+      if (this.userId && data.userId === this.userId) {
+        console.log(`[WebSocket] 💖 Invalidating status for ${type === 'PROJECT_LIKE_UPDATE' ? 'project' : 'post'}: ${postId} (current user match)`);
+        
+        if (type === 'PROJECT_LIKE_UPDATE') {
+          // Projects don't have a separate status query, so invalidate the project detail/list
+          this.queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(postId) });
+          this.queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
+        } else {
+          this.queryClient.invalidateQueries({ queryKey: queryKeys.engagement.postLikes.status(postId, this.userId) });
+        }
+      }
     } else if (type === 'POST_COMMENT_CREATED' || type === 'PROJECT_COMMENT_CREATED' || 
                type === 'POST_COMMENT_DELETED' || type === 'PROJECT_COMMENT_DELETED') {
         console.log(`[WebSocket] 💬 Invalidating comments for post: ${postId}`);
@@ -1239,6 +1251,11 @@ class WebSocketManager {
     } else if (type === 'COMMENT_LIKE_UPDATE' || type === 'PROJECT_COMMENT_LIKE_UPDATE') {
         console.log(`[WebSocket] 💝 Invalidating likes for comment: ${commentId}`);
         this.queryClient.invalidateQueries({ queryKey: queryKeys.engagement.commentLikes.count(commentId) });
+        
+        // ✅ Multi-session sync: Refresh comment like status if current user
+        if (this.userId && data.userId === this.userId) {
+          this.queryClient.invalidateQueries({ queryKey: queryKeys.engagement.commentLikes.status(commentId, this.userId) });
+        }
     }
   }
 

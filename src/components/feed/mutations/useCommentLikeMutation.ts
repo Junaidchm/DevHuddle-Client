@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import { likeComment, unlikeComment } from "@/src/services/api/engagement.service";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 import { InfiniteData } from "@tanstack/react-query";
@@ -22,6 +23,7 @@ import { queryKeys } from "@/src/lib/queryKeys";
 export function useCommentLikeMutation() {
   const queryClient = useQueryClient();
   const authHeaders = useAuthHeaders();
+  const { data: session } = useSession();
 
   // Helper: Update comment in flat structure (main comments + one level of replies)
   const updateCommentFlat = (
@@ -212,7 +214,7 @@ export function useCommentLikeMutation() {
 
       // Update like status query
       queryClient.setQueryData(
-        queryKeys.engagement.commentLikes.status(commentId, ""),
+        queryKeys.engagement.commentLikes.status(commentId, session?.user?.id || ""),
         { success: true, isLiked: !isLiked }
       );
 
@@ -260,7 +262,7 @@ export function useCommentLikeMutation() {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.engagement.commentLikes.status(
           variables.commentId,
-          ""
+          session?.user?.id || ""
         ),
       });
     },

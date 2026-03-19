@@ -482,8 +482,15 @@ export default function CommentSection({
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [reportingCommentId, setReportingCommentId] = useState<string | null>(null);
 
-  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch } =
     useProjectCommentsInfiniteQuery(projectId);
+
+  // Force refetch on mount to ensure we have fresh data
+  useEffect(() => {
+    if (projectId) {
+      refetch();
+    }
+  }, [projectId, refetch]);
 
   const allComments = data?.pages.flatMap((page: any) => page.data) || [];
 
