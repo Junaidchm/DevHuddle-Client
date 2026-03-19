@@ -86,6 +86,8 @@ class WebSocketManager {
   private queryClient: any = null;
   // Track processed message IDs to prevent duplication
   private processedMessageIds = new Set<string>();
+  // Track active rooms so they can be rejoined after reconnection
+  private activeRooms = new Set<string>();
 
   private constructor() {
     // Setup visibility API listener
@@ -196,6 +198,14 @@ class WebSocketManager {
         console.log("[WebSocket] Refreshing queries after connection...");
         this.queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
         this.queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.all });
+
+        // Rejoin active rooms that might have been queued before connection
+        if (this.activeRooms.size > 0) {
+          console.log(`[WebSocket] Re-joining ${this.activeRooms.size} active rooms upon connection...`);
+          this.activeRooms.forEach(roomId => {
+            this.notificationSocket?.send(JSON.stringify({ type: 'join_room', roomId }));
+          });
+        }
       }
     } else {
       this.updateState("disconnected");
@@ -285,13 +295,17 @@ class WebSocketManager {
   }
 
   joinRoom(roomId: string): void {
+    this.activeRooms.add(roomId);
     if (this.notificationSocket?.readyState === WebSocket.OPEN) {
       this.notificationSocket.send(JSON.stringify({ type: 'join_room', roomId }));
       console.log(`[WebSocket] 🚪 Joined room: ${roomId}`);
+    } else {
+      console.log(`[WebSocket] 🚪 Queued join room (socket not ready): ${roomId}`);
     }
   }
 
   leaveRoom(roomId: string): void {
+    this.activeRooms.delete(roomId);
     if (this.notificationSocket?.readyState === WebSocket.OPEN) {
       this.notificationSocket.send(JSON.stringify({ type: 'leave_room', roomId }));
       console.log(`[WebSocket] 🚪 Left room: ${roomId}`);
