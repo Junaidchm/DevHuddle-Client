@@ -157,7 +157,50 @@ export function useCommentLikeMutation() {
       queryClient.setQueryData(
         queryKeys.engagement.commentLikes.count(commentId),
         (old: { success: boolean; count: number } | undefined) => {
-          const currentCount = old?.count || 0;
+          let currentCount = old?.count;
+
+          // If the specific comment count query has no cached data yet,
+          // search all loaded comment lists for this post to find the correct baseline.
+          if (currentCount === undefined) {
+             // 1. Search in full comment queries
+             const allCommentsData = queryClient.getQueriesData<InfiniteData<{ data: Comment[]; pagination: any }>>(
+               { queryKey: queryKeys.engagement.comments.all(postId) }
+             );
+             for (const [, commentData] of allCommentsData) {
+               const foundComment = commentData?.pages
+                 ?.flatMap(p => p.data)
+                 ?.find(c => c.id === commentId || (c.replies && c.replies.find(r => r.id === commentId)));
+               
+               if (foundComment) {
+                 const actualComment = foundComment.id === commentId 
+                   ? foundComment 
+                   : foundComment.replies?.find(r => r.id === commentId);
+                 if (actualComment?.likesCount !== undefined) {
+                   currentCount = actualComment.likesCount;
+                   break;
+                 }
+               }
+             }
+
+             // 2. Fallback to preview query if not found in full lists
+             if (currentCount === undefined) {
+               const previewData = queryClient.getQueryData<any>(
+                 queryKeys.engagement.comments.preview(postId)
+               );
+               const previewComment = previewData?.data?.comment;
+               if (previewComment) {
+                 if (previewComment.id === commentId) {
+                   currentCount = previewComment.likesCount;
+                 } else if (previewComment.replies) {
+                   const foundReply = previewComment.replies.find((r: any) => r.id === commentId);
+                   if (foundReply) currentCount = foundReply.likesCount;
+                 }
+               }
+             }
+             
+             currentCount = currentCount ?? 0;
+          }
+
           return {
             success: true,
             count: isLiked

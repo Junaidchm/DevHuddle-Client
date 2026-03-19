@@ -84,7 +84,26 @@ export function useCreateCommentMutation() {
       queryClient.setQueryData(
         queryKeys.engagement.comments.count(postId),
         (old: { success: boolean; count: number } | undefined) => {
-          const currentCount = old?.count || 0;
+          let currentCount = old?.count;
+
+          // If the per-post count query has no cached data yet, search ALL feed caches
+          // to find the real count (works for RECENT, FOR_YOU, user feeds, etc.)
+          if (currentCount === undefined) {
+            const allFeedQueries = queryClient.getQueriesData<InfiniteData<PostsPage, string | null>>(
+              { queryKey: queryKeys.feed.all }
+            );
+            for (const [, feedData] of allFeedQueries) {
+              const foundPost = feedData?.pages
+                ?.flatMap((p) => p.posts)
+                ?.find((p) => p.id === postId);
+              if (foundPost?.engagement?.commentsCount !== undefined) {
+                currentCount = foundPost.engagement.commentsCount;
+                break;
+              }
+            }
+            currentCount = currentCount ?? 0;
+          }
+
           return {
             success: true,
             count: currentCount + 1,
@@ -319,7 +338,25 @@ export function useDeleteCommentMutation() {
       queryClient.setQueryData(
         queryKeys.engagement.comments.count(postId),
         (old: { success: boolean; count: number } | undefined) => {
-          const currentCount = old?.count || 0;
+          let currentCount = old?.count;
+
+          // If the per-post count query has no cached data yet, search ALL feed caches
+          if (currentCount === undefined) {
+            const allFeedQueries = queryClient.getQueriesData<InfiniteData<PostsPage, string | null>>(
+              { queryKey: queryKeys.feed.all }
+            );
+            for (const [, feedData] of allFeedQueries) {
+              const foundPost = feedData?.pages
+                ?.flatMap((p) => p.posts)
+                ?.find((p) => p.id === postId);
+              if (foundPost?.engagement?.commentsCount !== undefined) {
+                currentCount = foundPost.engagement.commentsCount;
+                break;
+              }
+            }
+            currentCount = currentCount ?? 0;
+          }
+
           return {
             success: true,
             count: Math.max(0, currentCount - 1),
