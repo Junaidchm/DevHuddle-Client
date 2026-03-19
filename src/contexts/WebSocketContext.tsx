@@ -171,6 +171,7 @@ class WebSocketManager {
 
       socket.onopen = () => {
         console.log("[WebSocket] Notification connection established");
+        this.isAuthenticated = true; // Same auth contract as chat socket — gateway already verified token
         this.updateConnectionStatus();
       };
 
@@ -356,7 +357,6 @@ class WebSocketManager {
       // Handle authentication success confirmation (legacy support or double check)
       if (message.type === "auth_success") {
         // Already handled in onopen, but safe to ignore or log
-        // console.log("Auth success confirmed by service");
         return;
       }
 
@@ -373,12 +373,9 @@ class WebSocketManager {
         return;
       }
 
-      // Only process messages if authenticated
-      if (!this.isAuthenticated) {
-        console.warn("[WebSocket] Message before authentication, ignoring");
-        return;
-      }
-
+      // ✅ FIX: Process notification & engagement messages BEFORE the isAuthenticated guard.
+      // These messages arrive from the notification WebSocket, which is authenticated by the
+      // API Gateway (JWT in query string). They must not be gated by the chat-socket auth flag.
       if (message.type === "new_notification" || message.type === "unread_count") {
         console.log(`[WebSocket] 🔔 Routing notification message: ${message.type}`);
         this.handleNotificationMessage(message);
@@ -388,6 +385,12 @@ class WebSocketManager {
       if (message.type === "engagement_update") {
         console.log(`[WebSocket] 📈 Routing engagement update`);
         this.handleEngagementUpdate(message);
+        return;
+      }
+
+      // Only process remaining messages if authenticated (chat messages)
+      if (!this.isAuthenticated) {
+        console.warn("[WebSocket] Message before authentication, ignoring");
         return;
       }
 
