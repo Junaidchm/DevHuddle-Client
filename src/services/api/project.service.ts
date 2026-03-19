@@ -278,6 +278,20 @@ export const unlikeProject = async (
   }
 };
 
+export const getProjectLikeStatus = async (
+  projectId: string,
+  headers: Record<string, string>
+): Promise<{ success: boolean; isLiked: boolean }> => {
+  try {
+    const res = await axiosInstance.get(API_ROUTES.PROJECTS.LIKE_STATUS(projectId), {
+      headers,
+    });
+    return res.data;
+  } catch (err: any) {
+    return { success: false, isLiked: false };
+  }
+};
+
 export const shareProject = async (
   projectId: string,
   data: { caption?: string; shareType?: string },

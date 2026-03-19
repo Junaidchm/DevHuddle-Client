@@ -6,6 +6,7 @@ import ProjectEngagement from "./ProjectEngagement";
 import ProjectMediaGallery from "./ProjectMediaGallery";
 import CommentSection from "./comments/CommentSection";
 import { useLikeProjectMutation } from "./hooks/useLikeProjectMutation";
+import { useProjectLikeStatusQuery } from "./hooks/useProjectLikeStatusQuery";
 import { trackProjectView } from "@/src/services/api/project.service";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 import { useEffect } from "react";
@@ -25,10 +26,12 @@ interface ProjectDetailProps {
 
 export default function ProjectDetail({ project }: ProjectDetailProps) {
   const authHeaders = useAuthHeaders();
-  const { like, unlike, isLiking, isUnliking } = useLikeProjectMutation(
-    project.id
-  );
+  const { like, unlike, isLiking, isUnliking } = useLikeProjectMutation(project.id);
 
+  // Reactively fetch the current user's like status so it never goes stale
+  const { data: likeStatusData } = useProjectLikeStatusQuery(project.id);
+  // Use reactive isLiked; fall back to server-side rendered value on first load
+  const isLiked = likeStatusData?.isLiked ?? project.engagement?.isLiked ?? false;
 
   const { joinPostRoom, leavePostRoom } = useWebSocket();
 
@@ -52,7 +55,8 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
   }, [project.id, joinPostRoom, leavePostRoom]);
 
   const handleLike = () => {
-    if (project.engagement.isLiked) {
+    // Use reactive `isLiked` — never stale, updates live via query invalidation
+    if (isLiked) {
       unlike();
     } else {
       like();
@@ -80,14 +84,14 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
                   {/* Author Meta */}
                   <div className="flex items-center gap-3 py-1">
                       <Avatar className="w-11 h-11 border border-border/80 shadow-xs">
-                           <AvatarImage src={getMediaUrl(project.author.avatar) || PROFILE_DEFAULT_URL} alt={project.author.name} className="object-cover" />
-                          <AvatarFallback className="bg-muted text-muted-foreground">{project.author.name.charAt(0)}</AvatarFallback>
+                           <AvatarImage src={getMediaUrl(project.author?.avatar) || PROFILE_DEFAULT_URL} alt={project.author?.name || "Author"} className="object-cover" />
+                          <AvatarFallback className="bg-muted text-muted-foreground">{project.author?.name?.charAt(0) || "U"}</AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
-                          <Link href={`/profile/${project.author.username}`} className="font-bold text-foreground hover:text-primary transition-colors text-base">
-                              {project.author.name}
+                          <Link href={`/profile/${project.author?.username || ""}`} className="font-bold text-foreground hover:text-primary transition-colors text-base">
+                              {project.author?.name || "Anonymous User"}
                           </Link>
-                          <p className="text-sm text-muted-foreground font-medium italic">@{project.author.username}</p>
+                          <p className="text-sm text-muted-foreground font-medium italic">@{project.author?.username || "anonymous"}</p>
                       </div>
                   </div>
                </div>
@@ -169,7 +173,7 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
                 <div className="pt-4 border-t border-border/40">
                     <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
                         <span>Project ID:</span>
-                        <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">{project.id.slice(0, 8)}...</code>
+                        <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">{project?.id?.slice(0, 8) || "unknown"}...</code>
                     </div>
                 </div>
             </div>
@@ -179,6 +183,7 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
         <div className="px-6 py-4 bg-muted/5 border-t border-border/40">
           <ProjectEngagement
             project={project}
+            isLiked={isLiked}
             onLike={handleLike}
             isLiking={isLiking || isUnliking}
           />
@@ -188,4 +193,3 @@ export default function ProjectDetail({ project }: ProjectDetailProps) {
     </div>
   );
 }
-

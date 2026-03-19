@@ -57,10 +57,11 @@ export default function ProjectsPage() {
     ? topQuery
     : listQuery;
 
-  const projects: Project[] =
+  const projects: Project[] = (
     showSearch && searchQuery.trim()
       ? searchQueryResult.data?.projects || []
-      : (activeQuery as any).data?.pages?.flatMap((page: any) => page.projects) || [];
+      : (activeQuery as any).data?.pages?.flatMap((page: any) => page.projects) || []
+  ).filter((project: Project) => project && project.author); // Ensure project and author exist before rendering
 
   return (
     <div className="container-centered py-6 animate-fadeIn">

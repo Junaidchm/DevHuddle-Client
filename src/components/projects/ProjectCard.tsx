@@ -26,10 +26,20 @@ export default function ProjectCard({ project }: ProjectCardProps) {
   const { data: likeCountData } = usePostLikeCountQuery(project.id, true);
 
   const engagement = useMemo(() => {
+    // Ensure project.engagement exists before spreading
+    const baseEngagement = project.engagement || {
+      likesCount: 0,
+      commentsCount: 0,
+      sharesCount: 0,
+      viewsCount: 0,
+      isLiked: false,
+      isShared: false,
+    };
+    
     const reactiveLikesCount = likeCountData?.success ? likeCountData.count : undefined;
     return {
-      ...project.engagement,
-      likesCount: reactiveLikesCount ?? project.engagement.likesCount,
+      ...baseEngagement,
+      likesCount: reactiveLikesCount ?? baseEngagement.likesCount,
     };
   }, [project.engagement, likeCountData]);
 
@@ -70,11 +80,11 @@ export default function ProjectCard({ project }: ProjectCardProps) {
           {/* Author info at the top for professional look */}
           <div className="flex items-center gap-2 mb-3">
               <Avatar className="w-6 h-6 border border-border/60">
-                <AvatarImage src={getMediaUrl(project.author.avatar) || PROFILE_DEFAULT_URL} alt={project.author.name} className="object-cover" />
-                <AvatarFallback className="text-[10px]">{project.author.name.charAt(0)}</AvatarFallback>
+                <AvatarImage src={getMediaUrl(project.author?.avatar) || PROFILE_DEFAULT_URL} alt={project.author?.name || "Author"} className="object-cover" />
+                <AvatarFallback className="text-[10px]">{project.author?.name?.charAt(0) || "U"}</AvatarFallback>
               </Avatar>
               <span className="text-[11px] font-semibold text-foreground/80 truncate">
-                {project.author.name}
+                {project.author?.name || "Anonymous User"}
               </span>
           </div>
 
@@ -112,14 +122,14 @@ export default function ProjectCard({ project }: ProjectCardProps) {
                 <div className="flex items-center gap-1.5 hover:text-red-500 transition-colors cursor-pointer">
                     <Heart
                         className={`w-3.5 h-3.5 ${
-                        project.engagement.isLiked ? "fill-red-500 text-red-500" : ""
+                        project.engagement?.isLiked ? "fill-red-500 text-red-500" : ""
                         }`}
                     />
                     <span>{engagement.likesCount}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                     <Eye className="w-3.5 h-3.5 text-muted-foreground/60" />
-                    <span>{project.engagement.viewsCount} views</span>
+                    <span>{project.engagement?.viewsCount || 0} views</span>
                 </div>
             </div>
 

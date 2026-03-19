@@ -201,6 +201,7 @@ export const API_ROUTES = {
     REPORT: (projectId: string) => `${API_VERSION}/projects/${projectId}/report`,
     VIEW: (projectId: string) => `${API_VERSION}/projects/${projectId}/view`,
     LIKE_COUNT: (projectId: string) => `${API_VERSION}/projects/${projectId}/like/count`,
+    LIKE_STATUS: (projectId: string) => `${API_VERSION}/projects/${projectId}/like/status`,
     // Comments
     COMMENT_COUNT: (projectId: string) => `${API_VERSION}/projects/${projectId}/comments/count`,
     CREATE_COMMENT: (projectId: string) => `${API_VERSION}/projects/${projectId}/comments`,

@@ -1,5 +1,5 @@
 import { Project } from "@/src/services/api/project.service";
-import { Heart, Share2, MessageCircle, Flag } from "lucide-react";
+import { Heart, MessageCircle, Flag } from "lucide-react";
 import { useState } from "react";
 import CommentSection from "./comments/CommentSection";
 import ShareProjectModal from "./modals/ShareProjectModal";
@@ -12,12 +12,15 @@ import { useMemo } from "react";
 
 interface ProjectEngagementProps {
   project: Project;
+  /** Reactive `isLiked` passed from parent — derived from `useProjectLikeStatusQuery` */
+  isLiked: boolean;
   onLike: () => void;
   isLiking: boolean;
 }
 
 export default function ProjectEngagement({
   project,
+  isLiked,
   onLike,
   isLiking,
 }: ProjectEngagementProps) {
@@ -30,13 +33,23 @@ export default function ProjectEngagement({
   const { data: commentCountData } = useCommentCountQuery(project.id, true);
 
   const engagement = useMemo(() => {
+    // Ensure project.engagement exists before spreading
+    const baseEngagement = project.engagement || {
+      likesCount: 0,
+      commentsCount: 0,
+      sharesCount: 0,
+      viewsCount: 0,
+      isLiked: false,
+      isShared: false,
+    };
+
     const reactiveLikesCount = likeCountData?.success ? likeCountData.count : undefined;
     const reactiveCommentsCount = commentCountData?.success ? commentCountData.count : undefined;
 
     return {
-      ...project.engagement,
-      likesCount: reactiveLikesCount ?? project.engagement.likesCount,
-      commentsCount: reactiveCommentsCount ?? project.engagement.commentsCount,
+      ...baseEngagement,
+      likesCount: reactiveLikesCount ?? baseEngagement.likesCount,
+      commentsCount: reactiveCommentsCount ?? baseEngagement.commentsCount,
     };
   }, [project.engagement, likeCountData, commentCountData]);
 
@@ -53,7 +66,8 @@ export default function ProjectEngagement({
               disabled={isLiking}
               className={cn(
                 "group flex items-center gap-2 px-3 py-2",
-                project.engagement.isLiked 
+                // Use reactive isLiked from parent — never stale
+                isLiked
                   ? "text-red-500 hover:text-red-600 hover:bg-red-50" 
                   : "text-muted-foreground"
               )}
@@ -61,7 +75,7 @@ export default function ProjectEngagement({
               <Heart
                 className={cn(
                   "w-5 h-5 transition-all",
-                  project.engagement.isLiked ? "fill-current scale-110" : "group-hover:scale-110"
+                  isLiked ? "fill-current scale-110" : "group-hover:scale-110"
                 )}
               />
               <span className="font-semibold">{engagement.likesCount}</span>
@@ -79,16 +93,6 @@ export default function ProjectEngagement({
               <MessageCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
               <span className="font-semibold">{engagement.commentsCount}</span>
             </Button>
-
-            {/* <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowShareModal(true)}
-              className="group flex items-center gap-2 px-3 py-2 text-muted-foreground"
-            >
-              <Share2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
-              <span className="font-semibold">{project.engagement.sharesCount}</span>
-            </Button> */}
           </div>
 
           <Button
@@ -102,9 +106,9 @@ export default function ProjectEngagement({
         </div>
 
         {/* Views Display (Owners Only) */}
-        {project.engagement.viewsCount > 0 && (
+        {(project.engagement?.viewsCount || 0) > 0 && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground px-2">
-            <span className="font-medium">{project.engagement.viewsCount} total views</span>
+            <span className="font-medium">{project.engagement?.viewsCount} total views</span>
             <span className="text-muted-foreground/30">•</span>
             <span>Visible to you as the owner</span>
           </div>
@@ -136,4 +140,3 @@ export default function ProjectEngagement({
     </>
   );
 }
-

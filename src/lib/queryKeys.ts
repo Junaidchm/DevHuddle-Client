@@ -88,6 +88,12 @@ export const queryKeys = {
       count: (projectId: string) => ["projects", "comments", "count", projectId] as const,
       replies: (commentId: string) => ["projects", "comments", "replies", commentId] as const,
     },
+
+    // Project Likes
+    likes: {
+      count: (projectId: string) => ["projects", "likes", "count", projectId] as const,
+      status: (projectId: string, userId: string) => ["projects", "likes", "status", projectId, userId] as const,
+    },
   },
 
   // User queries
