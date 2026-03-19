@@ -1242,6 +1242,7 @@ class WebSocketManager {
         console.log(`[WebSocket] 💬 Invalidating comments for post: ${postId}`);
         this.queryClient.invalidateQueries({ queryKey: queryKeys.engagement.comments.count(postId) });
         this.queryClient.invalidateQueries({ queryKey: queryKeys.engagement.comments.all(postId) });
+        this.queryClient.invalidateQueries({ queryKey: queryKeys.engagement.comments.preview(postId) });
         
         // Also invalidate project-specific comment queries if applicable
         if (type.startsWith('PROJECT_')) {
