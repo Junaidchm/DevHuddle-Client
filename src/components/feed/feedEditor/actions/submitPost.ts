@@ -11,6 +11,7 @@ export async function submitPost(input: {
   mediaIds: string[];
   visibility?: string;
   commentControl?: string;
+  mediaTags?: any[];
 }) {
   try {
     // FIXED P0-8: Validate input with updated schema
@@ -19,7 +20,8 @@ export async function submitPost(input: {
       mediaIds: input.mediaIds,
       visibility: input.visibility || "PUBLIC",
       commentControl: input.commentControl || "ANYONE",
-    });
+      mediaTags: input.mediaTags || [],
+    }) as any;
 
     // FIXED P0-4: Generate idempotency key for duplicate prevention
     const idempotencyKey = crypto.randomUUID();
@@ -35,6 +37,7 @@ export async function submitPost(input: {
         mediaIds: validated.mediaIds,
         visibility: validated.visibility, // FIXED P0-2: Include visibility
         commentControl: validated.commentControl, // FIXED P0-2: Include commentControl
+        mediaTags: validated.mediaTags,
       }),
     });
 

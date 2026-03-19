@@ -49,11 +49,17 @@ export const uploadMedia = async (
 };
 import { NewPost, Visibility, CommentControl } from "@/src/app/types/feed";
 
+export interface MediaTag {
+  mediaId: string;
+  userIds: string[];
+}
+
 export interface CreatePostPayload {
   content: string;
   mediaIds: string[];
   visibility?: Visibility;
   commentControl?: CommentControl;
+  mediaTags?: MediaTag[];
 }
 
 export const submitPost = async (postData: CreatePostPayload) => {

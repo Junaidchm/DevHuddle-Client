@@ -12,6 +12,7 @@ interface CreatePostPayload {
   mediaIds: string[];
   visibility: AudienceType;
   commentControl: CommentControl;
+  mediaTags?: any[];
 }
 
 export function useSubmitPostMutation() {

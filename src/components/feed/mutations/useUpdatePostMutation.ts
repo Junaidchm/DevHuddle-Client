@@ -10,6 +10,7 @@ interface UpdatePostPayload {
   removeAttachmentIds?: string[];
   visibility?: string;
   commentControl?: string;
+  mediaTags?: any[];
 }
 
 export function useUpdatePostMutation() {
@@ -23,6 +24,7 @@ export function useUpdatePostMutation() {
         removeAttachmentIds: payload.removeAttachmentIds,
         visibility: payload.visibility,
         commentControl: payload.commentControl,
+        mediaTags: payload.mediaTags,
       });
 
       if (!result.success) {

@@ -4,8 +4,12 @@ import { z } from "zod";
 export const createPostSchema = z.object({
   content: z.string().trim().optional().default(""),
   mediaIds: z.array(z.string().uuid("Invalid media ID format")).max(5, "Cannot have more than 5 attachments"),
-  visibility: z.enum(["PUBLIC", "VISIBILITY_CONNECTIONS"]).optional().default("PUBLIC"),
+  visibility: z.enum(["PUBLIC", "VISIBILITY_CONNECTIONS", "CONNECTIONS"]).optional().default("PUBLIC"),
   commentControl: z.enum(["ANYONE", "CONNECTIONS", "NOBODY"]).optional().default("ANYONE"),
+  mediaTags: z.array(z.object({
+    mediaId: z.string().uuid("Invalid media ID format"),
+    userIds: z.array(z.string().uuid("Invalid user ID format"))
+  })).optional().default([]),
 }).refine(
   (data) => {
     // Post must have either content or media

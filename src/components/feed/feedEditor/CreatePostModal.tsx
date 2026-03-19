@@ -166,6 +166,14 @@ export default function CreatePostModal({
         .filter(m => m.uploadStatus === "COMPLETED" && m.remoteId)
         .map(m => m.remoteId as string);
 
+      // Collect media tags
+      const mediaTags = media
+        .filter(m => m.uploadStatus === "COMPLETED" && m.remoteId && m.taggedUsers?.length)
+        .map(m => ({
+          mediaId: m.remoteId as string,
+          userIds: m.taggedUsers!.map(u => u.id)
+        }));
+
       if (isEditing && postToEdit?.id) {
         // ... Edit Logic
         const existingAttachmentIds = postToEdit.attachments?.map((att) => att.id) || [];
@@ -179,6 +187,7 @@ export default function CreatePostModal({
           removeAttachmentIds: removedAttachmentIds.length ? removedAttachmentIds : undefined,
           visibility: settings.visibility,
           commentControl: settings.commentControl,
+          mediaTags: mediaTags,
         });
 
       } else {
@@ -188,6 +197,7 @@ export default function CreatePostModal({
           mediaIds: mediaIds,
           visibility: settings.visibility,
           commentControl: settings.commentControl,
+          mediaTags: mediaTags,
         });
       }
 

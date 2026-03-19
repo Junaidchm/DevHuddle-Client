@@ -12,6 +12,7 @@ export interface UpdatePostInput {
   removeAttachmentIds?: string[];
   visibility?: string;
   commentControl?: string;
+  mediaTags?: any[];
 }
 
 export async function updatePost(
@@ -34,6 +35,7 @@ export async function updatePost(
         removeAttachmentIds: input.removeAttachmentIds,
         visibility: input.visibility,
         commentControl: input.commentControl,
+        mediaTags: input.mediaTags,
       }),
     });
 
