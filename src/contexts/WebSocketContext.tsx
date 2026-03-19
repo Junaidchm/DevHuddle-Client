@@ -118,10 +118,23 @@ class WebSocketManager {
   }
 
   connect(token: string, userId: string, queryClient: any): void {
+    // 1. Check if token or userId changed - factor for restart
+    const isNewUser = this.userId !== userId;
+    const isNewToken = this.token !== token;
+
     // Don't connect if tab is hidden or offline
     if (!this.isTabVisible || !this.isOnline) {
       console.log("[WebSocket] Connection deferred: tab hidden or offline");
+      this.token = token;
+      this.userId = userId;
+      this.queryClient = queryClient;
       return;
+    }
+
+    // 2. If token changed, close existing connections to force re-auth
+    if (isNewToken && (this.chatSocket || this.notificationSocket)) {
+      console.log("[WebSocket] Token changed, forcing connection restart...");
+      this.disconnect();
     }
 
     this.token = token;
@@ -129,7 +142,7 @@ class WebSocketManager {
     this.queryClient = queryClient;
     this.isIntentionalClose = false;
 
-    this.updateState(this.reconnectAttempts > 0 ? "reconnecting" : "connecting");
+    this.updateState((this.reconnectAttempts > 0 && !isNewToken) ? "reconnecting" : "connecting");
 
     // Connect to both services
     this.connectChat();
@@ -137,6 +150,7 @@ class WebSocketManager {
   }
 
   private connectChat(): void {
+    // Basic state check
     if (this.chatSocket?.readyState === WebSocket.OPEN || this.chatSocket?.readyState === WebSocket.CONNECTING) return;
     
     try {
@@ -1223,16 +1237,17 @@ class WebSocketManager {
 
     // Invalidate relevant queries based on update type
     if (type === 'POST_LIKE_UPDATE' || type === 'PROJECT_LIKE_UPDATE') {
-      console.log(`[WebSocket] 💖 Invalidating likes for post: ${postId}`);
+      console.log(`[WebSocket] 💖 Invalidating like count for: ${postId}`);
+      // Always invalidate the count — observed by ALL viewers of this post/project
       this.queryClient.invalidateQueries({ queryKey: queryKeys.engagement.postLikes.count(postId) });
       
       if (this.userId && data.userId === this.userId) {
+        // This event was triggered by ME (multi-session sync): also invalidate my like STATUS cache
         console.log(`[WebSocket] 💖 Invalidating status for ${type === 'PROJECT_LIKE_UPDATE' ? 'project' : 'post'}: ${postId} (current user match)`);
         
         if (type === 'PROJECT_LIKE_UPDATE') {
-          // Projects don't have a separate status query, so invalidate the project detail/list
-          this.queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(postId) });
-          this.queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
+          // Invalidate the per-user project like status (avoids refetching the whole project detail)
+          this.queryClient.invalidateQueries({ queryKey: queryKeys.projects.likes.status(postId, this.userId) });
         } else {
           this.queryClient.invalidateQueries({ queryKey: queryKeys.engagement.postLikes.status(postId, this.userId) });
         }
@@ -1294,6 +1309,14 @@ class WebSocketManager {
     this.updateConnectionStatus();
 
     // Abnormal closure or service-initiated closure - attempt reconnect
+    // Code 4001, 4003 are custom auth failure codes from gateway/service - DO NOT reconnect with same token
+    if (event.code === 4001 || event.code === 4003) {
+      console.error("[WebSocket] Authentication failure. Stopping reconnection loop.");
+      this.isAuthenticated = false;
+      this.updateState("disconnected");
+      return;
+    }
+
     if (event.code !== 1000 && event.code !== 1001) {
       this.scheduleReconnect();
     }
