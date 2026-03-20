@@ -256,7 +256,7 @@ export function MessageBubble({
                 loading="lazy"
               />
             </div>
-            {message.content && <p className={cn("mt-1 text-sm", isOwn ? "text-white" : "text-foreground")}>{message.content}</p>}
+            {message.content && <p className={cn("mt-1 text-sm", isOwn ? "text-primary-foreground" : "text-foreground")}>{message.content}</p>}
             
             {/* Lightbox Modal */}
             {showLightbox && (
@@ -318,7 +318,7 @@ export function MessageBubble({
                 )}
               />
             </div>
-            {message.content && <p className={cn("mt-1 text-sm", isOwn ? "text-white" : "text-foreground")}>{message.content}</p>}
+            {message.content && <p className={cn("mt-1 text-sm", isOwn ? "text-primary-foreground" : "text-foreground")}>{message.content}</p>}
           </div>
         );
         
@@ -422,7 +422,7 @@ export function MessageBubble({
                 </a>
               )}
             </div>
-            {message.content && <p className={cn("mt-1 text-sm", isOwn ? "text-white" : "text-foreground")}>{message.content}</p>}
+            {message.content && <p className={cn("mt-1 text-sm", isOwn ? "text-primary-foreground" : "text-foreground")}>{message.content}</p>}
           </div>
         );
 
@@ -431,7 +431,7 @@ export function MessageBubble({
         return (
           <p className={cn(
             "text-[15px] leading-relaxed whitespace-pre-wrap break-words flex-1",
-            isOwn ? "text-white" : "text-foreground"
+            isOwn ? "text-primary-foreground" : "text-foreground"
           )}>
             {message.content}
           </p>
@@ -525,7 +525,7 @@ export function MessageBubble({
             className={cn(
               "p-3 shadow-md transition-all",
               isOwn 
-                ? "bg-primary text-white rounded-2xl rounded-tr-none" 
+                ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-none" 
                 : "bg-card text-foreground rounded-2xl rounded-tl-none border border-border/50",
               isSelected && "ring-2 ring-primary ring-offset-2"
             )}
@@ -581,7 +581,7 @@ export function MessageBubble({
               {/* Timestamp + Status (WhatsApp style) */}
               <div className={cn(
                 "flex items-center gap-1 justify-end mt-1",
-                isOwn ? 'text-white/70' : 'text-muted-foreground'
+                isOwn ? 'text-primary-foreground/80' : 'text-muted-foreground'
               )}>
                 {message.isPinned && <span className="opacity-70 text-[10px] mr-1">📌</span>}
                 <span className="text-[11px] leading-none">{formatTime(message.createdAt)}</span>

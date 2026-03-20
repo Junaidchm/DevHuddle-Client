@@ -21,8 +21,7 @@ export interface WebRTCHookReturn {
   createOffer: (pc: RTCPeerConnection) => Promise<RTCSessionDescriptionInit>;
   
   createAnswer: (
-    pc: RTCPeerConnection,
-    offer: RTCSessionDescriptionInit
+    pc: RTCPeerConnection
   ) => Promise<RTCSessionDescriptionInit>;
   
   handleRemoteOffer: (
