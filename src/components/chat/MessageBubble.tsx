@@ -256,7 +256,7 @@ export function MessageBubble({
                 loading="lazy"
               />
             </div>
-            {message.content && <p className="mt-1 text-sm">{message.content}</p>}
+            {message.content && <p className={cn("mt-1 text-sm", isOwn ? "text-white" : "text-foreground")}>{message.content}</p>}
             
             {/* Lightbox Modal */}
             {showLightbox && (
@@ -318,7 +318,7 @@ export function MessageBubble({
                 )}
               />
             </div>
-            {message.content && <p className="mt-1 text-sm">{message.content}</p>}
+            {message.content && <p className={cn("mt-1 text-sm", isOwn ? "text-white" : "text-foreground")}>{message.content}</p>}
           </div>
         );
         
@@ -422,13 +422,20 @@ export function MessageBubble({
                 </a>
               )}
             </div>
-            {message.content && <p className="mt-1 text-sm">{message.content}</p>}
+            {message.content && <p className={cn("mt-1 text-sm", isOwn ? "text-white" : "text-foreground")}>{message.content}</p>}
           </div>
         );
 
       default:
         // Text message
-        return <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words flex-1">{message.content}</p>;
+        return (
+          <p className={cn(
+            "text-[15px] leading-relaxed whitespace-pre-wrap break-words flex-1",
+            isOwn ? "text-white" : "text-foreground"
+          )}>
+            {message.content}
+          </p>
+        );
     }
   };
 
@@ -549,10 +556,10 @@ export function MessageBubble({
                     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }}
               >
-                <p className="font-bold mb-1">
+                <p className={cn("font-bold mb-1", isOwn ? "text-white" : "text-primary")}>
                     {message.replyTo.senderId === currentUserId ? 'You' : 'Reply'}
                 </p>
-                <p className="truncate opacity-80">{message.replyTo.content}</p>
+                <p className={cn("truncate opacity-80", isOwn ? "text-white" : "text-foreground")}>{message.replyTo.content}</p>
               </div>
             )}
             
@@ -574,7 +581,7 @@ export function MessageBubble({
               {/* Timestamp + Status (WhatsApp style) */}
               <div className={cn(
                 "flex items-center gap-1 justify-end mt-1",
-                isOwn ? 'text-blue-100' : 'text-gray-500'
+                isOwn ? 'text-white/70' : 'text-muted-foreground'
               )}>
                 {message.isPinned && <span className="opacity-70 text-[10px] mr-1">📌</span>}
                 <span className="text-[11px] leading-none">{formatTime(message.createdAt)}</span>
