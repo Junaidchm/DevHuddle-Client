@@ -597,7 +597,7 @@ class WebSocketManager {
       if (callEvents.includes(message.type)) {
           console.log(`[WebSocket] 📞 Call Event Received: ${message.type}`, message);
           // ✅ FIX: Unwrap data property if it exists (for Redis-broadcasted events)
-          const payload = message.data || message;
+          const payload = (message.data as any)?.data || message.data || message;
           this.handleCallEvent(message.type, payload as any); 
           return;
       }
