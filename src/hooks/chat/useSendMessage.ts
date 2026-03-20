@@ -184,6 +184,25 @@ export function useSendMessage() {
     );
 
 
+    // ✅ FIX: Extract recipientIds from cached conversations to support optimistic sending
+    // The backend rejects messages without recipientIds if the conversationId doesn't exist yet.
+    let recipientIds: string[] = [];
+    if (conversationId.startsWith('temp-') || conversationId.startsWith('optimistic-')) {
+      const conversationsCache = queryClient.getQueryData<InfiniteData<{ data: any[] }>>(queryKeys.chat.conversations.list());
+      if (conversationsCache) {
+        for (const page of conversationsCache.pages) {
+          const conv = page.data?.find((c: any) => c.conversationId === conversationId);
+          if (conv && conv.participants) {
+            recipientIds = conv.participants
+              .filter((p: any) => p.userId !== session.user.id)
+              .map((p: any) => p.userId);
+            break;
+          }
+        }
+      }
+      console.log("[useSendMessage] Extracted optimistic recipientIds:", recipientIds);
+    }
+
     // 3. Send via WebSocket
     console.log("[useSendMessage] Preparing WebSocket payload:", {
       type: WS_EVENTS.SEND_MESSAGE,
@@ -191,6 +210,7 @@ export function useSendMessage() {
       content,
       dedupeId,
       messageType: type,
+      recipientIds,
       mediaDetails
     });
     
@@ -204,6 +224,7 @@ export function useSendMessage() {
       dedupeId,
       messageType: type,
       replyToId,
+      recipientIds: recipientIds.length > 0 ? recipientIds : undefined,
       
       // Only include media fields if they exist
       ...(mediaDetails ? {
