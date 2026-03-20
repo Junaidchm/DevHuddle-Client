@@ -223,7 +223,7 @@ export default function ChatPage() {
   const currentConversation = selectedConversation;
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] md:h-[calc(100vh-4rem)] max-w-7xl mx-auto bg-background shadow-sm rounded-lg overflow-hidden border border-border my-2 md:my-4">
+    <div className="flex h-[calc(100vh-52px)] md:h-[calc(100vh-56px)] -mt-6 bg-background overflow-hidden w-full">
       {/* Left Sidebar - Conversations */}
       <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-border bg-background ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
         <ConversationList
