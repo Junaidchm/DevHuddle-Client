@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getMyConnections, SearchedUser } from "@/src/services/api/user.service";
+import { getConnections } from "@/src/services/api/engagement.service";
+import { SearchedUser } from "@/src/services/api/user.service";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 import { Connection } from "@/src/app/types/feed";
 import { queryKeys } from "@/src/lib/queryKeys";
@@ -23,10 +24,13 @@ export function useConnections(enabled: boolean = true) {
     queryKey: queryKeys.users.connections,
     queryFn: async () => {
       try {
-        const users: SearchedUser[] = await getMyConnections(authHeaders);
+        const response = await getConnections(authHeaders);
         
-        // Map SearchedUser to Connection
-        const connections: Connection[] = users.map(u => ({
+        // Extract data array from { success: boolean, data: Array }
+        const users = response.data || [];
+        
+        // Map to Connection interface
+        const connections: Connection[] = users.map((u: any) => ({
           id: u.id,
           name: u.name,
           username: u.username,

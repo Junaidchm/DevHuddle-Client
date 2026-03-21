@@ -39,7 +39,6 @@ export default function SendPostModal({
   const [selectedRecipients, setSelectedRecipients] = useState<Set<string>>(
     new Set()
   );
-  const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const errorRef = useRef<HTMLDivElement>(null);
 
@@ -61,7 +60,6 @@ export default function SendPostModal({
     if (!isOpen) {
       setSearchQuery("");
       setSelectedRecipients(new Set());
-      setMessage("");
       setErrorMessage(null);
     } else {
       // Clear any previous errors when modal opens
@@ -128,7 +126,6 @@ export default function SendPostModal({
       await sendMutation.mutateAsync({
         postId,
         recipientIds: Array.from(selectedRecipients),
-        message: message.trim() || undefined,
       });
       // Only close on success
       onClose();
@@ -344,34 +341,14 @@ export default function SendPostModal({
           </div>
         )}
 
-        {/* Message Input - LinkedIn Style */}
-        <div className={`px-6 ${errorMessage ? 'pt-4' : 'py-4'} pb-4 border-t border-gray-200 bg-white`}>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Add a note (optional)
-          </label>
-          <textarea
-            value={message}
-            onChange={(e) => {
-              setMessage(e.target.value);
-              // Clear error when user starts typing
-              if (errorMessage) setErrorMessage(null);
-            }}
-            placeholder="Add a personal message..."
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm placeholder-gray-400"
-            rows={3}
-            maxLength={500}
-          />
-          <div className="flex items-center justify-between mt-1">
-            <span className="text-xs text-gray-500">
-              {message.length}/500 characters
+        {/* Selected Count Display */}
+        {selectedCount > 0 && (
+          <div className="px-6 py-2 bg-white border-t border-gray-100 flex justify-end">
+            <span className="text-xs font-medium text-blue-600">
+              {selectedCount} {selectedCount === 1 ? "connection" : "connections"} selected
             </span>
-            {selectedCount > 0 && (
-              <span className="text-xs font-medium text-blue-600">
-                {selectedCount} {selectedCount === 1 ? "connection" : "connections"} selected
-              </span>
-            )}
           </div>
-        </div>
+        )}
 
         {/* Footer Actions - LinkedIn Style */}
         <div className="flex gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
