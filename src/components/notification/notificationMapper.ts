@@ -384,37 +384,44 @@ export const mapNotificationToLinkedInStyle = (
     })(),
     contextLabel: (() => {
       const meta = notification.metadata || {};
-      // Chat messages: show conversation/group name if available
+
+      // ── Chat messages ──────────────────────────────────────────────────────
       if (backendType === "CHAT_MESSAGE") {
+        // Only add context for GROUP messages — DMs are already self-explanatory
         if (meta.groupName) return `in "${meta.groupName}"`;
-        if (meta.type === "group") return "in a group chat";
-        return "in a direct message";
+        // If we know it was a group but have no name
+        if (meta.type === "group" || meta.conversationType === "group") return "in a group chat";
+        // Personal DM — actionText "sent you a message" is clear enough, no label needed
+        return undefined;
       }
-      // Post sent to you
-      if (backendType === "NEW_MESSAGE" && meta.postId) {
-        return "a post";
-      }
-      // Comment/Reply/Like/Mention/Share on content
-      if (entityType === "PROJECT" || meta.projectId) {
-        return "your project";
-      }
-      if (entityType === "POST" || meta.postId) {
-        // Show a short snippet if preview is available
-        const previewText = meta.content ? `"${String(meta.content).slice(0, 40)}${meta.content.length > 40 ? "…" : ""}"` : null;
-        return previewText || "your post";
-      }
-      if (entityType === "COMMENT" || meta.commentId) {
-        if (meta.projectId) return "your project";
-        return "your post";
-      }
-      // Reports
+
+      // ── Reports — the reason is the most important context ─────────────────
       if (backendType === "REPORT" && meta.reason) {
         return `Reason: ${meta.reason}`;
       }
-      // Hub join
-      if (backendType === "HUB_JOIN_REQUEST" || backendType === "HUB_JOIN_APPROVED" || backendType === "HUB_JOIN_REJECTED") {
-        return meta.hubName ? `"${meta.hubName}"` : "a hub";
+
+      // ── Hub join notifications — show the hub name ─────────────────────────
+      if (
+        (backendType === "HUB_JOIN_REQUEST" ||
+          backendType === "HUB_JOIN_APPROVED" ||
+          backendType === "HUB_JOIN_REJECTED") &&
+        meta.hubName
+      ) {
+        return `"${meta.hubName}"`;
       }
+
+      // ── Comments / Mentions — show a snippet of the comment text ───────────
+      if (
+        (backendType === "COMMENT" || backendType === "MENTION") &&
+        meta.content
+      ) {
+        const snippet = String(meta.content).trim();
+        return `"${snippet.slice(0, 60)}${snippet.length > 60 ? "…" : ""}"`;
+      }
+
+      // ── Likes / Shares / Follows / CONTENT_HIDDEN / anything else ──────────
+      // The actionText ("liked your post", "shared your post", etc.) is already
+      // fully descriptive. Adding "your post" again is redundant — skip it.
       return undefined;
     })(),
     preview,
