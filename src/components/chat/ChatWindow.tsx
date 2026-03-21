@@ -308,6 +308,29 @@ export default function ChatWindow({
     }
   }, [messages, conversation?.conversationId, currentUserId, isConnected, sendReadReceipt]);
 
+  // ✅ FIX: Robustly clear unread count if the UI still shows > 0 while we are viewing it
+  useEffect(() => {
+      if (conversation?.conversationId && conversation.unreadCount && conversation.unreadCount > 0) {
+          queryClient.setQueryData(
+              queryKeys.chat.conversations.list(),
+              (oldData: any) => {
+                  if (!oldData || !oldData.pages) return oldData;
+                  return {
+                      ...oldData,
+                      pages: oldData.pages.map((page: any) => ({
+                          ...page,
+                          data: page.data.map((conv: any) =>
+                              conv.conversationId === conversation.conversationId
+                                  ? { ...conv, unreadCount: 0 }
+                                  : conv
+                          )
+                      }))
+                  };
+              }
+          );
+      }
+  }, [conversation?.conversationId, conversation?.unreadCount, queryClient]);
+
 
   // Get other participant info (flat structure in ConversationWithMetadata)
   const otherParticipant = conversation?.participants.find(

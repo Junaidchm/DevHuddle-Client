@@ -297,6 +297,25 @@ class WebSocketManager {
           lastReadMessageId: messageId,
           content: '',
       });
+
+      // ✅ FIX: Optimistically clear unreadCount locally to update the UI immediately
+      if (this.queryClient) {
+          this.queryClient.setQueryData(
+              queryKeys.chat.conversations.list(),
+              (oldData: any) => {
+                  if (!oldData || !oldData.pages) return oldData;
+                  const newPages = oldData.pages.map((page: any) => ({
+                      ...page,
+                      data: page.data.map((conv: any) =>
+                          conv.conversationId === conversationId
+                              ? { ...conv, unreadCount: 0 }
+                              : conv
+                      )
+                  }));
+                  return { ...oldData, pages: newPages };
+              }
+          );
+      }
   }
 
   reconnect(): void {
@@ -1127,6 +1146,25 @@ class WebSocketManager {
         messageQueries.forEach((query: any) => {
              this.queryClient.setQueryData(query.queryKey, (old: any) => updateMessagesInPages(old));
         });
+    }
+
+    // ✅ FIX: Cross-device sync - If messages were read, clear unreadCount in conversation list too
+    if (data.status === 'READ' && data.conversationId) {
+        this.queryClient.setQueryData(
+            queryKeys.chat.conversations.list(),
+            (oldData: any) => {
+                if (!oldData || !oldData.pages) return oldData;
+                const newPages = oldData.pages.map((page: any) => ({
+                    ...page,
+                    data: page.data.map((conv: any) =>
+                        conv.conversationId === data.conversationId
+                            ? { ...conv, unreadCount: 0 }
+                            : conv
+                    )
+                }));
+                return { ...oldData, pages: newPages };
+            }
+        );
     }
   }
 
