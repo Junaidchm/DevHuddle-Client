@@ -238,7 +238,7 @@ export default function ChatPage() {
   return (
     <div className="flex h-[calc(100vh-52px)] md:h-[calc(100vh-56px)] -mt-6 -mx-6 -mb-6 bg-background overflow-hidden w-full">
       {/* Left Sidebar - Conversations */}
-      <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-border bg-background ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 bg-background ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
         <ConversationList
           selectedId={selectedConversation?.conversationId}
           onSelect={handleSelectConversation}
