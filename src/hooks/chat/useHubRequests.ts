@@ -48,37 +48,60 @@ export const useApproveHubRequest = (hubId: string) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.all });
 
             // 3. Manually sync participants in cache for "Instant" member list update
-            // We find the requester info from our deleted request to append them to the conversation
             const approvedRequest = context?.previousRequests?.find(r => r.id === requestId);
             if (approvedRequest && approvedRequest.requester) {
+                const requesterId = approvedRequest.requesterId;
+                const requesterProfile = {
+                    userId: requesterId,
+                    name: approvedRequest.requester.name || approvedRequest.requester.fullName || "User",
+                    username: approvedRequest.requester.username,
+                    profilePhoto: approvedRequest.requester.profilePhoto,
+                    role: 'MEMBER'
+                };
+
+                const updateConvo = (convo: any) => {
+                    if ((convo.conversationId || convo.id) === hubId) {
+                        const hasParticipants = Array.isArray(convo.participants);
+                        const exists = hasParticipants && convo.participants.some((p: any) => p.userId === requesterId);
+                        
+                        if (!exists) {
+                            return {
+                                ...convo,
+                                memberCount: (convo.memberCount || (hasParticipants ? convo.participants.length : 0)) + 1,
+                                participants: hasParticipants 
+                                    ? [...convo.participants, requesterProfile] 
+                                    : [requesterProfile]
+                            };
+                        }
+                    }
+                    return convo;
+                };
+
+                // Update List Cache (handles both simple array and infinite query pages)
                 queryClient.setQueriesData({ queryKey: queryKeys.chat.conversations.all }, (oldData: any) => {
                     if (!oldData) return oldData;
                     
-                    // The structure might be a simple array or a paginated response
-                    // Based on previous knowledge it's likely an array or { conversations: [] }
-                    const updateConvo = (convo: any) => {
-                        if (convo.conversationId === hubId) {
-                            // Check if already added
-                            const exists = convo.participants.some((p: any) => p.userId === approvedRequest.requesterId);
-                            if (!exists) {
-                                return {
-                                    ...convo,
-                                    participants: [...convo.participants, {
-                                        userId: approvedRequest.requesterId,
-                                        name: approvedRequest.requester.name,
-                                        username: approvedRequest.requester.username,
-                                        profilePhoto: approvedRequest.requester.profilePhoto,
-                                        role: 'MEMBER'
-                                    }]
-                                };
-                            }
-                        }
-                        return convo;
-                    };
-
                     if (Array.isArray(oldData)) return oldData.map(updateConvo);
+                    
+                    // Handle Infinite Query structure
+                    if (oldData.pages) {
+                        return {
+                            ...oldData,
+                            pages: oldData.pages.map((page: any) => ({
+                                ...page,
+                                data: Array.isArray(page.data) ? page.data.map(updateConvo) : page.data
+                            }))
+                        };
+                    }
+
                     if (oldData.conversations) return { ...oldData, conversations: oldData.conversations.map(updateConvo) };
                     return oldData;
+                });
+
+                // 4. Also update the detail cache if it exists for the current hub
+                queryClient.setQueryData(["conversation", hubId], (oldData: any) => {
+                    if (!oldData) return oldData;
+                    return updateConvo(oldData);
                 });
             }
 

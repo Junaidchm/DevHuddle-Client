@@ -574,7 +574,8 @@ class WebSocketManager {
           'participants_added', 
           'participant_removed',
           'participant_left',
-          'role_updated'
+          'role_updated',
+          'hub_join_approved', // ✅ Triggers member list/count refresh for admin/owner
       ];
 
       if (groupEvents.includes(message.type)) {

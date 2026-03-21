@@ -10,7 +10,7 @@ import { useSession } from "next-auth/react";
 import { MessageCircle } from "lucide-react";
 
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getConversationById } from "@/src/services/api/chat.service";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 import { queryKeys } from "@/src/lib/queryKeys";
@@ -43,6 +43,7 @@ export default function ChatPage() {
   const searchParams = useSearchParams();
   const conversationId = searchParams.get("id");
   const headers = useAuthHeaders();
+  const queryClient = useQueryClient();
   
   const [selectedConversation, setSelectedConversation] = useState<ConversationWithMetadata | null>(null);
   
@@ -55,23 +56,26 @@ export default function ChatPage() {
 
     // Find fresh version in conversation list cache
     const fresh = convData.pages.flatMap((p: any) => p.data).find(
-      (c: any) => c.conversationId === selectedConversation.conversationId
+      (c: any) => (c.conversationId || c.id) === selectedConversation.conversationId
     );
     
     if (fresh) {
-      // Deep check for flags that affect UI state
+      // Deep check for flags that affect UI state — ✅ include memberCount and participants
       const hasChanged = 
         fresh.isBlockedByMe !== selectedConversation.isBlockedByMe ||
         fresh.isBlockedByThem !== selectedConversation.isBlockedByThem ||
         fresh.name !== selectedConversation.name ||
-        fresh.icon !== selectedConversation.icon;
+        fresh.icon !== selectedConversation.icon ||
+        (fresh.memberCount ?? fresh.participants?.length ?? 0) !== (selectedConversation.memberCount ?? selectedConversation.participants?.length ?? 0) ||
+        (fresh.participants?.length ?? 0) !== (selectedConversation.participants?.length ?? 0);
 
       if (hasChanged) {
         console.log("🔄 [Sync] Updating selectedConversation from cache", { 
             id: fresh.conversationId, 
-            isBlockedByMe: fresh.isBlockedByMe 
+            memberCount: fresh.memberCount,
+            participantCount: fresh.participants?.length,
         });
-        setSelectedConversation(fresh as any as ConversationWithMetadata);
+        setSelectedConversation(mapToMetadata(fresh));
       }
     }
   }, [convData, selectedConversation?.conversationId]);
@@ -128,18 +132,25 @@ export default function ChatPage() {
     const handleParticipantsAdded = (e: CustomEvent) => {
         const data = e.detail;
         if (data.conversationId === selectedConversation.conversationId) {
-             const newParticipants = data.participants || [];
-             setSelectedConversation(prev => {
-                if (!prev) return null;
-                // Filter out any duplicates just in case
-                const existingIds = new Set(prev.participants.map(p => p.userId));
-                const uniqueNew = newParticipants.filter((p: any) => !existingIds.has(p.userId));
-                
-                return {
-                    ...prev,
-                    participants: [...prev.participants, ...uniqueNew]
-                };
-             });
+            const newParticipantIds: string[] = data.newParticipants || data.participants || [];
+            const addedCount = newParticipantIds.length;
+
+            // ✅ Optimistic update: bump memberCount instantly for immediate UI feedback
+            if (addedCount > 0) {
+                setSelectedConversation(prev => {
+                    if (!prev) return null;
+                    return {
+                        ...prev,
+                        memberCount: (prev.memberCount ?? prev.participants?.length ?? 0) + addedCount,
+                    };
+                });
+            }
+
+            // ✅ Also invalidate both caches so participants list and count reload with full profile data
+            queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.all });
+            if (conversationId) {
+                queryClient.invalidateQueries({ queryKey: ["conversation", conversationId] });
+            }
         }
     };
 
@@ -203,6 +214,7 @@ export default function ChatPage() {
     window.addEventListener('group_updated', handleGroupUpdated as EventListener);
     window.addEventListener('active_group_deleted', handleActiveGroupDeleted as EventListener);
     window.addEventListener('participants_added', handleParticipantsAdded as EventListener);
+    window.addEventListener('hub_join_approved', handleParticipantsAdded as EventListener); // Alias for refresh
     window.addEventListener('participant_removed', handleParticipantRemoved as EventListener); // handling remove by admin
     window.addEventListener('participant_left', handleParticipantRemoved as EventListener); // handling self leave (same logic)
     window.addEventListener('role_updated', handleRoleUpdated as EventListener);
@@ -212,6 +224,7 @@ export default function ChatPage() {
         window.removeEventListener('group_updated', handleGroupUpdated as EventListener);
         window.removeEventListener('active_group_deleted', handleActiveGroupDeleted as EventListener);
         window.removeEventListener('participants_added', handleParticipantsAdded as EventListener);
+        window.removeEventListener('hub_join_approved', handleParticipantsAdded as EventListener);
         window.removeEventListener('participant_removed', handleParticipantRemoved as EventListener);
         window.removeEventListener('participant_left', handleParticipantRemoved as EventListener);
         window.removeEventListener('role_updated', handleRoleUpdated as EventListener);
