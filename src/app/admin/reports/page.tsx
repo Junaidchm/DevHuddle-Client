@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   bulkReportAction,
   getReports,
+  getDashboardStats,
   takeReportAction,
 } from "@/src/services/api/admin-panel.service";
 import { useApiClient } from "@/src/lib/api-client";
@@ -562,9 +563,9 @@ export default function ReportsPage() {
                             View Entity
                             <i className="fas fa-external-link-alt text-[10px] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"></i>
                           </Link>
-                          {report.metadata?.contentSnippet && (
+                          {!!report.metadata?.contentSnippet && (
                             <span className="text-[11px] text-gray-500 italic line-clamp-1 border-l-2 border-gray-200 pl-2">
-                              "{report.metadata.contentSnippet}"
+                              "{report.metadata.contentSnippet as string}"
                             </span>
                           )}
                         </div>

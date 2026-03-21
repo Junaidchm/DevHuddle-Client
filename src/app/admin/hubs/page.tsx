@@ -220,9 +220,9 @@ export default function HubsPage() {
                     </td>
                     <td className="p-4">
                       <ContentIdentityCell
-                        name={"Hub Owner"}
-                        username={hub.ownerId ? hub.ownerId.substring(0, 8) : "owner"}
-                        avatar={null}
+                        name={hub.owner?.name || "Hub Owner"}
+                        username={hub.owner?.username || (hub.ownerId ? hub.ownerId.substring(0, 8) : "owner")}
+                        avatar={hub.owner?.profilePicture || null}
                         avatarSize="sm"
                       />
                     </td>
