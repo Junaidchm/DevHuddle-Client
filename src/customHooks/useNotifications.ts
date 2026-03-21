@@ -10,6 +10,7 @@ import {
   markAllAsRead,
   markAsRead,
   restoreNotification,
+  clearAllNotifications,
 } from "../services/api/notification.service";
 import { queryKeys } from "@/src/lib/queryKeys";
 import { GetNotificationsResult } from "../app/types";
@@ -103,6 +104,41 @@ export function useDeleteNotification() {
     },
     onError: (err, newTodo, context) => {
       qc.setQueryData(queryKeys.notifications.list(userId!), context?.previousNotifications);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.notifications.list(userId!) });
+      qc.invalidateQueries({ queryKey: queryKeys.notifications.count(userId!) });
+    },
+  });
+}
+
+export function useClearAllNotifications() {
+  const { data: session } = useSession();
+  const authHeaders = useAuthHeaders();
+  const userId = session?.user?.id;
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => clearAllNotifications(userId!, authHeaders),
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: queryKeys.notifications.list(userId!) });
+      await qc.cancelQueries({ queryKey: queryKeys.notifications.count(userId!) });
+      
+      const previousNotifications = qc.getQueryData(queryKeys.notifications.list(userId!));
+
+      // Optimistically clear all notifications
+      qc.setQueryData(queryKeys.notifications.list(userId!), {
+        pages: [],
+        pageParams: []
+      });
+      qc.setQueryData(queryKeys.notifications.count(userId!), { unreadCount: 0 });
+
+      return { previousNotifications };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousNotifications) {
+        qc.setQueryData(queryKeys.notifications.list(userId!), context.previousNotifications);
+      }
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: queryKeys.notifications.list(userId!) });

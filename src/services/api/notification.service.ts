@@ -84,6 +84,28 @@ export const markAllAsRead = async (
   }
 };
 
+export const clearAllNotifications = async (
+  userId: string,
+  headers: AuthHeaders
+): Promise<void> => {
+  try {
+    await axiosInstance.delete(
+      API_ROUTES.NOTIFICATIONS.CLEAR_ALL(userId),
+      { 
+        headers,
+        timeout: 30000,
+      }
+    );
+  } catch (error: any) {
+    console.error("clearAllNotifications API failed", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+    throw error;
+  }
+};
+
 export const deleteNotification = async (
   notificationId: string,
   userId: string,

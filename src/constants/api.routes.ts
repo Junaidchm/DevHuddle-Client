@@ -102,6 +102,8 @@ export const API_ROUTES = {
     MARK_READ: (id: string) => `${API_VERSION}/notifications/${id}/read`,
     MARK_ALL_READ: (userId: string) =>
       `${API_VERSION}/notifications/${userId}/mark-all-read`,
+    CLEAR_ALL: (userId: string) => 
+      `${API_VERSION}/notifications/${userId}/clear-all`,
     DELETE: (id: string) => `${API_VERSION}/notifications/${id}`,
   },
 

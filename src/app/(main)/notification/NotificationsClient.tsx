@@ -5,6 +5,7 @@ import {
   useUnreadCount,
   useMarkAsRead,
   useMarkAllAsRead,
+  useClearAllNotifications,
 } from "@/src/customHooks/useNotifications";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
@@ -39,6 +40,7 @@ export default function NotificationsClient() {
 
   const markAsReadMutation = useMarkAsRead();
   const markAllAsReadMutation = useMarkAllAsRead();
+  const clearAllMutation = useClearAllNotifications();
 
   const flatNotifications = useMemo(
     () => (data?.pages ?? []).flatMap((p) => p.notifications),
@@ -76,6 +78,15 @@ export default function NotificationsClient() {
     await markAsReadMutation.mutateAsync(id);
   }, [userId, markAsReadMutation]);
 
+  const handleClearAll = useCallback(async () => {
+    if (!userId || mappedNotifications.length === 0) return;
+    try {
+      await clearAllMutation.mutateAsync();
+    } catch (error) {
+      console.error("Failed to clear all notifications:", error);
+    }
+  }, [userId, mappedNotifications.length, clearAllMutation]);
+
   if (!userId) {
     return <div className="text-center p-8">Please log in to view notifications.</div>;
   }
@@ -85,7 +96,10 @@ export default function NotificationsClient() {
       <NotificationHeader
         unreadCount={unreadCount}
         onMarkAllAsRead={handleMarkAllAsRead}
+        onClearAll={handleClearAll}
         isMarkingAllAsRead={markAllAsReadMutation.isPending}
+        isClearingAll={clearAllMutation.isPending}
+        hasNotifications={mappedNotifications.length > 0}
       />
 
       <NotificationFilters
