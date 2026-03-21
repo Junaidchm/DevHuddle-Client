@@ -13,6 +13,7 @@ import StatusBadge from "@/src/components/admin/ui/StatusBadge";
 import Link from "next/link";
 import ContentIdentityCell from "@/src/components/admin/ui/ContentIdentityCell";
 import { getMediaUrl } from "@/src/utils/media";
+import { MODERATION_REASONS } from "@/src/constants/moderation.constants";
 
 export default function PostDetailPage() {
   const params = useParams();
@@ -363,6 +364,7 @@ export default function PostDetailPage() {
         confirmLabel="Hide Post"
         confirmVariant="warning"
         reasonRequired={true}
+        reasonOptions={MODERATION_REASONS}
         isLoading={hideMutation.isPending}
       />
 

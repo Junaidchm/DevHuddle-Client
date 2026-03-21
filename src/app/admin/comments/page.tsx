@@ -415,6 +415,7 @@ export default function CommentsPage() {
         confirmLabel={hideModal.isHidden ? "Hide Comment" : "Unhide Comment"}
         confirmVariant={hideModal.isHidden ? "warning" : "primary"}
         isLoading={hideMutation.isPending}
+        reasonRequired={hideModal.isHidden}
         reasonOptions={hideModal.isHidden ? MODERATION_REASONS : undefined}
       />
     </div>

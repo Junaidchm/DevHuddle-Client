@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getHubs, getReportedHubs, suspendHub, deleteHubAdmin } from "@/src/services/api/admin-panel.service";
+import { MODERATION_REASONS } from "@/src/constants/moderation.constants";
 import { useApiClient } from "@/src/lib/api-client";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
@@ -359,6 +360,7 @@ export default function HubsPage() {
         confirmLabel="Suspend Hub"
         confirmVariant="warning"
         reasonRequired={true}
+        reasonOptions={MODERATION_REASONS}
         isLoading={suspendMutation.isPending}
       />
 

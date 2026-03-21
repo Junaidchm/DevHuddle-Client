@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useState } from "react";
 import ConfirmModal from "@/src/components/admin/ui/ConfirmModal";
 import {
+  ADMIN_REPORT_REASONS,
   AdminModerationAction,
   AdminReportRecord,
   isReportActionable,
@@ -354,6 +355,7 @@ export default function ReportDetailPage() {
         confirmLabel={`Confirm ${actionModal.action || "Action"}`}
         confirmVariant={actionModal.action === "REMOVE" ? "danger" : actionModal.action === "APPROVE" ? "primary" : "warning"}
         reasonRequired={true}
+        reasonOptions={ADMIN_REPORT_REASONS.map((r) => ({ label: r, value: r }))}
         isLoading={actionMutation.isPending}
       />
     </div>

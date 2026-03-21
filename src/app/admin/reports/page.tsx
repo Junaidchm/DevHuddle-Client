@@ -692,6 +692,7 @@ export default function ReportsPage() {
         }
         confirmVariant={actionModal.action === "REMOVE" ? "danger" : "primary"}
         reasonRequired={true}
+        reasonOptions={ADMIN_REPORT_REASONS.map((r) => ({ label: r, value: r }))}
         isLoading={actionMutation.isPending || bulkActionMutation.isPending}
       />
     </div>
