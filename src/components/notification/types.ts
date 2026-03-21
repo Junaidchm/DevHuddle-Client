@@ -38,6 +38,8 @@ export interface MappedNotification {
   projectId?: string;
   commentId?: string;
   hubId?: string;
+  conversationId?: string;   // For deep-linking to a specific chat
+  contextLabel?: string;     // Rich human-readable context e.g. "your post", "DevHub group"
   preview?: {
     type: "post" | "comment" | "reply";
     content: string;

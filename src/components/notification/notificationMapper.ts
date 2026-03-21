@@ -375,6 +375,48 @@ export const mapNotificationToLinkedInStyle = (
     postId,
     commentId,
     hubId,
+    conversationId: (() => {
+      // Extract conversationId for chat message deep-linking
+      if (backendType === "CHAT_MESSAGE" || backendType === "NEW_MESSAGE") {
+        return notification.metadata?.conversationId || notification.contextId || undefined;
+      }
+      return undefined;
+    })(),
+    contextLabel: (() => {
+      const meta = notification.metadata || {};
+      // Chat messages: show conversation/group name if available
+      if (backendType === "CHAT_MESSAGE") {
+        if (meta.groupName) return `in "${meta.groupName}"`;
+        if (meta.type === "group") return "in a group chat";
+        return "in a direct message";
+      }
+      // Post sent to you
+      if (backendType === "NEW_MESSAGE" && meta.postId) {
+        return "a post";
+      }
+      // Comment/Reply/Like/Mention/Share on content
+      if (entityType === "PROJECT" || meta.projectId) {
+        return "your project";
+      }
+      if (entityType === "POST" || meta.postId) {
+        // Show a short snippet if preview is available
+        const previewText = meta.content ? `"${String(meta.content).slice(0, 40)}${meta.content.length > 40 ? "…" : ""}"` : null;
+        return previewText || "your post";
+      }
+      if (entityType === "COMMENT" || meta.commentId) {
+        if (meta.projectId) return "your project";
+        return "your post";
+      }
+      // Reports
+      if (backendType === "REPORT" && meta.reason) {
+        return `Reason: ${meta.reason}`;
+      }
+      // Hub join
+      if (backendType === "HUB_JOIN_REQUEST" || backendType === "HUB_JOIN_APPROVED" || backendType === "HUB_JOIN_REJECTED") {
+        return meta.hubName ? `"${meta.hubName}"` : "a hub";
+      }
+      return undefined;
+    })(),
     preview,
     actionText,
   };

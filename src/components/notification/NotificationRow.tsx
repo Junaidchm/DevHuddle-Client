@@ -162,7 +162,12 @@ export const NotificationRow = ({ notification, onMarkAsRead, isLast }: Notifica
         break;
       }
       case "message":
-        router.push("/chat");
+        // Deep-link into the specific conversation if conversationId is available
+        if (notification.conversationId) {
+          router.push(`/chat?id=${notification.conversationId}`);
+        } else {
+          router.push("/chat");
+        }
         break;
       case "system": {
         // For admin action notifications (CONTENT_HIDDEN), route to the affected content
@@ -241,6 +246,9 @@ export const NotificationRow = ({ notification, onMarkAsRead, isLast }: Notifica
               <span className="font-semibold hover:underline">{actorNames}</span>
               {" "}
               <span className="text-muted-foreground">{notification.actionText}</span>
+              {notification.contextLabel && (
+                <span className="text-muted-foreground"> · {notification.contextLabel}</span>
+              )}
             </p>
             
             {/* Preview for posts/comments */}
