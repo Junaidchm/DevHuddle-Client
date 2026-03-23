@@ -259,7 +259,7 @@ export default function ChatPage() {
 
     const handleHubSuspended = (e: CustomEvent) => {
         const data = e.detail;
-        if (data.conversationId === selectedConversation.conversationId) {
+        if (data.conversationId === selectedConversation?.conversationId) {
             console.log("⚠️ [Status] Active hub suspended status changed:", data.isSuspended);
             
             if (data.isSuspended) {
@@ -270,12 +270,11 @@ export default function ChatPage() {
                 toast.success("This hub has been restored by an admin.");
                 setSelectedConversation(prev => prev ? ({ ...prev, isSuspended: false }) : null);
             }
-            // Always invalidate list so it updates (either removes or reappears)
-            queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.all });
-        } else {
-            // If it's not the active hub, just invalidate list to remove/restore it from sidebar
-            queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.all });
         }
+        
+        // Always invalidate list so it updates (either removes or reappears)
+        queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.all });
+        queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.list() });
     };
 
     // For now, let's just handle metadata updates (name, icon)
