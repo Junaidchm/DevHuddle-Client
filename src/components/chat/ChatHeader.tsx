@@ -4,9 +4,10 @@ import React, { useState } from "react";
 import { useSession } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import { Button } from "@/src/components/ui/button";
-import { Phone, Video, MoreVertical, AlertCircle, Users, ChevronLeft } from "lucide-react";
+import { Phone, Video, MoreVertical, AlertCircle, Users, ChevronLeft, ShieldAlert } from "lucide-react";
 import { ConversationWithMetadata } from "@/src/types/chat.types";
 import { PROFILE_DEFAULT_URL } from "@/src/constants";
+import { Badge } from "@/src/components/ui/badge";
 import { useVideoCall } from "@/src/contexts/VideoCallContext";
 import { GroupCallParticipantSelector } from "./call/GroupCallParticipantSelector";
 
@@ -120,10 +121,18 @@ export function ChatHeader({
               </AvatarFallback>
             </Avatar>
             
-            <div className="flex flex-col">
-              <h3 className="font-semibold text-foreground leading-none mb-1">
-                {title}
-              </h3>
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-semibold text-foreground leading-none truncate">
+                  {title}
+                </h3>
+                {conversation.isSuspended && (
+                  <Badge variant="destructive" className="h-4 px-1.5 py-0 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shrink-0">
+                    <ShieldAlert className="w-2.5 h-2.5" />
+                    Suspended
+                  </Badge>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground leading-none">
                  {subtitle}
               </p>

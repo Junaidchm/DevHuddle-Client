@@ -108,6 +108,8 @@ export interface ConversationWithMetadata {
     onlyAdminsCanPost?: boolean;
     onlyAdminsCanEditInfo?: boolean;
     memberCount?: number;
+    isSuspended?: boolean;
+    deletedAt?: string | null;
 
   // Block states
   isBlockedByMe?: boolean;

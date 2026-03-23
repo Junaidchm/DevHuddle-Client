@@ -399,7 +399,58 @@ export default function ChatWindow({
   }
 
   return (
-    <div className="flex flex-row flex-1 bg-background h-full overflow-hidden">
+    <div className="flex flex-row flex-1 bg-background h-full overflow-hidden relative">
+      {/* Moderation Overlays (Full Screen relative to ChatWindow) */}
+      {conversation.isSuspended && (
+        <div className="absolute inset-0 z-[100] flex items-center justify-center p-6 bg-background/60 backdrop-blur-[4px] animate-in fade-in duration-300">
+          <div className="max-w-md w-full bg-card border border-destructive/20 shadow-2xl rounded-3xl p-8 text-center space-y-6">
+            <div className="w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
+              <AlertCircle className="w-10 h-10 text-destructive" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-2xl font-bold text-foreground">Hub Suspended</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                This hub has been suspended by an admin. You cannot view messages or perform any actions at this time.
+              </p>
+            </div>
+            <div className="pt-2">
+              <Button 
+                variant="outline" 
+                onClick={onBack}
+                className="rounded-full px-8"
+              >
+                Go Back
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {conversation.deletedAt && (
+        <div className="absolute inset-0 z-[100] flex items-center justify-center p-6 bg-background/60 backdrop-blur-[4px] animate-in fade-in duration-300">
+          <div className="max-w-md w-full bg-card border border-destructive/20 shadow-2xl rounded-3xl p-8 text-center space-y-6">
+            <div className="w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
+              <X className="w-10 h-10 text-destructive" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-2xl font-bold text-foreground">Hub Removed</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                This hub has been removed by an admin. You can no longer see this page or interact with its members.
+              </p>
+            </div>
+            <div className="pt-2">
+              <Button 
+                variant="outline" 
+                onClick={onBack}
+                className="rounded-full px-8"
+              >
+                Go Back
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Left Main Column: Chat Content */}
       <div className="flex-1 flex flex-col min-w-0 h-full relative">
         {/* Header */}
@@ -536,7 +587,7 @@ export default function ChatWindow({
               <div ref={messagesEndRef} className="h-4" />
           </div>
         </div>
-
+        
         {/* Input Area */}
         <div className="z-10 bg-background border-t border-border">
           {conversation.isBlockedByMe ? (
@@ -573,9 +624,14 @@ export default function ChatWindow({
               const isGroup = conversation.type === 'GROUP';
               const myParticipant = conversation.participants.find(p => p.userId === currentUserId);
               const isAdmin = myParticipant?.role === 'ADMIN' || conversation.ownerId === currentUserId;
-              const canPost = !isGroup || !conversation.onlyAdminsCanPost || isAdmin;
-              const disabled = !isConnected || !canPost;
-              const placeholder = !canPost ? 'Only admins can send messages' : 'Type a message...';
+              const isModerated = conversation.isSuspended || !!conversation.deletedAt;
+              const canPost = (!isGroup || !conversation.onlyAdminsCanPost || isAdmin) && !isModerated;
+              const disabled = !isConnected || !canPost || isModerated;
+              const placeholder = conversation.deletedAt
+                ? 'This hub is removed'
+                : conversation.isSuspended 
+                  ? 'This hub is suspended' 
+                  : !canPost ? 'Only admins can send messages' : 'Type a message...';
               return (
                 <ChatInput
                   conversationId={conversation.conversationId}

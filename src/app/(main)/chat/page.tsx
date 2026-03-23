@@ -35,6 +35,8 @@ const mapToMetadata = (conv: any): ConversationWithMetadata => {
     lastMessage: conv.lastMessage || null,
     lastMessageAt: conv.lastMessageAt || conv.updatedAt || conv.createdAt,
     unreadCount: conv.unreadCount || 0,
+    isSuspended: conv.isSuspended || false,
+    deletedAt: conv.deletedAt || null,
     createdAt: conv.createdAt
   };
 };
@@ -65,6 +67,8 @@ export default function ChatPage() {
       const hasChanged = 
         fresh.isBlockedByMe !== selectedConversation.isBlockedByMe ||
         fresh.isBlockedByThem !== selectedConversation.isBlockedByThem ||
+        fresh.isSuspended !== selectedConversation.isSuspended ||
+        !!fresh.deletedAt !== !!selectedConversation.deletedAt ||
         fresh.name !== selectedConversation.name ||
         fresh.icon !== selectedConversation.icon ||
         (fresh.memberCount ?? fresh.participants?.length ?? 0) !== (selectedConversation.memberCount ?? selectedConversation.participants?.length ?? 0) ||
@@ -245,14 +249,36 @@ export default function ChatPage() {
     const handleActiveGroupDeleted = (e: CustomEvent) => {
         const data = e.detail;
         if (data.conversationId === selectedConversation.conversationId) {
-            console.log("🚫 [Redirect] Active group deleted, deselecting", data.conversationId);
-            setSelectedConversation(null);
+            console.log("🚫 [Status] Active group deleted, marking as removed", data.conversationId);
+            setSelectedConversation(prev => prev ? ({ ...prev, deletedAt: new Date().toISOString() }) : null);
+            toast.error("This hub has been removed by an admin.");
+        }
+    };
+
+    const handleHubSuspended = (e: CustomEvent) => {
+        const data = e.detail;
+        if (data.conversationId === selectedConversation.conversationId) {
+            console.log("⚠️ [Status] Active hub suspended status changed:", data.isSuspended);
+            setSelectedConversation(prev => prev ? ({ ...prev, isSuspended: data.isSuspended }) : null);
+            
+            if (data.isSuspended) {
+                toast.error("This hub has been suspended by an admin.");
+            } else {
+                toast.success("This hub has been restored by an admin.");
+                // NEW: Invalidate conversation list so it reappears instantly
+                queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.all });
+            }
+        } else if (!data.isSuspended) {
+            // If it's not the active hub but was restored, also invalidate list
+            queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.all });
         }
     };
 
     // For now, let's just handle metadata updates (name, icon)
     window.addEventListener('group_updated', handleGroupUpdated as EventListener);
     window.addEventListener('active_group_deleted', handleActiveGroupDeleted as EventListener);
+    window.addEventListener('hub_deleted', handleActiveGroupDeleted as EventListener);
+    window.addEventListener('hub_suspended', handleHubSuspended as EventListener);
     window.addEventListener('hub_join_approved', handleJoinResult as EventListener); // Notify requester
     window.addEventListener('hub_join_rejected', handleJoinResult as EventListener); // Notify requester
     window.addEventListener('participants_added', handleParticipantsAdded as EventListener); // Refresh for existing members
@@ -265,6 +291,8 @@ export default function ChatPage() {
     return () => {
         window.removeEventListener('group_updated', handleGroupUpdated as EventListener);
         window.removeEventListener('active_group_deleted', handleActiveGroupDeleted as EventListener);
+        window.removeEventListener('hub_deleted', handleActiveGroupDeleted as EventListener);
+        window.removeEventListener('hub_suspended', handleHubSuspended as EventListener);
         window.removeEventListener('hub_join_approved', handleJoinResult as EventListener);
         window.removeEventListener('hub_join_rejected', handleJoinResult as EventListener);
         window.removeEventListener('participants_added', handleParticipantsAdded as EventListener);
