@@ -421,6 +421,12 @@ class WebSocketManager {
         return;
       }
 
+      if (message.type === "content_removed" as any || message.type === "content_restored" as any) {
+        console.log(`[WebSocket] 🛡️ Routing content moderation update: ${message.type}`);
+        this.handleContentModeration(message);
+        return;
+      }
+
       // Only process remaining messages if authenticated (chat messages)
       if (!this.isAuthenticated) {
         console.warn("[WebSocket] Message before authentication, ignoring");
@@ -1498,6 +1504,36 @@ class WebSocketManager {
               return { ...oldData, pages: updatedPages };
           }
       );
+  }
+
+  /**
+   * Handle real-time content moderation (admin hide/delete/restore)
+   * This ensures LinkedIn/Instagram style instant updates for all users
+   */
+  private handleContentModeration(message: WebSocketMessage): void {
+    if (!this.queryClient) return;
+
+    const { entityId, entityType, action } = message.data as any;
+    console.log(`[WebSocket] 🛡️ Content ${action} received for ${entityType}: ${entityId}`);
+
+    // Determine which queries to invalidate based on entity type
+    if (entityType === "POST") {
+      // Invalidate all feed and post related queries globally
+      this.queryClient.invalidateQueries({ queryKey: ["feed"] });
+      this.queryClient.invalidateQueries({ queryKey: ["posts"] });
+    } else if (entityType === "PROJECT") {
+      // Invalidate all project related queries globally
+      this.queryClient.invalidateQueries({ queryKey: ["projects"] });
+    } else if (entityType === "COMMENT") {
+      // Invalidate all engagement and project comments queries
+      this.queryClient.invalidateQueries({ queryKey: ["engagement", "comments"] });
+      this.queryClient.invalidateQueries({ queryKey: ["projects", "comments"] });
+    } else if (entityType === "HUB" || entityType === "CONVERSATION") {
+      // Invalidate chat conversations and hub specific feeds
+      this.queryClient.invalidateQueries({ queryKey: ["chat", "conversations"] });
+      this.queryClient.invalidateQueries({ queryKey: ["hubs"] });
+      this.queryClient.invalidateQueries({ queryKey: ["chat"] });
+    }
   }
 
   // Cleanup on destroy

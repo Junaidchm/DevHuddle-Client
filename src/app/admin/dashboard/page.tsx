@@ -332,33 +332,6 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* User Stats */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-transparent">
-        <h2 className="text-base font-semibold text-gray-900 mb-4">
-          User Overview
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[
-            { label: "Total", value: stats.users.total, icon: "fas fa-user", color: "text-indigo-600 bg-indigo-50" },
-            { label: "Active", value: stats.users.active || 0, icon: "fas fa-user-check", color: "text-green-600 bg-green-50" },
-            { label: "Blocked", value: stats.users.blocked || 0, icon: "fas fa-user-slash", color: "text-red-600 bg-red-50" },
-            { label: "New (30d)", value: stats.users.newThisMonth || 0, icon: "fas fa-user-plus", color: "text-blue-600 bg-blue-50" },
-          ].map(({ label, value, icon, color }) => (
-            <div key={label} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${color} shrink-0`}>
-                <i className={`${icon} text-sm`}></i>
-              </div>
-              <div>
-                <p className="text-lg font-bold text-gray-900">
-                  {isLoading ? "—" : value.toLocaleString()}
-                </p>
-                <p className="text-xs text-gray-500">{label}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };

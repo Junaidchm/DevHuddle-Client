@@ -183,6 +183,9 @@ export type WebSocketMessageType =
   | 'participant_removed'
   | 'participant_left'
   | 'role_updated'
+  // Moderation Types
+  | 'content_removed'
+  | 'content_restored'
   // Engagement/Real-time types
   | 'join_room'
   | 'leave_room'
