@@ -111,6 +111,7 @@ export function useGroupSocketEvents() {
         window.addEventListener('group_updated', handleGroupUpdated as EventListener);
         window.addEventListener('group_deleted', handleGroupDeleted as EventListener);
         window.addEventListener('participants_added', invalidateList as EventListener);
+        window.addEventListener('hub_join_requested', invalidateList as EventListener);
         window.addEventListener('participant_removed', invalidateList as EventListener);
         window.addEventListener('participant_left', invalidateList as EventListener);
         window.addEventListener('role_updated', invalidateList as EventListener);
@@ -120,6 +121,7 @@ export function useGroupSocketEvents() {
             window.removeEventListener('group_updated', handleGroupUpdated as EventListener);
             window.removeEventListener('group_deleted', handleGroupDeleted as EventListener);
             window.removeEventListener('participants_added', invalidateList as EventListener);
+            window.removeEventListener('hub_join_requested', invalidateList as EventListener);
             window.removeEventListener('participant_removed', invalidateList as EventListener);
             window.removeEventListener('participant_left', invalidateList as EventListener);
             window.removeEventListener('role_updated', invalidateList as EventListener);

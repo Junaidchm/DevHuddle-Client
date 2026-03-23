@@ -595,6 +595,7 @@ class WebSocketManager {
           'participant_left',
           'role_updated',
           'hub_join_approved', // ✅ Triggers member list/count refresh for admin/owner
+          'hub_join_requested', // ✅ Triggers notification for admin/owner
       ];
 
       if (groupEvents.includes(message.type)) {
@@ -1383,6 +1384,7 @@ class WebSocketManager {
    */
   private handleGroupEvent(type: string, data: any): void {
       if (typeof window !== 'undefined') {
+          console.log(`[WebSocket] 👥 Group Event: ${type}`, data);
           window.dispatchEvent(new CustomEvent(type, { detail: data }));
           
           // Also perform general cache invalidation here as a fallback/safeguard

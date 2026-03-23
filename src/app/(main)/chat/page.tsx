@@ -8,6 +8,7 @@ import { useConversations } from "@/src/hooks/chat/useConversationQuery";
 import { ConversationWithMetadata, ConversationParticipant } from "@/src/types/chat.types";
 import { useSession } from "next-auth/react";
 import { MessageCircle } from "lucide-react";
+import { toast } from "sonner";
 
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -131,9 +132,13 @@ export default function ChatPage() {
     
     const handleParticipantsAdded = (e: CustomEvent) => {
         const data = e.detail;
+        console.log("👥 [Socket] handleParticipantsAdded received:", data);
+        
         if (data.conversationId === selectedConversation.conversationId) {
             const newParticipantIds: string[] = data.newParticipants || data.participants || [];
             const addedCount = newParticipantIds.length;
+
+            console.log(`[Socket] Updating active conversation ${data.conversationId} with ${addedCount} new members`);
 
             // ✅ Optimistic update: bump memberCount instantly for immediate UI feedback
             if (addedCount > 0) {
@@ -148,9 +153,26 @@ export default function ChatPage() {
 
             // ✅ Also invalidate both caches so participants list and count reload with full profile data
             queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.all });
-            if (conversationId) {
-                queryClient.invalidateQueries({ queryKey: ["conversation", conversationId] });
-            }
+            
+            // ✅ FIX: Use selectedConversation.conversationId strictly for invalidation
+            // Previously used `conversationId` from searchParams which could be null
+            queryClient.invalidateQueries({ queryKey: ["conversation", selectedConversation.conversationId] });
+        }
+    };
+
+    const handleHubJoinRequested = (e: CustomEvent) => {
+        const data = e.detail;
+        console.log("🎟️ [Socket] handleHubJoinRequested received:", data);
+        
+        // Notify the owner/admin
+        toast.info(`New join request for "${data.hubName || 'Hub'}"`, {
+            description: "Go to Hub Settings > Requests to approve.",
+            duration: 5000,
+        });
+
+        // Invalidate specific conversation to show badge on Requests tab if open
+        if (data.hubId === selectedConversation.conversationId) {
+            queryClient.invalidateQueries({ queryKey: ["conversation", selectedConversation.conversationId] });
         }
     };
 
@@ -215,6 +237,7 @@ export default function ChatPage() {
     window.addEventListener('active_group_deleted', handleActiveGroupDeleted as EventListener);
     window.addEventListener('participants_added', handleParticipantsAdded as EventListener);
     window.addEventListener('hub_join_approved', handleParticipantsAdded as EventListener); // Alias for refresh
+    window.addEventListener('hub_join_requested', handleHubJoinRequested as EventListener); // New: Notify admin
     window.addEventListener('participant_removed', handleParticipantRemoved as EventListener); // handling remove by admin
     window.addEventListener('participant_left', handleParticipantRemoved as EventListener); // handling self leave (same logic)
     window.addEventListener('role_updated', handleRoleUpdated as EventListener);
@@ -225,6 +248,7 @@ export default function ChatPage() {
         window.removeEventListener('active_group_deleted', handleActiveGroupDeleted as EventListener);
         window.removeEventListener('participants_added', handleParticipantsAdded as EventListener);
         window.removeEventListener('hub_join_approved', handleParticipantsAdded as EventListener);
+        window.removeEventListener('hub_join_requested', handleHubJoinRequested as EventListener);
         window.removeEventListener('participant_removed', handleParticipantRemoved as EventListener);
         window.removeEventListener('participant_left', handleParticipantRemoved as EventListener);
         window.removeEventListener('role_updated', handleRoleUpdated as EventListener);
