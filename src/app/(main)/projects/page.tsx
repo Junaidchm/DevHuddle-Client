@@ -26,7 +26,7 @@ export default function ProjectsPage() {
   const [showSearch, setShowSearch] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [page, setPage] = useState(1);
-  const limit = 10;
+  const limit = 6;
   const authHeaders = useAuthHeaders();
 
   const trendingQuery = useTrendingProjectsQuery(

@@ -11,7 +11,7 @@ interface PaginationProps {
 }
 
 const Pagination = ({ currentPage, totalPages, onPageChange, isLoading = false }: PaginationProps) => {
-  if (totalPages <= 1) return null;
+  if (totalPages < 1) return null;
 
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];

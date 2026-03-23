@@ -29,7 +29,7 @@ export default function HubsPage() {
     const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState("discover");
     const [page, setPage] = useState(1);
-    const limit = 12;
+    const limit = 6;
 
     const debouncedQuery = useDebounce(searchQuery, 300);
 
