@@ -250,26 +250,30 @@ export default function ChatPage() {
         const data = e.detail;
         if (data.conversationId === selectedConversation.conversationId) {
             console.log("🚫 [Status] Active group deleted, marking as removed", data.conversationId);
-            setSelectedConversation(prev => prev ? ({ ...prev, deletedAt: new Date().toISOString() }) : null);
             toast.error("This hub has been removed by an admin.");
+            setSelectedConversation(null);
         }
+        queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.all });
+        queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.list() });
     };
 
     const handleHubSuspended = (e: CustomEvent) => {
         const data = e.detail;
         if (data.conversationId === selectedConversation.conversationId) {
             console.log("⚠️ [Status] Active hub suspended status changed:", data.isSuspended);
-            setSelectedConversation(prev => prev ? ({ ...prev, isSuspended: data.isSuspended }) : null);
             
             if (data.isSuspended) {
                 toast.error("This hub has been suspended by an admin.");
+                // Deselect so it's removed from messaging section
+                setSelectedConversation(null);
             } else {
                 toast.success("This hub has been restored by an admin.");
-                // NEW: Invalidate conversation list so it reappears instantly
-                queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.all });
+                setSelectedConversation(prev => prev ? ({ ...prev, isSuspended: false }) : null);
             }
-        } else if (!data.isSuspended) {
-            // If it's not the active hub but was restored, also invalidate list
+            // Always invalidate list so it updates (either removes or reappears)
+            queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.all });
+        } else {
+            // If it's not the active hub, just invalidate list to remove/restore it from sidebar
             queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.all });
         }
     };
