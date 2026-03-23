@@ -58,12 +58,12 @@ export default function HubsPage() {
         setPage(1);
     }, [activeTab, debouncedQuery, selectedTopic]);
 
-    const discoverGroups = discoverData?.data.groups || [];
-    const myGroups = myGroupsData?.data.groups || [];
+    const discoverGroups = discoverData?.groups || [];
+    const myGroups = myGroupsData?.groups || [];
     
     const totalCount = activeTab === "discover" 
-        ? (discoverData?.data.totalCount || 0) 
-        : (myGroupsData?.data.totalCount || 0);
+        ? (discoverData?.totalCount || 0) 
+        : (myGroupsData?.totalCount || 0);
     
     const totalPages = Math.ceil(totalCount / limit);
 
