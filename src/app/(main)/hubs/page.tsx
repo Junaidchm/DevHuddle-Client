@@ -187,16 +187,14 @@ export default function HubsPage() {
                             </div>
                         )}
                         
-                        {totalPages > 1 && (
-                            <div className="mt-8">
-                                <Pagination 
-                                    currentPage={page} 
-                                    totalPages={totalPages} 
-                                    onPageChange={setPage} 
-                                    isLoading={isDiscoverLoading}
-                                />
-                            </div>
-                        )}
+                        <div className="mt-8">
+                            <Pagination 
+                                currentPage={page} 
+                                totalPages={totalPages} 
+                                onPageChange={setPage} 
+                                isLoading={isDiscoverLoading}
+                            />
+                        </div>
                     </TabsContent>
 
                     <TabsContent value="my-hubs" className="m-0 focus-visible:outline-none focus-visible:ring-0">

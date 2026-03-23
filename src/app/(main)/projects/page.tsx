@@ -236,16 +236,14 @@ export default function ProjectsPage() {
                   ))}
                 </div>
 
-                {totalPages > 1 && (
-                  <div className="mt-8">
-                    <Pagination
-                      currentPage={page}
-                      totalPages={totalPages}
-                      onPageChange={setPage}
-                      isLoading={activeQuery.isFetching}
-                    />
-                  </div>
-                )}
+                <div className="mt-8">
+                  <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                    isLoading={activeQuery.isFetching}
+                  />
+                </div>
               </>
             )}
         </div>
