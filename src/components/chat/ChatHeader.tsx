@@ -53,9 +53,11 @@ export function ChatHeader({
     ? conversation.icon
     : getParticipantPhoto(otherParticipant) || PROFILE_DEFAULT_URL;
 
+  const onlineCount = conversation.participants.filter(p => p.userId !== validCurrentUserId && p.isOnline).length;
+  
   const subtitle = isGroup
-    ? `${conversation.memberCount ?? conversation.participants.length} members` 
-    : "Online";
+    ? `${conversation.memberCount ?? conversation.participants.length} members${onlineCount > 0 ? `, ${onlineCount} online` : ''}` 
+    : (otherParticipant?.isOnline ? "Active now" : "Offline");
 
   const fallback = isGroup 
     ? (conversation.name?.[0] || 'G').toUpperCase()

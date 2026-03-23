@@ -243,24 +243,52 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                             </AvatarFallback>
                         </Avatar>
                     ) : (
-                        <Avatar className="w-12 h-12 border border-border">
-                            <AvatarImage src={otherParticipant.profilePhoto || PROFILE_DEFAULT_URL} alt={displayName} className="object-cover" />
-                            <AvatarFallback className="bg-primary/10 text-primary">
-                                {displayName.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                        </Avatar>
+                        <div className="relative">
+                            <Avatar className="w-12 h-12 border border-border">
+                                <AvatarImage src={otherParticipant.profilePhoto || PROFILE_DEFAULT_URL} alt={displayName} className="object-cover" />
+                                <AvatarFallback className="bg-primary/10 text-primary">
+                                    {displayName.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
+                            {otherParticipant.isOnline && (
+                                <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-background rounded-full" />
+                            )}
+                        </div>
                     )}
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 min-w-0 text-left">
-                  <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center justify-between mb-0.5">
                     <h3 className={cn("font-medium text-sm truncate", isSelected ? "text-foreground" : "text-foreground/90")}>
                       {displayName}
                     </h3>
-                    <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                    <span className="text-[10px] text-muted-foreground flex-shrink-0 ml-2">
                       {timeAgo}
                     </span>
+                  </div>
+                  
+                  {/* Online Status / Presence Info */}
+                  <div className="flex items-center gap-1.5 mb-1 h-4">
+                    {conv.type === 'GROUP' ? (
+                       (() => {
+                          const onlineCount = conv.participants.filter(p => p.userId !== currentUserId && p.isOnline).length;
+                          if (onlineCount > 0) {
+                            return (
+                              <span className="text-[10px] font-medium text-green-600 dark:text-green-500 animate-pulse">
+                                {onlineCount} online
+                              </span>
+                            );
+                          }
+                          return null;
+                       })()
+                    ) : (
+                      otherParticipant.isOnline && (
+                        <span className="text-[10px] font-medium text-green-600 dark:text-green-500">
+                          Active now
+                        </span>
+                      )
+                    )}
                   </div>
                   <div className="flex items-center justify-between">
                     <p className={cn("text-xs truncate flex-1", conv.unreadCount > 0 ? "font-medium text-foreground" : "text-muted-foreground")}>
