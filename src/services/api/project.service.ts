@@ -138,12 +138,14 @@ export const getProject = async (
 export const listProjects = async (
   params: {
     cursor?: string | null;
+    pageParam?: string | null;
+    page?: number | string;
     filter?: string;
     techStack?: string[];
     tags?: string[];
     period?: string;
     limit?: number;
-    authorId?: string; // Add authorId
+    authorId?: string;
   },
   headers: Record<string, string>
 ): Promise<ListProjectsResponse> => {
@@ -189,6 +191,8 @@ export const publishProject = async (
 export const getTrendingProjects = async (
   params: {
     cursor?: string | null;
+    pageParam?: string | null;
+    page?: number | string;
     period?: string;
     limit?: number;
   },
@@ -210,6 +214,8 @@ export const getTrendingProjects = async (
 export const getTopProjects = async (
   params: {
     cursor?: string | null;
+    pageParam?: string | null;
+    page?: number | string;
     period?: string;
     limit?: number;
   },
@@ -230,6 +236,8 @@ export const searchProjects = async (
   query: string,
   filters: {
     cursor?: string | null;
+    pageParam?: string | null;
+    page?: number | string;
     techStack?: string[];
     tags?: string[];
     limit?: number;

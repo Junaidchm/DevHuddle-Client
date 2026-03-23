@@ -15,6 +15,7 @@ import CreateProjectModal from "@/src/components/projects/CreateProjectModal";
 import { Input } from "@/src/components/ui/input";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { queryKeys } from "@/src/lib/queryKeys";
+import Pagination from "@/src/components/profile/Pagination";
 
 type FilterType = "trending" | "top" | "newest" | "my-projects";
 
@@ -24,25 +25,31 @@ export default function ProjectsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const limit = 10;
   const authHeaders = useAuthHeaders();
 
   const trendingQuery = useTrendingProjectsQuery(
-    filter === "trending" ? period : undefined
+    filter === "trending" ? period : undefined,
+    page,
+    limit
   );
 
-  const topQuery = useTopProjectsQuery(filter === "top" ? period : undefined);
+  const topQuery = useTopProjectsQuery(filter === "top" ? period : undefined, page, limit);
 
   const listQuery = useListProjectsQuery({
     myProjects: filter === "my-projects" ? true : undefined,
+    page,
+    limit
   });
 
   const searchQueryResult = useQuery({
-    queryKey: queryKeys.projects.search(searchQuery),
+    queryKey: queryKeys.projects.search(searchQuery, { page, limit }),
     queryFn: async () => {
-      if (!searchQuery.trim()) return { projects: [], nextCursor: null, totalCount: 0 };
+      if (!searchQuery.trim()) return { projects: [], totalCount: 0 };
       return await searchProjects(
         searchQuery,
-        { cursor: null, limit: 20 },
+        { page, limit },
         authHeaders
       );
     },
@@ -60,8 +67,32 @@ export default function ProjectsPage() {
   const projects: Project[] = (
     showSearch && searchQuery.trim()
       ? searchQueryResult.data?.projects || []
-      : (activeQuery as any).data?.pages?.flatMap((page: any) => page.projects) || []
-  ).filter((project: Project) => project && project.author); // Ensure project and author exist before rendering
+      : (activeQuery as any).data?.projects || []
+  ).filter((project: Project) => project && project.author);
+
+  const totalCount = activeQuery.data?.totalCount || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  // Reset page when filter or search changes
+  useState(() => {
+    setPage(1);
+  });
+  
+  const handleFilterChange = (newFilter: FilterType) => {
+    setFilter(newFilter);
+    setPage(1);
+  };
+
+  const handlePeriodChange = (newPeriod: string) => {
+    setPeriod(newPeriod);
+    setPage(1);
+  };
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    setShowSearch(!!val);
+    setPage(1);
+  };
 
   return (
     <div className="container-centered py-6 animate-fadeIn">
@@ -205,23 +236,14 @@ export default function ProjectsPage() {
                   ))}
                 </div>
 
-                {!showSearch && "hasNextPage" in activeQuery && (activeQuery as any).hasNextPage && (
-                  <div className="text-center pb-8 border-t border-border/40 pt-10">
-                    <Button
-                      variant="outline"
-                      onClick={() => (activeQuery as any).fetchNextPage()}
-                      disabled={(activeQuery as any).isFetchingNextPage}
-                      className="min-w-[200px] h-11 border-primary/30 text-primary hover:bg-primary/5 transition-all font-semibold rounded-md"
-                    >
-                      {(activeQuery as any).isFetchingNextPage ? (
-                         <>
-                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                           Discovering more...
-                         </>
-                      ) : (
-                          "Show More Projects"
-                      )}
-                    </Button>
+                {totalPages > 1 && (
+                  <div className="mt-8">
+                    <Pagination
+                      currentPage={page}
+                      totalPages={totalPages}
+                      onPageChange={setPage}
+                      isLoading={activeQuery.isFetching}
+                    />
                   </div>
                 )}
               </>

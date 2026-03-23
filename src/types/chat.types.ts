@@ -285,3 +285,18 @@ export interface GroupListDto {
   isRequestPending: boolean;
   createdAt: Date;
 }
+export interface PaginatedGroupsResponse {
+  success: boolean;
+  data: {
+    groups: ConversationWithMetadata[];
+    totalCount: number;
+  };
+}
+
+export interface PaginatedGroupListResponse {
+  success: boolean;
+  data: {
+    groups: GroupListDto[];
+    totalCount: number;
+  };
+}

@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import useDebounce from "@/src/customHooks/useDebounce";
 import { GroupListDto } from "@/src/types/chat.types";
-import { useInView } from "react-intersection-observer";
+import Pagination from "@/src/components/profile/Pagination";
 
 export default function HubsPage() {
     const { data: session } = useSession();
@@ -28,7 +28,8 @@ export default function HubsPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState("discover");
-    const { ref, inView } = useInView();
+    const [page, setPage] = useState(1);
+    const limit = 12;
 
     const debouncedQuery = useDebounce(searchQuery, 300);
 
@@ -39,28 +40,32 @@ export default function HubsPage() {
     const { 
         data: discoverData, 
         isLoading: isDiscoverLoading, 
-        isFetchingNextPage,
-        fetchNextPage,
-        hasNextPage
     } = useDiscoverGroups({
         query: debouncedQuery,
         topics: selectedTopic ? [selectedTopic] : undefined,
-        limit: 20
+        limit,
+        page
     });
 
     const { data: myGroupsData, isLoading: isMyGroupsLoading } = useMyGroups({
         query: debouncedQuery,
+        limit,
+        page
     });
 
-    // Infinite scroll trigger
+    // Reset page when tab or filters change
     React.useEffect(() => {
-        if (inView && hasNextPage) {
-            fetchNextPage();
-        }
-    }, [inView, fetchNextPage, hasNextPage]);
+        setPage(1);
+    }, [activeTab, debouncedQuery, selectedTopic]);
 
-    const discoverGroups = discoverData?.pages.flat() || [];
-    const myGroups = myGroupsData || [];
+    const discoverGroups = discoverData?.data.groups || [];
+    const myGroups = myGroupsData?.data.groups || [];
+    
+    const totalCount = activeTab === "discover" 
+        ? (discoverData?.data.totalCount || 0) 
+        : (myGroupsData?.data.totalCount || 0);
+    
+    const totalPages = Math.ceil(totalCount / limit);
 
     return (
         <div className="relative min-h-[calc(100vh-4rem)] bg-[#f8fafc]">
@@ -182,10 +187,14 @@ export default function HubsPage() {
                             </div>
                         )}
                         
-                        {/* Infinite Scroll trigger */}
-                        {activeTab === "discover" && hasNextPage && (
-                            <div ref={ref} className="flex justify-center py-12">
-                                {isFetchingNextPage && <Loader2 className="w-8 h-8 animate-spin text-primary/40" />}
+                        {totalPages > 1 && (
+                            <div className="mt-8">
+                                <Pagination 
+                                    currentPage={page} 
+                                    totalPages={totalPages} 
+                                    onPageChange={setPage} 
+                                    isLoading={isDiscoverLoading}
+                                />
                             </div>
                         )}
                     </TabsContent>
@@ -219,6 +228,16 @@ export default function HubsPage() {
                                 {myGroups.map(group => (
                                     <GroupCard key={group.conversationId} group={group} currentUser={user} />
                                 ))}
+                            </div>
+                        )}
+                        {totalPages > 1 && (
+                            <div className="mt-8">
+                                <Pagination 
+                                    currentPage={page} 
+                                    totalPages={totalPages} 
+                                    onPageChange={setPage} 
+                                    isLoading={isMyGroupsLoading}
+                                />
                             </div>
                         )}
                     </TabsContent>

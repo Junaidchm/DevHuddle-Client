@@ -1,26 +1,24 @@
 "use client";
 
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { getTrendingProjects, ListProjectsResponse } from "@/src/services/api/project.service";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 
-export function useTrendingProjectsQuery(period?: string) {
+export function useTrendingProjectsQuery(period?: string, page: number = 1, limit: number = 10) {
   const authHeaders = useAuthHeaders();
 
-  return useInfiniteQuery<ListProjectsResponse>({
-    queryKey: ["projects", "trending", period],
-    queryFn: async ({ pageParam }) => {
+  return useQuery<ListProjectsResponse>({
+    queryKey: ["projects", "trending", period, page, limit],
+    queryFn: async () => {
       return await getTrendingProjects(
         {
-          cursor: pageParam as string | null,
+          page,
           period,
-          limit: 10,
+          limit,
         },
         authHeaders
       );
     },
-    getNextPageParam: (lastPage) => lastPage.nextCursor || null,
-    initialPageParam: null as string | null,
     enabled: true, // Always enabled - these are public routes
     staleTime: 60 * 1000, // 1 minute
   });

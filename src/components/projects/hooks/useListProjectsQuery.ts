@@ -1,19 +1,18 @@
 "use client";
 
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { listProjects } from "@/src/services/api/project.service";
 import { useAuthHeaders } from "@/src/customHooks/useAuthHeaders";
 import { queryKeys } from "@/src/lib/queryKeys";
 
-export function useListProjectsQuery(filters: { myProjects?: boolean } = {}) {
+export function useListProjectsQuery(params: { myProjects?: boolean, page?: number, limit?: number } = {}) {
   const authHeaders = useAuthHeaders();
+  const { page = 1, limit = 12, ...filters } = params;
 
-  return useInfiniteQuery({
-    queryKey: queryKeys.projects.list(filters),
-    queryFn: ({ pageParam = null }) =>
-      listProjects({ cursor: pageParam as string | null, limit: 12, ...filters }, authHeaders),
-    initialPageParam: null,
-    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+  return useQuery({
+    queryKey: queryKeys.projects.list({ ...filters, page, limit }),
+    queryFn: () =>
+      listProjects({ page, limit, ...filters }, authHeaders),
     enabled: !!authHeaders.Authorization,
   });
 }

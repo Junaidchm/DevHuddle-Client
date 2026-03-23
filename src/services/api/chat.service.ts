@@ -9,6 +9,8 @@ import {
   ConversationWithMetadata,
   Message,
   GroupListDto,
+  PaginatedGroupsResponse,
+  PaginatedGroupListResponse,
 } from '@/src/types/chat.types';
 
 /**
@@ -205,14 +207,14 @@ export async function createGroup(
 export async function getAllGroups(
     params: { query?: string; topics?: string[]; limit?: number; offset?: number },
     headers?: Record<string, string>
-): Promise<ConversationWithMetadata[]> {
-    const response = await axiosInstance.get<ConversationWithMetadata[]>(
+): Promise<PaginatedGroupsResponse> {
+    const response = await axiosInstance.get<PaginatedGroupsResponse>(
         API_ROUTES.CHAT.GROUPS,
         { 
             headers,
             params: {
               ...params,
-              topics: params.topics // Axios handles array params properly usually, or we might need serialization
+              topics: params.topics
             }
         }
     );
@@ -222,8 +224,8 @@ export async function getAllGroups(
 export async function getMyGroups(
     params: { query?: string; limit?: number; offset?: number },
     headers?: Record<string, string>
-): Promise<GroupListDto[]> {
-    const response = await axiosInstance.get<GroupListDto[]>(
+): Promise<PaginatedGroupListResponse> {
+    const response = await axiosInstance.get<PaginatedGroupListResponse>(
         API_ROUTES.CHAT.MY_GROUPS,
         { headers, params }
     );
@@ -233,8 +235,8 @@ export async function getMyGroups(
 export async function getDiscoverGroups(
     params: { query?: string; topics?: string[]; limit?: number; offset?: number },
     headers?: Record<string, string>
-): Promise<GroupListDto[]> {
-    const response = await axiosInstance.get<GroupListDto[]>(
+): Promise<PaginatedGroupListResponse> {
+    const response = await axiosInstance.get<PaginatedGroupListResponse>(
         API_ROUTES.CHAT.DISCOVER_GROUPS,
         { 
             headers, 
