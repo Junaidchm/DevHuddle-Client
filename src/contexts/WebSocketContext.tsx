@@ -1536,7 +1536,6 @@ class WebSocketManager {
 
       // Dispatch custom events for the chat UI to react instantly
       if (message.type === "content_removed" as any) {
-        const action = (message as any).metadata?.action;
         if (action === "DELETE") {
           window.dispatchEvent(new CustomEvent("hub_deleted", { detail: { conversationId: entityId } }));
         } else {
