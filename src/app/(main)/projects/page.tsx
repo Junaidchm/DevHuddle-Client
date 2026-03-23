@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTrendingProjectsQuery } from "@/src/components/projects/hooks/useTrendingProjectsQuery";
 import { useTopProjectsQuery } from "@/src/components/projects/hooks/useTopProjectsQuery";
 import { useListProjectsQuery } from "@/src/components/projects/hooks/useListProjectsQuery";
@@ -74,9 +74,9 @@ export default function ProjectsPage() {
   const totalPages = Math.ceil(totalCount / limit);
 
   // Reset page when filter or search changes
-  useState(() => {
+  useEffect(() => {
     setPage(1);
-  });
+  }, [filter, period, searchQuery]);
   
   const handleFilterChange = (newFilter: FilterType) => {
     setFilter(newFilter);

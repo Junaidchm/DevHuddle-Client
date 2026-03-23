@@ -1,6 +1,7 @@
-// app/components/Pagination.tsx
-'use client';
 import React from 'react';
+import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
+import { cn } from '@/src/lib/utils';
+import { Button } from '@/src/components/ui/button';
 
 interface PaginationProps {
   currentPage: number;
@@ -17,19 +18,16 @@ const Pagination = ({ currentPage, totalPages, onPageChange, isLoading = false }
     const maxVisible = 5;
 
     if (totalPages <= maxVisible) {
-      // Show all pages if total pages is less than max visible
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
-      // Always show first page
       pages.push(1);
 
       if (currentPage > 3) {
         pages.push('...');
       }
 
-      // Show pages around current page
       const start = Math.max(2, currentPage - 1);
       const end = Math.min(totalPages - 1, currentPage + 1);
 
@@ -41,7 +39,6 @@ const Pagination = ({ currentPage, totalPages, onPageChange, isLoading = false }
         pages.push('...');
       }
 
-      // Always show last page
       pages.push(totalPages);
     }
 
@@ -51,62 +48,65 @@ const Pagination = ({ currentPage, totalPages, onPageChange, isLoading = false }
   const pageNumbers = getPageNumbers();
 
   return (
-    <div className="flex justify-center gap-2 mb-8 flex-wrap">
-      <button
+    <div className="flex items-center justify-center gap-2 py-8 select-none">
+      <Button
+        variant="outline"
+        size="icon"
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1 || isLoading}
-        className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-md text-slate-500 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+        className="w-10 h-10 rounded-xl border-border/50 bg-background/50 backdrop-blur-sm hover:bg-primary/5 hover:text-primary transition-all duration-300"
         aria-label="Previous page"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="15 18 9 12 15 6"></polyline>
-        </svg>
-      </button>
+        <ChevronLeft className="w-5 h-5" />
+      </Button>
       
-      {pageNumbers.map((page, index) => {
-        if (page === '...') {
+      <div className="flex items-center gap-1.5 px-2">
+        {pageNumbers.map((page, index) => {
+          if (page === '...') {
+            return (
+              <div
+                key={`ellipsis-${index}`}
+                className="w-10 h-10 flex items-center justify-center text-muted-foreground"
+              >
+                <MoreHorizontal className="w-4 h-4 opacity-50" />
+              </div>
+            );
+          }
+
+          const pageNum = page as number;
+          const isActive = pageNum === currentPage;
+
           return (
-            <button
-              key={`ellipsis-${index}`}
-              disabled
-              className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-md text-slate-500 cursor-default"
+            <Button
+              key={pageNum}
+              variant={isActive ? "default" : "ghost"}
+              onClick={() => onPageChange(pageNum)}
+              disabled={isLoading}
+              className={cn(
+                "w-10 h-10 rounded-xl font-bold text-sm transition-all duration-300",
+                isActive 
+                  ? "shadow-lg shadow-primary/25 scale-110" 
+                  : "hover:bg-primary/10 hover:text-primary text-muted-foreground"
+              )}
+              aria-label={`Page ${pageNum}`}
+              aria-current={isActive ? 'page' : undefined}
             >
-              ...
-            </button>
+              {pageNum}
+            </Button>
           );
-        }
+        })}
+      </div>
 
-        const pageNum = page as number;
-        const isActive = pageNum === currentPage;
-
-        return (
-          <button
-            key={pageNum}
-            onClick={() => onPageChange(pageNum)}
-            disabled={isLoading}
-            className={`w-10 h-10 flex items-center justify-center border rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-              isActive
-                ? 'bg-blue-500 border-blue-500 text-white'
-                : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
-            }`}
-            aria-label={`Page ${pageNum}`}
-            aria-current={isActive ? 'page' : undefined}
-          >
-            {pageNum}
-          </button>
-        );
-      })}
-
-      <button
+      <Button
+        variant="outline"
+        size="icon"
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages || isLoading}
-        className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-md text-slate-500 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+        className="w-10 h-10 rounded-xl border-border/50 bg-background/50 backdrop-blur-sm hover:bg-primary/5 hover:text-primary transition-all duration-300"
         aria-label="Next page"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="9 18 15 12 9 6"></polyline>
-        </svg>
-      </button>
+        <ChevronRight className="w-5 h-5" />
+      </Button>
     </div>
   );
 };
