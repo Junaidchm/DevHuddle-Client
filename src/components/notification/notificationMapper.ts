@@ -108,11 +108,18 @@ const getActionText = (
     case "CONTENT_HIDDEN": {
       // Use metadata to get the specific action and content type
       const action = metadata?.action as string | undefined;
+      const reason = metadata?.reason as string | undefined;
       const contentType = (metadata?.entityType as string || entityType || "content").toLowerCase();
-      if (action === "HIDE") return `hid your ${contentType}`;
-      if (action === "UNHIDE") return `restored your ${contentType}`;
-      if (action === "DELETE") return `permanently deleted your ${contentType}`;
-      return `took action on your ${contentType}`;
+      
+      const verb = action === "HIDE" ? "hid" 
+                 : action === "UNHIDE" ? "restored"
+                 : action === "DELETE" ? "permanently deleted"
+                 : "took action on";
+      
+      const target = contentType === "conversation" ? "hub" : contentType;
+      const reasonSuffix = reason ? ` due to: ${reason}` : "";
+      
+      return `${verb} your ${target}${reasonSuffix}`;
     }
     default:
       return "interacted with your content";
@@ -366,7 +373,8 @@ export const mapNotificationToLinkedInStyle = (
       const d = notification.createdAt ? new Date(notification.createdAt) : new Date();
       return isNaN(d.getTime()) ? new Date() : d;
     })(),
-    message: notification.summary?.text || actionText,
+    // ✅ PRIORITIZE SUMMARY TEXT: This contains the "Admin hid your post due to: reason" string from backend
+    message: notification.summary?.text || notification.summary?.json?.text || actionText,
     actors: actors.length > 0 ? actors : [{ name: primaryActorName, profilePicture: primaryActorAvatar }],
     aggregatedCount,
     entityType,
