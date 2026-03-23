@@ -176,6 +176,24 @@ export default function ChatPage() {
         }
     };
 
+    const handleJoinResult = (e: CustomEvent) => {
+        const data = e.detail;
+        console.log("🏅 [Socket] handleJoinResult received:", data);
+        
+        if (e.type === 'hub_join_approved') {
+            toast.success(`Your request to join "${data.hubName || 'the Hub'}" was approved!`, {
+                description: "You can now send messages in this group.",
+                duration: 6000,
+            });
+            // Force list refresh to show the new group
+            queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations.all });
+        } else if (e.type === 'hub_join_rejected') {
+            toast.error(`Your request to join "${data.hubName || 'the Hub'}" was declined.`, {
+                duration: 6000,
+            });
+        }
+    };
+
     const handleParticipantRemoved = (e: CustomEvent) => {
         const data = e.detail;
         if (data.conversationId === selectedConversation.conversationId) {
@@ -235,8 +253,9 @@ export default function ChatPage() {
     // For now, let's just handle metadata updates (name, icon)
     window.addEventListener('group_updated', handleGroupUpdated as EventListener);
     window.addEventListener('active_group_deleted', handleActiveGroupDeleted as EventListener);
-    window.addEventListener('participants_added', handleParticipantsAdded as EventListener);
-    window.addEventListener('hub_join_approved', handleParticipantsAdded as EventListener); // Alias for refresh
+    window.addEventListener('hub_join_approved', handleJoinResult as EventListener); // Notify requester
+    window.addEventListener('hub_join_rejected', handleJoinResult as EventListener); // Notify requester
+    window.addEventListener('participants_added', handleParticipantsAdded as EventListener); // Refresh for existing members
     window.addEventListener('hub_join_requested', handleHubJoinRequested as EventListener); // New: Notify admin
     window.addEventListener('participant_removed', handleParticipantRemoved as EventListener); // handling remove by admin
     window.addEventListener('participant_left', handleParticipantRemoved as EventListener); // handling self leave (same logic)
@@ -246,8 +265,9 @@ export default function ChatPage() {
     return () => {
         window.removeEventListener('group_updated', handleGroupUpdated as EventListener);
         window.removeEventListener('active_group_deleted', handleActiveGroupDeleted as EventListener);
+        window.removeEventListener('hub_join_approved', handleJoinResult as EventListener);
+        window.removeEventListener('hub_join_rejected', handleJoinResult as EventListener);
         window.removeEventListener('participants_added', handleParticipantsAdded as EventListener);
-        window.removeEventListener('hub_join_approved', handleParticipantsAdded as EventListener);
         window.removeEventListener('hub_join_requested', handleHubJoinRequested as EventListener);
         window.removeEventListener('participant_removed', handleParticipantRemoved as EventListener);
         window.removeEventListener('participant_left', handleParticipantRemoved as EventListener);
