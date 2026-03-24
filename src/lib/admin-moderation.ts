@@ -78,6 +78,7 @@ export function mapModerationActionToPayload(
   resolution: string,
   severity?: AdminReportSeverity
 ): {
+  action: AdminModerationAction;
   status: AdminReportStatus;
   resolution: string;
   enforcementAction?: AdminEnforcementAction;
@@ -85,6 +86,7 @@ export function mapModerationActionToPayload(
 } {
   if (action === "APPROVE") {
     return {
+      action,
       status: "RESOLVED_APPROVED",
       resolution,
       severity,
@@ -93,6 +95,7 @@ export function mapModerationActionToPayload(
 
   if (action === "REMOVE") {
     return {
+      action,
       status: "RESOLVED_REMOVED",
       resolution,
       enforcementAction: targetType === "USER" ? "SUSPEND" : "HIDE",
@@ -101,6 +104,7 @@ export function mapModerationActionToPayload(
   }
 
   return {
+    action,
     status: "RESOLVED_IGNORED",
     resolution,
     severity,

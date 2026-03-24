@@ -36,6 +36,7 @@ export const getReportById = async (reportId: string, headers?: Record<string, s
 export const takeReportAction = async (
   reportId: string,
   data: {
+    action: "APPROVE" | "REMOVE" | "IGNORE";
     status: "PENDING" | "INVESTIGATING" | "RESOLVED_APPROVED" | "RESOLVED_REMOVED" | "RESOLVED_IGNORED" | "CLOSED";
     resolution: string;
     enforcementAction?: "SUSPEND" | "BAN" | "HIDE" | "WARN";
